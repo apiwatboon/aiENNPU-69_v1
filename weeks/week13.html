@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Language Model &amp; RNN | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button {
+    font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s;
+  }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* แผงสมการสด โทนเข้ม (แบบเดียวกับ week06) */
+  .eqpanel { display:none; margin-top:10px; border-radius:12px; padding:12px 16px;
+    background:linear-gradient(135deg,#171c30,#101425); border:1px solid rgba(139,148,255,.3);
+    color:#dbe2ff; font-size:1rem; line-height:2; font-variant-numeric:tabular-nums;
+    box-shadow:0 10px 26px -14px rgba(0,0,0,.7); overflow-x:auto; white-space:nowrap; }
+  .eqpanel b { color:#c4b5fd; }
+  .eqpanel .t-x { color:#93c5fd; } .eqpanel .t-h { color:#c4b5fd; } .eqpanel .t-b { color:#6ee7b7; }
+  .eqpanel .t-res { color:#34d399; font-weight:800; }
+
+  .phase-pill { display:inline-flex; align-items:center; gap:7px; margin-top:10px;
+    background:var(--card); border:1px solid var(--border); border-radius:999px;
+    padding:5px 14px; font-size:.88rem; font-weight:700; color:var(--ink); }
+  .phase-pill .dot { width:11px; height:11px; border-radius:50%; background:#9aa3b8; flex:none; }
+
+  .ctl-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .ctl-row .cap { font-weight:700; }
+
+  /* ═══ 🌌 แผนที่ความหมาย 3D ═══ */
+  .emb-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:860px){ .emb-grid { grid-template-columns:1fr 260px; align-items:start; } }
+  #embCv { cursor:grab; touch-action:none; }
+  .emb-panel { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    padding:12px 14px; font-size:.9rem; }
+  .emb-panel h4 { margin:0 0 6px; font-size:1.05rem; }
+  .emb-legend { display:flex; flex-wrap:wrap; gap:6px 10px; margin:6px 0; }
+  .emb-legend span { display:inline-flex; align-items:center; gap:5px; font-size:.8rem; color:var(--muted); }
+  .emb-legend i { width:.75em; height:.75em; border-radius:50%; display:inline-block; flex:none; }
+  .sim-row { display:flex; align-items:center; gap:8px; margin:7px 0; }
+  .sim-row .w { min-width:64px; font-weight:700; }
+  .sim-row .bar { flex:1; height:10px; border-radius:5px; background:rgba(127,127,127,.14); overflow:hidden; }
+  .sim-row .bar i { display:block; height:100%; border-radius:5px; background:linear-gradient(90deg,var(--accent),#8b5cf6); }
+  .sim-row b { min-width:40px; text-align:right; font-variant-numeric:tabular-nums; }
+  .emb-magic-out { margin-top:8px; font-size:.9rem; font-weight:600; color:#7c3aed; min-height:1.5em; line-height:1.8; }
+  [data-theme="dark"] .emb-magic-out { color:#c4b5fd; }
+
+  /* ═══ 📉 สัญญาณเลือนหาย ═══ */
+  .vg-bars { display:flex; align-items:flex-end; gap:4px; height:160px;
+    border:1px solid var(--border); border-radius:10px; padding:10px 12px 26px;
+    background:var(--card); margin-top:10px; }
+  .vg-cell { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
+    height:100%; position:relative; min-width:0; }
+  .vg-cell .bar { width:70%; max-width:26px; border-radius:4px 4px 0 0; background:var(--accent);
+    transition:height .45s cubic-bezier(.2,.8,.3,1), background .3s, opacity .3s; }
+  .vg-cell .k { position:absolute; bottom:-21px; font-size:.68rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .vg-read { margin-top:14px; font-size:1.06rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .vg-read sup { font-size:.72em; }
+  .vg-verdict { margin-top:8px; font-weight:700; font-size:.98rem; border-radius:10px; padding:8px 12px;
+    border:1.5px solid var(--border); background:var(--card); transition:border-color .3s,color .3s; }
+  .vg-verdict.die { color:#d4493e; border-color:#d4493e; }
+  .vg-verdict.ok { color:#0e7f43; border-color:#12a150; }
+  .vg-verdict.boom { color:#b45309; border-color:#f59e0b; }
+
+  /* ═══ 🧠 สมองของโมเดล n-gram ═══ */
+  .brain-count { margin:10px 0 6px; font-weight:700; color:var(--accent); font-size:.92rem; }
+  .brain-wrap { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    padding:10px 12px; margin-bottom:10px; }
+  .brain-wrap h4 { margin:0 0 4px; font-size:.88rem; }
+  .brain-row { display:flex; align-items:center; gap:7px; padding:5px 0;
+    border-top:1px dashed var(--border); flex-wrap:wrap; font-size:.84rem; }
+  .brain-row:first-of-type { border-top:none; }
+  .brain-ctx { font-weight:700; color:var(--accent); background:var(--accent-soft);
+    border-radius:6px; padding:2px 8px; white-space:pre; flex:none; }
+  .brain-arrow { color:var(--muted); flex:none; }
+  .brain-next { position:relative; display:inline-flex; align-items:center; gap:4px;
+    border:1px solid var(--border); border-radius:6px; padding:2px 7px; overflow:hidden; white-space:pre; }
+  .brain-next i { position:absolute; left:0; top:0; bottom:0; background:var(--accent-soft); }
+  .brain-next b, .brain-next small { position:relative; }
+  .brain-next small { color:var(--muted); }
+
+  /* ═══ 💻 โค้ดจริง ═══ */
+  .codebox { border-radius:12px; overflow:hidden; border:1px solid #2b3247; margin:14px 0 8px; background:#0f1420; }
+  .codehead { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+    padding:8px 14px; background:#181e30; color:#aab4d4; font-size:.85rem; font-weight:600;
+    border-bottom:1px solid #2b3247; }
+  .codebox pre { margin:0; padding:14px 16px; overflow-x:auto; background:transparent; }
+  .codebox code, .codebox code * { font-family:'Consolas','Courier New',monospace !important; font-size-adjust:none; }
+  .codebox code { display:block; font-size:.85rem; line-height:1.75; color:#dbe2f0; white-space:pre; background:transparent; padding:0; }
+  .codebox code .c { color:#7ea16b; font-style:italic; }
+  .codecopy { background:#2b3247; color:#dbe2ff; font-size:.8rem; padding:5px 12px; margin:0; box-shadow:none; border:none; border-radius:8px; cursor:pointer; }
+  .codecopy:hover { background:#3a4360; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>ทำนายคำถัดไป: Language Model และ RNN</h1>
+    <p class="subtitle">กลับมาเจอเพื่อนเก่าจากและกำแพงที่ขังวงการไว้หลายปี</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายได้ว่าทำไม n-gram "ระเบิด" เมื่อเพิ่มความยาวบริบท (data sparsity)</li>
+      <li>อธิบายหลักการ RNN (ส่งความจำต่อเป็นทอดๆ) และจุดอ่อนความจำเสื่อม (vanishing gradient)</li>
+      <li>ระบุได้ว่า LSTM แก้อะไร และอะไรที่มันยังแก้ไม่ได้</li>
+      <li>เห็นภาพว่า <strong>word embedding</strong> คืออะไร: คำ = จุดในปริภูมิ ที่ความหมายใกล้กัน = อยู่ใกล้กัน และบวกลบเวกเตอร์ได้ (กษัตริย์ − ชาย + หญิง ≈ ราชินี)</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ: <em>"จากประโยค 'นักศึกษาที่ลืมกินข้าวเช้ามาเรียนวิชา AI ตอนนี้รู้สึก___'
+    — คุณเดาคำต่อได้เพราะจำคำไหนในประโยคบ้าง?"</em></p>
+
+    <h3>ยกระดับ bigram: เพิ่มความจำ → เจอทางตัน</h3>
+    <p>bigram จำได้ 1 ตัว ถ้าเพิ่มเป็น n-gram (จำ n−1 ตัวล่าสุด) ภาษาจะลื่นขึ้นจริง
+    แต่จำนวน "บริบทที่เป็นไปได้" โตแบบยกกำลัง — บริบทส่วนใหญ่ไม่เคยปรากฏในข้อมูลฝึกเลย
+    ตารางนับกลายเป็นช่องว่างมหึมา (<strong>data sparsity</strong>) ลอง demo ข้างล่างจะเห็นกับตา</p>
+
+    <h3>RNN: เปลี่ยนจาก "นับ" เป็น "บีบอัดความจำ"</h3>
+    <p>แทนที่จะจำบริบทตรงๆ RNN อ่านทีละคำแล้วอัปเดต <strong>hidden state</strong> —
+    เวกเตอร์ความจำขนาดคงที่ที่ "สรุปทุกอย่างที่อ่านมา" แล้วส่งต่อให้ตัวเองในจังหวะถัดไป
+    เทรนด้วย backprop ตามปกติ (ที่เรารู้วิธีแล้ว!)</p>
+    <p><strong>จุดอ่อนร้ายแรง:</strong> ความจำถูก "เขียนทับ" ทุกครั้งที่อ่านคำใหม่
+    คำที่อยู่ไกลจางหายไปเรื่อยๆ และตอนเทรน gradient ที่ไหลย้อนผ่านหลายจังหวะจะหดจนเป็นศูนย์
+    (<strong>vanishing gradient</strong>) — โมเดลเรียนความสัมพันธ์ระยะไกลไม่ได้</p>
+
+    <h3>LSTM: แก้ได้ครึ่งทาง</h3>
+    <p>LSTM (1997) เพิ่ม "ประตู" ควบคุมว่าจะจำ/ลืม/เขียนอะไร — ยืดความจำได้ไกลขึ้นมาก
+    เป็นพระเอกของยุค 2014–2017 (Google Translate รุ่นแรกๆ, Siri) แต่ยังเหลือปัญหาเชิงโครงสร้าง 2 ข้อ:
+    (1) ความจำยังเป็นคอขวดขนาดคงที่ — ประโยคยาวเท่าไหร่ก็ต้องบีบลงเวกเตอร์เดียว
+    (2) ต้องอ่าน<em>ทีละคำตามลำดับ</em> — ขนานบน GPU ไม่ได้ เทรนข้อมูลมหาศาลจึงช้าเกินไป</p>
+    <p><strong>คำถามทิ้งท้าย:</strong> แทนที่จะ "บีบทุกอย่างลงความจำเดียว"...
+    ถ้ายอมให้โมเดล<em>หันกลับไปมองทุกคำได้ตลอดเวลา</em> แล้วเลือกเองว่าจะสนใจคำไหน ล่ะ? — สัปดาห์หน้า</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — ทำไมโจทย์ภาษาถึงยาก ใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">สัปดาห์นี้คือ "การไต่สวนหาคนร้าย" — ไล่ทีละขั้นว่าทำไมวิธีเก่าๆ ถึงพังกับภาษา</p>
+    <ol class="steps">
+      <li><strong>เริ่มจากของที่เรามี: ยืด bigram</strong>
+        bigram จำย้อนหลัง 1 ตัว — งั้นจำ 2, 3, 5 ตัวสิ (n-gram)! ภาษาลื่นขึ้นจริง ลองเลื่อนใน demo ได้
+        — ดูเหมือนแก้ปัญหาได้แล้ว?</li>
+      <li><strong>นับดูก่อนว่าตารางใหญ่แค่ไหน</strong>
+        ภาษาไทยมีตัวอักษรราว 70 ตัว จำนวน "บริบทที่เป็นไปได้":<br>
+        จำ 1 ตัว: 70 ช่อง | จำ 2 ตัว: 70² = <strong>4,900</strong> | จำ 3 ตัว: <strong>343,000</strong> | จำ 5 ตัว: 70⁵ ≈ <strong>1,680 ล้าน</strong><br>
+        โตแบบยกกำลัง — เรียกว่า "การระเบิดของบริบท"</li>
+      <li><strong>ผลที่ตามมา: ตารางว่างเปล่า</strong>
+        ข้อความฝึกมีจำกัด บริบทส่วนใหญ่จึง<em>ไม่เคยปรากฏเลย</em> หรือเจอแค่ครั้งเดียว
+        → โมเดลไม่ได้ "เรียนรู้" แต่ "ท่องข้อความฝึก" (ดูตัวเลขสีแดงใน demo — นั่นคือ overfit ภาคภาษา)
+        <div class="try">คำนวณเอง: คำศัพท์ 10,000 คำ จำย้อน 3 คำ มีบริบทกี่แบบ? เทียบกับจำนวนประโยคที่มนุษย์เคยเขียนทั้งหมด</div></li>
+      <li><strong>ไอเดียใหม่ของ RNN: อย่าจำดิบ ให้ "สรุป"</strong>
+        แทนที่จะเก็บบริบทตรงๆ — อ่านทีละคำ แล้วอัปเดต "กล่องความจำ" (hidden state) ขนาดคงที่:
+        อ่าน "แมว" → จำ {มีแมว} → อ่าน "หิว" → จำ {แมวหิว} → ...
+        กล่องเดียวขนาดเท่าเดิม ไม่ว่าประโยคยาวแค่ไหน — ตารางไม่ระเบิดแล้ว!</li>
+      <li><strong>แต่กล่องเล็กมีราคา: ความจำจาง</strong>
+        ทุกครั้งที่อ่านคำใหม่ ของเก่าในกล่องถูกเขียนทับทีละนิด คำที่อยู่ไกล 100 คำแทบไม่เหลือ<br>
+        ตอนเทรนก็เจอเหมือนกัน: สัญญาณการเรียนรู้ถูกคูณซ้ำๆ ราว 0.9 ต่อขั้น → 0.9¹⁰⁰ ≈ <strong>0.00003</strong>
+        — จางจนเรียนความสัมพันธ์ระยะไกลไม่ได้ (vanishing gradient)</li>
+      <li><strong>สรุปสำนวนฟ้อง แล้วตั้งโจทย์ใหม่</strong>
+        n-gram: นับไม่ไหว | RNN: จำไกลไม่ได้ | LSTM: ดีขึ้นแต่ยังอ่านทีละคำ ขนานบน GPU ไม่ได้<br>
+        สเปกของพระเอกที่ต้องการ: <em>มองเห็นทุกคำพร้อมกัน + เลือกสนใจคำที่เกี่ยว + เทรนขนานได้</em>
+        — สัปดาห์หน้าพบกับ Attention
+        <div class="try">ก่อนดูเฉลยสัปดาห์หน้า ลองออกแบบเองสัก 5 นาที: ถ้าห้ามใช้ตารางนับและห้ามกล่องความจำเดียว จะให้โมเดล "เห็น" ประโยคยังไง?</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — เห็นปัญหาภาษาจากหลายมุม</h3>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — n-gram ระดับคำ</summary>
+      <p>ข้อมูลฝึก: <code>"ฉันกินข้าว ฉันกินผัก ฉันดื่มน้ำ"</code> (นับเป็นคำ) — หลังคำว่า "ฉัน" และหลังคำว่า "กิน" โมเดลทำนายอะไร?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เขียนคู่คำทั้งหมด:</strong> ฉัน→กิน, กิน→ข้าว | ฉัน→กิน, กิน→ผัก | ฉัน→ดื่ม, ดื่ม→น้ำ<br>
+      <strong>ขั้น 2 — นับหลัง "ฉัน":</strong> กิน 2, ดื่ม 1 → กิน <strong>67%</strong>, ดื่ม <strong>33%</strong><br>
+      <strong>ขั้น 3 — นับหลัง "กิน":</strong> ข้าว 1, ผัก 1 → อย่างละ <strong>50%</strong><br>
+      ✅ <strong>คำตอบ:</strong> และจุดสำคัญ — มันจะ<strong>ไม่มีวัน</strong>แต่ง "กินน้ำ" เพราะไม่เคยเห็นคู่นี้ (ทั้งที่ภาษาไทยพูดได้!)
+      การนับให้ความน่าจะเป็นศูนย์กับทุกอย่างที่ไม่เคยเห็น — ข้อจำกัดมูลฐานของวิธีนับ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — คำนวณการระเบิดด้วยเลขกลมๆ</summary>
+      <p>ภาษาจำลองมีคำศัพท์ 100 คำ โมเดลจำย้อนหลัง 4 คำ — มีบริบทที่เป็นไปได้กี่แบบ?
+      ถ้าข้อมูลฝึกมี 1 ล้านคำ จะเห็นบริบทได้อย่างมากกี่ % ของทั้งหมด?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — นับบริบทที่เป็นไปได้:</strong> แต่ละตำแหน่งใน 4 คำ เลือกได้ 100 แบบ → 100⁴ = <strong>100 ล้านบริบท</strong><br>
+      <strong>ขั้น 2 — นับบริบทที่ข้อมูลฝึกมีให้:</strong> ข้อความ 1 ล้านคำ มีบริบท (หน้าต่างเลื่อน) อย่างมาก ~1 ล้านแบบ และซ้ำกันเยอะ<br>
+      <strong>ขั้น 3 — หารเทียบ:</strong> 1 ล้าน ÷ 100 ล้าน = เห็นไม่ถึง <strong>1%</strong> ของบริบทที่เป็นไปได้<br>
+      ✅ <strong>คำตอบ:</strong> อีก 99%+ ที่เหลือ โมเดลได้แต่ทำหน้างง — ภาษาจริง (คำศัพท์ 10⁴–10⁵) ยิ่งสาหัสกว่านี้มหาศาล
+      นี่คือ "การระเบิดของบริบท" ในรูปตัวเลข</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — เลขชี้ชะตา RNN: 0.8 กับ 1.2 ต่างกันแค่ไหนเมื่อคูณ 20 ครั้ง</summary>
+      <p>สัญญาณการเรียนรู้ไหลย้อนผ่าน 20 จังหวะ ถูกคูณด้วยค่าเฉลี่ยต่อจังหวะ — เทียบกรณีค่า 0.8 กับ 1.2</p>
+      <div class="ans">
+      <strong>ขั้น 1 — กรณี 0.8:</strong> คูณตัวเอง 20 ครั้ง: 0.8²⁰ ≈ <strong>0.012</strong> — สัญญาณเหลือ ~1% (vanishing)<br>
+      <strong>ขั้น 2 — กรณี 1.2:</strong> 1.2²⁰ ≈ <strong>38</strong> — สัญญาณพองเกือบ 40 เท่า (exploding)<br>
+      <strong>ขั้น 3 — หาเงื่อนไขรอด:</strong> ต้องอยู่ใกล้ 1.000 เป๊ะตลอดทุกจังหวะ — แต่ค่านี้ขึ้นกับ weight ที่เปลี่ยนตลอดการเทรน บังคับไม่ได้<br>
+      ✅ <strong>คำตอบ:</strong> 0.012 กับ 38 — ต่างกัน 3,000 เท่าจากตัวเลขเริ่มที่ต่างแค่ 0.4 — นี่คือเหตุผลเชิงตัวเลขที่ RNN ยาวๆ เทรนยาก
+      และทำไม "ทางด่วน gradient" (LSTM, residual) ถึงเป็นสิ่งประดิษฐ์สำคัญ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — backoff: แผนสำรองของ n-gram ยุคเก่า</summary>
+      <p>โมเดล 4-gram เจอบริบท "แมวสีเทาตัวนั้น___" ที่ไม่เคยเห็นเลยในข้อมูลฝึก — ระบบจริงยุคก่อนแก้ยังไง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ลองบริบทเต็ม:</strong> ค้น "สีเทาตัวนั้น___" ในตาราง → ไม่เคยเห็น ตารางว่าง<br>
+      <strong>ขั้น 2 — ถอยหนึ่งระดับ (backoff):</strong> ตัดคำไกลสุดทิ้ง เหลือ "ตัวนั้น___" → ค้นใหม่ → ถ้ายังว่างก็ถอยอีกเหลือคำเดียว<br>
+      <strong>ขั้น 3 — ประเมินวิธีนี้:</strong> ได้คำตอบเสมอ (Google Translate ยุคแรกใช้จริง) แต่คือการ "ยอมทิ้งบริบท" — ยิ่งถอยยิ่งโง่ลง<br>
+      ✅ <strong>คำตอบ:</strong> backoff คือแผนสำรองที่แก้ปลายเหตุ — ต่างจาก neural LM ที่ generalize:
+      ไม่เคยเห็นบริบทนี้ แต่เคยเห็นบริบท<em>คล้ายๆ</em> ก็พอเดาได้โดยไม่ต้องทิ้งอะไร</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — คำนวณข้อมูลที่หายในเกมกระซิบ</summary>
+      <p>จากกิจกรรมแบบฝึกหัดข้อ 2: ประโยคต้นทาง 25 คำ แต่ละทอดกระซิบต่อได้ไม่เกิน 5 คำ — ข้อมูลหายอย่างน้อยกี่ % ตั้งแต่ทอดแรก?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — วัดความจุ:</strong> ต้นทาง 25 คำ ช่องส่งมีแค่ 5 คำ<br>
+      <strong>ขั้น 2 — คำนวณการสูญเสียทอดแรก:</strong> เก็บได้ 5/25 = 20% → หายอย่างน้อย <strong>80%</strong><br>
+      <strong>ขั้น 3 — มองหลายทอด:</strong> ทอดสองสรุปจากของที่สรุปแล้ว — ความเพี้ยนสะสมซ้อนกัน (หายแล้วหายอีก)<br>
+      ✅ <strong>คำตอบ:</strong> หาย ≥80% ตั้งแต่ทอดแรก — hidden state ของ RNN คือ "กระซิบ 5 คำ" นี้เอง: ความจุคงที่ ไม่สนต้นทางยาวแค่ไหน
+      ใครเล่นเกมนี้แล้วหงุดหงิด นั่นแหละความรู้สึกของ RNN เวลาอ่านเอกสารยาว</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — hidden state คือเวกเตอร์ ไม่ใช่กล่องวิเศษ</summary>
+      <p>RNN ทั่วไปมี hidden state เป็นตัวเลข 256 ตัว — ประโยค 10 คำ กับนิยายทั้งเล่ม ถูกบีบลงที่เดียวกัน — เทียบให้เห็นภาพหน่อย</p>
+      <div class="ans">
+      <strong>ขั้น 1 — นึกภาพความจุ:</strong> ตัวเลข 256 ตัว = โพสต์อิทแผ่นเดียว ที่ต้องจดสรุป "ทุกอย่างที่อ่านมา"<br>
+      <strong>ขั้น 2 — เคสประโยคสั้น:</strong> เนื้อหา 10 คำ ลงโพสต์อิทได้เกือบครบ — พอไหว<br>
+      <strong>ขั้น 3 — เคสนิยายทั้งเล่ม:</strong> เนื้อหามหาศาลลงแผ่นเดิม — เขียนทับวนไป สุดท้ายเหลือแต่เรื่องท้ายเล่ม<br>
+      ✅ <strong>คำตอบ:</strong> ปัญหาไม่ใช่ขนาด (เพิ่มเป็น 1024 ก็ยังคงที่อยู่ดี) แต่คือ<strong>การบังคับให้คงที่</strong>ไม่ว่า input ยาวแค่ไหน —
+      ขณะที่ attention ให้พื้นที่ "ตามความยาวจริงของประโยค"</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — ประตูลืมของ LSTM ทำงานยังไง (เลขจริง)</summary>
+      <p>LSTM มี "ประตูลืม" เป็นตัวเลข 0–1 คูณความจำเก่าทุกจังหวะ — เทียบประตู 0.99 กับ 0.5 หลังผ่านไป 50 คำ ความจำเหลือกี่ %?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — กรณีประตู 0.99:</strong> ความจำเหลือ 0.99⁵⁰ ≈ <strong>61%</strong> หลัง 50 คำ — ยังเกินครึ่ง!<br>
+      <strong>ขั้น 2 — กรณีประตู 0.5:</strong> 0.5⁵⁰ ≈ 10⁻¹⁵ — หายสนิทไม่เหลือซาก<br>
+      <strong>ขั้น 3 — ใครตั้งค่าประตู?</strong> ไม่มีใคร — ประตูถูก<em>เทรน</em>ให้รู้เอง: ข้อมูลสำคัญ (ชื่อตัวละครหลัก) ตั้งใกล้ 1 เก็บยาว |
+      ข้อมูลทิ้งได้ (คำเชื่อม) ตั้งใกล้ 0<br>
+      ✅ <strong>คำตอบ:</strong> 61% vs แทบศูนย์ — ประตูเลือกจำคือเหตุที่ LSTM จำไกลกว่า RNN ธรรมดามาก แต่ความจุคงที่ก็ยังเป็นเพดานอยู่ดี</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — ทำไม RNN ใช้ GPU ไม่คุ้ม</summary>
+      <p>GPU มีหน่วยคำนวณนับหมื่น core — แต่ RNN อ่าน "ทีละคำ" — คอขวดอยู่ตรงไหน? คำนวณ h₅ ได้เลยไหมถ้ายังไม่มี h₄?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ไล่ลูกโซ่การคำนวณ:</strong> h₅ = f(h₄, x₅) — ต้องมี h₄ ก่อน ซึ่งต้องมี h₃ ก่อน... ย้อนถึง h₁<br>
+      <strong>ขั้น 2 — ลองเอา GPU หมื่น core เข้าช่วย:</strong> ทุก core ต้องรอผลตัวก่อนหน้าเหมือนกันหมด → ทำงานได้จริงทีละขั้น core ที่เหลือว่างงาน<br>
+      <strong>ขั้น 3 — เทียบ Transformer:</strong> attention ของทุกคำใช้แค่ embedding ตั้งต้น (ไม่ต้องรอใคร) → คำนวณพร้อมกันทั้งประโยค GPU วิ่งเต็มสูบ<br>
+      ✅ <strong>คำตอบ:</strong> คอขวดคือ "ลำดับบังคับ" ของ recurrence ไม่ใช่พลังเครื่อง —
+      บทเรียนเชิงระบบ: ผู้ชนะไม่ใช่สถาปัตยกรรมที่ฉลาดสุด แต่คือตัวที่<strong>เข้ากับฮาร์ดแวร์ยุคนั้นที่สุด</strong></div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — พีชคณิตความหมายของ word2vec</summary>
+      <p>สมการในตำนาน: vector(king) − vector(man) + vector(woman) ≈ vector(queen) — ลองทายเวอร์ชันไทย: กรุงเทพฯ − ไทย + ญี่ปุ่น ≈ ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — อ่านสมการเป็นลูกศร:</strong> "กรุงเทพฯ − ไทย" = ลูกศร "ความเป็นเมืองหลวงของประเทศ" ในแผนที่เวกเตอร์<br>
+      <strong>ขั้น 2 — ย้ายลูกศรไปปักที่ญี่ปุ่น:</strong> ญี่ปุ่น + ลูกศรเดิม = จุดที่ควรเป็น "เมืองหลวงของญี่ปุ่น"<br>
+      <strong>ขั้น 3 — หาคำที่ใกล้จุดนั้นที่สุด:</strong> <strong>โตเกียว</strong><br>
+      ✅ <strong>คำตอบ:</strong> โตเกียว — โมเดลเรียน "ความสัมพันธ์เชิงนามธรรม" จากแค่สถิติการอยู่ร่วมประโยค โดยไม่มีใครสอนภูมิศาสตร์เลย
+      หลักฐานชิ้นแรกๆ ที่ทำให้วงการเชื่อว่า "ความหมายซ่อนอยู่ในสถิติ" — รากของ LLM ทั้งหมด</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — RNN ตายแล้วจริงหรือ?</summary>
+      <p>ในเมื่อ Transformer ชนะขาด ทำไมยังมีของอย่าง "Hey Siri" ที่ใช้สถาปัตยกรรมตระกูล recurrent บนมือถือ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แจกแจงโจทย์ของ "Hey Siri":</strong> ฟังตลอด 24 ชม. บนแบตมือถือ + ต้องตอบสนองทันทีทีละเสี้ยววินาที<br>
+      <strong>ขั้น 2 — เทียบจุดแข็ง recurrent:</strong> ประมวลทีละชิ้นตามเวลาจริง เก็บแค่ hidden state เล็กๆ → กินไฟ/หน่วยความจำต่ำมาก — ตรงโจทย์เป๊ะ<br>
+      <strong>ขั้น 3 — เทียบจุดอ่อน attention:</strong> ต้องเก็บทุกอย่างไว้มองย้อน (แพงหน่วยความจำ) — เกินจำเป็นสำหรับงานรอคำปลุกคำเดียว<br>
+      ✅ <strong>คำตอบ:</strong> recurrent ยังครองงาน streaming เบาๆ เพราะโจทย์เข้ากับจุดแข็ง — แถมปี 2024–25 มี "ทายาท RNN"
+      (state-space models เช่น Mamba) กลับมาท้าชิงงานบริบทยาวมากๆ — สถาปัตยกรรมไม่เคยตาย แค่รอโจทย์ที่ใช่</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+  <p>สี่เวทีนี้เรียงตามเส้นเรื่องของส่วนที่ 1: คำกลายเป็นเวกเตอร์ → RNN อ่านทีละคำแล้วส่งความจำต่อ → ทำไมมันลืม → แล้วค่อยย้อนกลับไปดู n-gram ตัวเปรียบเทียบ</p>
+
+  <!-- ── 2.1 🌌 word embeddings 3D ── -->
+  <div class="demo" id="emb">
+    <h3 style="margin-top:0">🌌 แผนที่ความหมายของคำ — word embeddings แบบ 3D</h3>
+    <p style="margin-top:0">ก่อนโมเดลภาษาจะ "คิด" อะไรได้ มันต้องแปลงคำเป็นตัวเลขก่อน — และนี่คือหน้าตาผลลัพธ์:
+    คำแต่ละคำกลายเป็น<strong>จุดหนึ่งจุดในปริภูมิ</strong> โดยคำความหมายใกล้กันจะ<strong>ลอยอยู่ใกล้กัน</strong>เป็นหย่อมๆ
+    (ของจริงมีเป็นร้อยมิติ — ที่นี่ย่อเหลือ 3 มิติให้ตาเห็น) ·
+    <b>ลากเพื่อหมุน</b> · <b>คลิกคำ</b>เพื่อดูเพื่อนบ้านใกล้สุด 3 อันดับ วัดด้วย cosine similarity จริงจากพิกัด</p>
+    <div class="emb-grid">
+      <div>
+        <canvas id="embCv" width="640" height="420" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <div class="ctl-row">
+          <button id="embMagic" style="background:linear-gradient(135deg,#8b5cf6,#d946ef)">🪄 เวทมนตร์เวกเตอร์: กษัตริย์ − ชาย + หญิง = ?</button>
+          <button id="embAuto">⏸ หยุดหมุน</button>
+          <button id="embReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ รีเซ็ตมุมมอง</button>
+        </div>
+        <div class="emb-magic-out" id="embMagicOut"></div>
+      </div>
+      <div class="emb-panel" id="embPanel"></div>
+    </div>
+    <div class="try">ลอง: คลิก "กษัตริย์" ดูว่าเพื่อนบ้าน 3 อันดับคือใคร → แล้วกดปุ่ม 🪄 ดูลูกศรเดินทาง —
+    ลูกศร "กษัตริย์ − ชาย" คือทิศทาง "ความเป็นเชื้อพระวงศ์" ล้วนๆ พอยกไปปักที่ "หญิง" ก็ตกลงตรง "ราชินี" พอดี
+    (สมการเดียวกับตัวอย่าง 9: กรุงเทพฯ − ไทย + ญี่ปุ่น ≈ โตเกียว)</div>
+    <p style="margin:10px 0 0;font-size:.92rem;color:var(--muted)"><strong style="color:var(--accent)">ประเด็นที่เด็ดที่สุด:</strong>
+    ตำแหน่งพวกนี้<strong>ไม่มีใครสอน ไม่มีใครจัด</strong> — โมเดลเรียนเองล้วนๆ จากการพยายามทำนายคำถัดไปในข้อความมหาศาล
+    แล้วความหมาย กระทั่งความสัมพันธ์ "ชาย:หญิง :: กษัตริย์:ราชินี" ก็ผุดขึ้นมาเอง — นี่คือชั้นแรกสุดของ GPT ทุกตัว (token embedding)</p>
+  </div>
+
+  <!-- ── 2.2 🔁 RNN คลี่ทีละจังหวะ ── -->
+  <div class="demo" id="rnn">
+    <h3 style="margin-top:0">🔁 RNN คลี่ทีละจังหวะ — ความจำที่ส่งต่อ</h3>
+    <p style="margin-top:0">ประโยค "แมว กิน ___" ไหลผ่าน RNN ทีละคำ — แต่ละคำใช้ <b>3 จังหวะ</b>:
+    ① คำเข้ามาเป็นเวกเตอร์ x → ② ผสมกับความจำเดิมด้วยสูตร <b>h_ใหม่ = tanh(W·x + U·h_เดิม + b)</b> (เลขจริงทุกตัวโชว์ในแผงล่าง) →
+    ③ ความจำใหม่ไหลไปจังหวะถัดไป · เวกเตอร์จิ๋วแค่ 2 ช่องเพื่อให้อ่านเลขทัน — ของจริงคือหลักร้อยหลักพันช่อง แต่กติกาเดียวกันเป๊ะ</p>
+    <canvas id="rnnCv" width="760" height="430" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div class="phase-pill" id="rnnPhase"><span class="dot"></span> พร้อม — กด ▶ เล่นทีละจังหวะ</div>
+    <div class="eqpanel" id="rnnEq"></div>
+    <div class="ctl-row">
+      <button id="rnnStep" style="background:linear-gradient(135deg,#f59e0b,#f97316)">▶ เล่นทีละจังหวะ</button>
+      <button id="rnnAuto">🎬 เล่นต่อเนื่อง</button>
+      <button id="rnnSpeed" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+      <button id="rnnReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ รีเซ็ต</button>
+      <button id="rnnLong" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐘 ประโยคยาว 8 คำ</button>
+    </div>
+    <div class="try">ลอง: เล่นประโยคสั้นจนจบ (โมเดลจะเดา "ปลา" ~70%) แล้วกดปุ่ม 🐘 <b>ประโยคยาว 8 คำ</b> —
+    จ้องแถบ "ข้างในความจำ" มุมซ้ายบน: สีของ "แมว" คำแรกจางลงทุกครั้งที่คำใหม่เข้ามาเขียนทับ จนแทบมองไม่เห็น —
+    นั่นแหละอาการ "ความจำเสื่อม" ที่พาไปสู่ demo ถัดไป</div>
+  </div>
+
+  <!-- ── 2.3 📉 สัญญาณเลือนหาย ── -->
+  <div class="demo" id="vg">
+    <h3 style="margin-top:0">📉 สัญญาณเลือนหาย — ทำไม RNN ลืม (และบางทีก็ระเบิด)</h3>
+    <p style="margin-top:0">ตอนเทรน สัญญาณการเรียนรู้ (gradient) ต้องไหลย้อนกลับผ่านทุกจังหวะ — และ<strong>ทุกจังหวะมันถูกคูณหนึ่งครั้ง</strong>ด้วยตัวเลขที่ขึ้นกับ weight ·
+    เลือกตัวคูณกับความยาวประโยค แล้วดูชะตากรรมของสัญญาณ:</p>
+    <div class="ctl-row">
+      <span class="cap">ตัวคูณต่อจังหวะ</span>
+      <span class="seg" id="vgSeg">
+        <button data-f="0.5">× 0.5</button><button data-f="0.9" class="on">× 0.9</button>
+        <button data-f="1.0">× 1.0</button><button data-f="1.1">× 1.1</button>
+      </span>
+    </div>
+    <div class="ctl-row">
+      <span class="cap">ความยาว</span>
+      <input type="range" id="vgN" min="3" max="20" step="1" value="15" style="flex:1;accent-color:var(--accent)">
+      <strong id="vgNv" style="color:var(--accent);min-width:76px;text-align:right">15 จังหวะ</strong>
+    </div>
+    <div class="vg-bars" id="vgBars"></div>
+    <div class="vg-read" id="vgOut"></div>
+    <div class="vg-verdict" id="vgVerdict"></div>
+    <div class="try">ลอง: ตั้ง × 0.9 แล้วลากความยาว 3 → 20 ดูแท่งค่อยๆ มุดดิน · สลับเป็น × 1.1 (ต่างจาก 0.9 แค่ 0.2!) แล้วดูมันทะลุเพดาน ·
+    ตั้ง × 1.0 — รอดพอดี... แต่ weight ของจริงเปลี่ยนตลอดการเทรน จะบังคับให้เป๊ะ 1.000 ตลอดได้ยังไง? (ไม่ได้ — นั่นแหละปัญหา)</div>
+    <p style="margin:10px 0 0;font-size:.92rem;color:var(--muted)">LSTM เปิด "ทางด่วน" ให้สัญญาณไหลโดยไม่ถูกคูณซ้ำ เลยยืดระยะได้ไกลขึ้นมาก —
+    แต่เพดานความจำคงที่ + ต้องอ่านทีละคำ ยังอยู่ครบ · <strong>นี่คือเหตุผลที่โลกต้องการ Transformer (สัปดาห์หน้า)</strong></p>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 n-gram: เลื่อนความยาวความจำ แล้วดูทั้ง "คุณภาพ" และ "ทางตัน"</h3>
+    <p style="margin-top:0">โมเดลเดียวกับเรื่อง AI คืออะไร แต่คราวนี้ปรับได้ว่าจำกี่ตัวอักษรย้อนหลัง (n−1)
+    — ภาษาจะลื่นขึ้นเรื่อยๆ แต่ดูตัวเลข "บริบทที่เจอครั้งเดียว" ที่พุ่งขึ้น: นั่นคือสัญญาณว่าโมเดลเริ่ม<strong>ท่องจำ</strong>ข้อความฝึกแทนที่จะเรียนรู้</p>
+    <textarea id="corpus" rows="5">กาลครั้งหนึ่งนานมาแล้ว มีแมวน้อยตัวหนึ่งอาศัยอยู่ในหมู่บ้านเล็กๆ ริมแม่น้ำ แมวน้อยชอบนอนกลางวันบนเสื่อหน้าบ้าน และชอบกินปลาทูเป็นที่สุด ทุกเช้าแมวน้อยจะเดินไปริมแม่น้ำเพื่อดูปลาว่ายน้ำ ชาวบ้านทุกคนรักแมวน้อยตัวนี้ เพราะมันชอบไล่จับหนูในยุ้งข้าว</textarea>
+    <div style="margin-top:10px">
+      จำย้อนหลัง (ตัวอักษร): <input type="range" id="ctx" min="1" max="6" step="1" value="1" oninput="trainN()">
+      <strong id="ctxv"></strong>
+    </div>
+    <div class="output" id="stats"></div>
+    <div class="brain-count" id="ngCount"></div>
+    <div class="brain-wrap">
+      <h4>🧠 สมองของโมเดล — บริบทที่เจอบ่อยสุด 8 อันดับ กับแต้มของตัวอักษรถัดไป (แถบสี = สัดส่วนที่จะถูกสุ่ม · ␣ = เว้นวรรค)</h4>
+      <div id="brain"></div>
+    </div>
+    <button onclick="genN()">✨ ให้โมเดลแต่งข้อความ</button>
+    <div class="output" id="gen">—</div>
+  </div>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่น demo:</strong>
+    <ul>
+      <li>ที่ n สูงๆ ข้อความ "ลื่นมาก" — แต่ลองเทียบกับข้อความฝึก: มันแต่งเอง หรือลอกมาทั้งท่อน? (จำข้อสอบ = overfit ภาคภาษา!)</li>
+      <li>ภาษาไทยมีตัวอักษรราว 70 ตัว ถ้าจำย้อนหลัง 20 ตัว จะมีบริบทที่เป็นไปได้กี่แบบ? เก็บตารางนับไหวไหม?</li>
+      <li>GPT มองย้อนหลังได้เป็น "แสน token" — มันแน่นอนว่าไม่ได้ใช้ตารางนับ แล้วใช้อะไร?</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 3 — 💻 โค้ดจริง: เอาไปรันใน Colab ได้เลย <span class="badge green">ลงมือ</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">สองไฟล์นี้คือ "ฉบับโค้ด" ของ demo ข้างบนเป๊ะๆ — เปิด
+    <a href="https://colab.research.google.com" target="_blank">colab.research.google.com</a> สร้าง notebook ใหม่
+    กด 📋 คัดลอก วางลงเซลล์ แล้วกดรันได้ทันที ไม่ต้องแก้อะไรเลย</p>
+
+    <div class="codebox">
+      <div class="codehead"><span>(a) โมเดลภาษา character n-gram — Python ล้วน ~30 บรรทัด (ตัวเดียวกับ demo 🧪 ข้างบน)</span><button class="codecopy" data-code="codeA">📋 คัดลอก</button></div>
+      <pre><code id="codeA"># ==================================================
+# โมเดลภาษาระดับตัวอักษร (character n-gram)
+# หลักการเดียวกับ demo ในหน้าเว็บทุกบรรทัด
+# ==================================================
+import random
+
+corpus = "กาลครั้งหนึ่งนานมาแล้ว มีแมวน้อยตัวหนึ่งอาศัยอยู่ในหมู่บ้านเล็กๆ ริมแม่น้ำ แมวน้อยชอบนอนกลางวันบนเสื่อหน้าบ้าน และชอบกินปลาทูเป็นที่สุด ทุกเช้าแมวน้อยจะเดินไปริมแม่น้ำเพื่อดูปลาว่ายน้ำ ชาวบ้านทุกคนรักแมวน้อยตัวนี้ เพราะมันชอบไล่จับหนูในยุ้งข้าว"
+ctx_len = 3   # จำย้อนหลังกี่ตัวอักษร (ลองเปลี่ยน 1–6 แล้วรันซ้ำ!)
+
+# --- ขั้นฝึก: นับว่า "หลังบริบทนี้ เจอตัวอักษรอะไรกี่ครั้ง" ---
+model = {}
+for i in range(len(corpus) - ctx_len):
+    ctx = corpus[i : i + ctx_len]     # บริบท = ตัวอักษรย้อนหลัง ctx_len ตัว
+    nxt = corpus[i + ctx_len]         # ตัวอักษรถัดไปที่เจอจริง
+    model.setdefault(ctx, {})
+    model[ctx][nxt] = model[ctx].get(nxt, 0) + 1
+
+print(f"รู้จัก {len(model)} บริบท จากข้อความ {len(corpus)} ตัวอักษร")
+
+# --- ขั้นแต่ง: สุ่มตัวอักษรถัดไปตามสัดส่วนที่นับได้ ---
+text = random.choice(list(model.keys()))   # จุดเริ่มต้นแบบสุ่ม
+for _ in range(120):
+    ctx = text[-ctx_len:]                  # ดูบริบทล่าสุด
+    if ctx not in model:                   # ไม่เคยเห็นบริบทนี้ → ตัน
+        break                              # (นี่แหละ data sparsity!)
+    chars = list(model[ctx].keys())
+    counts = list(model[ctx].values())
+    text += random.choices(chars, weights=counts)[0]
+
+print(text)</code></pre>
+    </div>
+
+    <div class="codebox">
+      <div class="codehead"><span>(b) RNN forward pass ด้วย numpy — เลขชุดเดียวกับอนิเมชัน 🔁 ข้างบนทุกตัว</span><button class="codecopy" data-code="codeB">📋 คัดลอก</button></div>
+      <pre><code id="codeB"># ==================================================
+# RNN forward pass — "แมว กิน ___" ทำนายคำถัดไป
+# ใช้เลขชุดเดียวกับอนิเมชันในหน้าเว็บ ตรวจทานกันได้เลย
+# ==================================================
+import numpy as np
+
+# embedding ของแต่ละคำ (เวกเตอร์จิ๋ว 2 มิติ พออ่านเลขทัน)
+emb = {"แมว": np.array([1.0, 0.0]),
+       "กิน": np.array([0.0, 1.0])}
+
+# weight ของ RNN — ชุดเดียว ใช้ซ้ำทุกจังหวะ!
+W = np.array([[0.5, -0.3], [0.2, 0.4]])   # คูณกับคำที่เข้ามา x_t
+U = np.array([[0.6, 0.1], [-0.2, 0.5]])   # คูณกับความจำเดิม h_{t-1}
+b = np.array([0.1, -0.1])
+
+h = np.array([0.0, 0.0])                  # ความจำเริ่มต้น = ว่างเปล่า
+for word in ["แมว", "กิน"]:
+    h = np.tanh(W @ emb[word] + U @ h + b)
+    print(f"อ่าน '{word}' → ความจำ h = {np.round(h, 3)}")
+
+# ชั้นออก: ให้คะแนน 3 คำ candidate แล้วแปลงเป็นความน่าจะเป็นด้วย softmax
+V = np.array([[4.0, 3.0], [2.0, 0.0], [0.0, -2.0]])
+c = np.array([0.3, 0.0, 0.1])
+logits = V @ h + c
+p = np.exp(logits) / np.exp(logits).sum()
+for word, prob in zip(["ปลา", "ข้าว", "หนังสือ"], p):
+    print(f"ทำนาย '{word}': {prob:.2f}")</code></pre>
+    </div>
+
+    <div class="try"><strong>สิ่งที่ต้องสังเกต:</strong>
+      <ul style="margin:6px 0 0">
+        <li>รันโค้ด (b) แล้วเทียบกับอนิเมชัน 🔁: ความจำต้องได้ h = [0.537, 0.1] หลังอ่าน "แมว" และ [0.131, 0.238] หลังอ่าน "กิน" — ตรงกับตัวเลขบนจอ (ปัดเป็น 2 ตำแหน่ง) ทุกช่อง และคำตอบต้องเป็น ปลา 0.70 / ข้าว 0.20 / หนังสือ 0.10</li>
+        <li>โค้ด (a): ลองเพิ่ม ctx_len จาก 1 → 6 แล้วรันซ้ำหลายรอบ — ข้อความลื่นขึ้น แต่ท่อนยาวๆ เริ่ม "ลอกมาทั้งดุ้น" จาก corpus (ค้นหาดูได้) — overfit ภาคภาษาแบบเดียวกับการบ้านข้อ 3</li>
+        <li>ใน (b) weight W, U, b ถูกใช้ซ้ำทุกรอบ loop — ประโยคยาวขึ้นเท่าไหร่ พารามิเตอร์ก็ไม่เพิ่มเลย ต่างจากตารางนับของ (a) ที่โตระเบิดตาม ctx_len</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — คำนวณการระเบิดของ n-gram</div>
+    <p>สมมุติภาษาหนึ่งมีคำศัพท์ 10,000 คำ จงหาจำนวน "บริบทที่เป็นไปได้" เมื่อโมเดลจำย้อนหลัง
+    1 คำ, 2 คำ, และ 5 คำ แล้วเทียบ: ข้อความทั้งอินเทอร์เน็ตมีราว 10¹² คำ — ตารางแบบไหนที่ไม่มีวันเก็บสถิติได้พอ</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      1 คำ: 10⁴ | 2 คำ: 10⁸ (ร้อยล้าน) | 5 คำ: 10²⁰ (แสนล้านล้านล้าน)<br>
+      แค่ย้อน 5 คำ บริบทที่เป็นไปได้ก็มากกว่าข้อความทั้งอินเทอร์เน็ต 10⁸ เท่า —
+      บริบทเกือบทั้งหมดจะไม่เคยถูกเห็นเลย การ "นับ" จึงตายสนิท ต้องใช้โมเดลที่ <em>generalize</em> ได้แทน
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — เล่นเป็น RNN</div>
+    <p>กิจกรรมกลุ่ม 5 คน: คนแรกอ่านคำแรกของประโยคยาว 25 คำ แล้ว "กระซิบสรุปทุกอย่างที่รู้"
+    ให้คนถัดไปด้วยประโยคไม่เกิน 5 คำ (= hidden state ขนาดจำกัด!) ทำต่อเป็นทอดๆ
+    คนสุดท้ายต้องตอบคำถามเกี่ยวกับ<em>คำแรกๆ</em> ของประโยค —
+    บันทึกว่าข้อมูลอะไร "หาย" ระหว่างทาง แล้วเชื่อมโยงกับ vanishing gradient</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — ตามหา "ลอกหรือแต่ง"</div>
+    <p>ใช้ demo ด้านบน ตั้ง n = 5 หรือ 6 กดแต่งข้อความ 5 ครั้ง
+    แล้วตรวจแต่ละครั้งว่าท่อนไหน "ลอกข้อความฝึกมาทั้งดุ้น" (หาใน textarea ได้) ท่อนไหนแต่งใหม่จริง
+    รายงานเป็นตาราง + สรุป: ปรากฏการณ์นี้เกี่ยวกับข่าว "LLM ท่องข้อมูลลิขสิทธิ์" อย่างไร</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — สเปกของสถาปัตยกรรมในฝัน</div>
+    <p>จากจุดอ่อนของ n-gram (นับไม่ไหว) และ RNN (ความจำคอขวด + ขนานไม่ได้)
+    เขียน "ใบสเปก" ของสถาปัตยกรรมภาษาในฝัน 3–5 ข้อ ว่าต้องมีคุณสมบัติอะไรบ้าง
+    (เก็บไว้เทียบกับ Transformer สัปดาห์หน้า — ใครสเปกตรงสุดมีรางวัล)</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    เรารู้แล้วว่าโจทย์ "ทำนายคำถัดไป" มันยากตรงไหนจริงๆ: ต้อง generalize (นับไม่ไหว)
+    ต้องจำระยะไกล (RNN ทำไม่ได้) และต้องเทรนขนานได้ (LSTM ทำไม่ได้)
+    — โจทย์ถูกตั้งครบแล้ว รอแค่คำตอบ<br>
+    <strong>สัปดาห์หน้า:</strong> ⭐ สัปดาห์ที่สำคัญที่สุดของเทอม — "Attention Is All You Need"
+    สถาปัตยกรรมที่ตอบครบทุกข้อในใบสเปก และอยู่ข้างใน AI ทุกตัวที่คุณใช้วันนี้
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">Karpathy</span> <a href="https://www.youtube.com/watch?v=PaCmpygFfXo" target="_blank">The spelled-out intro to language modeling: makemore</a> — สร้างโมเดลภาษาระดับตัวอักษร (แบบ demo เราเป๊ะ) จากศูนย์ทีละบรรทัด</li>
+      <li><span class="src">Karpathy</span> <a href="https://karpathy.github.io/2015/05/21/rnn-effectiveness/" target="_blank">The Unreasonable Effectiveness of RNNs</a> — บล็อกคลาสสิกปี 2015 ที่ทำให้ทั้งวงการตื่นเต้นกับ RNN (อ่านแล้วจะเข้าใจบรรยากาศยุคก่อน Transformer)</li>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=wjZofJX0v4M" target="_blank">But what is a GPT?</a> — ช่วงต้นอธิบาย word embedding สวยที่สุดเท่าที่มี (ดูเต็มคลิปสัปดาห์หน้า)</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week12.html">← สอบกลางภาค</a>
+    <a href="week14.html">Attention &amp; Transformer →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">จำ 1 ตัว</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.4s">จำ 2 ตัว</span><span class="arrow">→</span>' +
+    '<span class="chip ok" style="animation-delay:.7s">จำ 5 ตัว ภาษาลื่นขึ้น!</span></div>' +
+    '<div class="note">ดูเหมือนแก้ได้แล้ว... ลองเลื่อนใน demo ข้างล่าง แล้วกลับมาดูขั้นถัดไป</div>',
+  s => {
+    s.innerHTML = '<div class="netrow">จำย้อนหลัง <input type="range" id="s9n" min="1" max="6" step="1" value="1">' +
+      '<span class="wchip" id="s9nv"></span></div><div id="s9o"></div>' +
+      '<div class="note">👆 ลากเพิ่มความจำ — จำนวนบริบท (70ⁿ) ระเบิดแบบยกกำลัง</div>';
+    const upd = () => {
+      const n = +s.querySelector('#s9n').value, c = Math.pow(70, n);
+      s.querySelector('#s9nv').textContent = n + ' ตัวอักษร';
+      s.querySelector('#s9o').innerHTML = '<div class="bar-row"><span class="lbl">บริบท</span>' +
+        '<span class="bar" style="width:' + Math.min(85, Math.log10(c) / 11 * 85) + '%;' +
+        (n >= 4 ? 'background:linear-gradient(90deg,#d4493e,#e08a2e)' : '') + '"></span>' +
+        '<strong>' + c.toLocaleString() + (n >= 5 ? ' 💥' : '') + '</strong></div>';
+    };
+    s.querySelector('#s9n').oninput = upd;
+    upd();
+  },
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">ตารางนับส่วนใหญ่... ว่างเปล่า:</div>' +
+    '<table class="fade"><tr><td>3</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>' +
+    '<tr><td>—</td><td>—</td><td>1</td><td>—</td><td>—</td></tr>' +
+    '<tr><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>' +
+    '<tr><td>—</td><td>1</td><td>—</td><td>—</td><td>—</td></tr></table>' +
+    '<div class="note">บริบทที่เจอจริงไม่ถึง 1% — ที่เหลือโมเดลได้แต่ทำหน้างง (และที่เจอครั้งเดียว = ท่องจำ)</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">"แมว"</span><span class="arrow">→</span>' +
+    '<span class="chip ok" style="animation-delay:.4s">🧠 {มีแมว}</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.7s">"หิว"</span><span class="arrow">→</span>' +
+    '<span class="chip ok" style="animation-delay:1s">🧠 {แมวหิว}</span></div>' +
+    '<div class="note">RNN ไม่จำดิบ แต่ "สรุป" ลงกล่องความจำขนาดคงที่ ส่งต่อทีละคำ — ตารางไม่ระเบิดแล้ว</div>',
+  s => {
+    s.innerHTML = '<div class="netrow">ระยะห่าง <input type="range" id="s9k" min="0" max="100" step="5" value="20">' +
+      '<span class="wchip" id="s9kv"></span></div><div id="s9ko"></div>' +
+      '<div class="note">👆 สัญญาณถูกคูณ ~0.9 ต่อคำที่ห่างออกไป — ลากดูว่าเหลือเท่าไหร่ (vanishing gradient)</div>';
+    const upd = () => {
+      const k = +s.querySelector('#s9k').value, r = Math.pow(0.9, k);
+      s.querySelector('#s9kv').textContent = 'k = ' + k + ' คำ';
+      s.querySelector('#s9ko').innerHTML = '<div class="bar-row"><span class="lbl">เหลือ</span>' +
+        '<span class="bar" style="width:' + Math.max(0.5, r * 78) + '%"></span><strong>' +
+        (r * 100).toFixed(2) + '%</strong>' + (r < 0.01 ? ' 👻' : '') + '</div>';
+    };
+    s.querySelector('#s9k').oninput = upd;
+    upd();
+  },
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">ใบสเปกของพระเอกที่ต้องการ:</div>' +
+    '<span class="chip ok" style="animation-delay:.1s">✓ เห็นทุกคำพร้อมกัน</span>' +
+    '<span class="chip ok" style="animation-delay:.5s">✓ เลือกสนใจคำที่เกี่ยว</span>' +
+    '<span class="chip ok" style="animation-delay:.9s">✓ เทรนขนานบน GPU ได้</span>' +
+    '<div class="note">สัปดาห์หน้า: Attention ตอบครบทุกข้อ</div>',
+];
+
+let model = {}, ctxLen = 1, corpusText = '';
+
+function trainN() {
+  ctxLen = +document.getElementById('ctx').value;
+  document.getElementById('ctxv').textContent = ctxLen + ' ตัว (n-gram โดย n = ' + (ctxLen + 1) + ')';
+  corpusText = document.getElementById('corpus').value.replace(/\s+/g, ' ').trim();
+  model = {};
+  for (let i = 0; i + ctxLen < corpusText.length; i++) {
+    const ctx = corpusText.slice(i, i + ctxLen), nxt = corpusText[i + ctxLen];
+    model[ctx] = model[ctx] || {};
+    model[ctx][nxt] = (model[ctx][nxt] || 0) + 1;
+  }
+  const contexts = Object.keys(model);
+  const seenOnce = contexts.filter(c =>
+    Object.values(model[c]).reduce((a, b) => a + b, 0) === 1).length;
+  document.getElementById('stats').innerHTML =
+    `บริบทที่โมเดลรู้จัก: <strong>${contexts.length}</strong> แบบ | ` +
+    `บริบทที่เจอแค่ครั้งเดียว: <strong style="color:#d4493e">${seenOnce} (${(100 * seenOnce / contexts.length).toFixed(0)}%)</strong>` +
+    ` ← ยิ่งสูง โมเดลยิ่ง "ท่องจำ" แทนที่จะเรียนรู้`;
+  if (window.brainUpdate) window.brainUpdate();
+}
+
+let genTimer = null;
+function genN() {
+  const starts = Object.keys(model);
+  if (!starts.length) return;
+  let text = starts[Math.floor(Math.random() * starts.length)];
+  for (let i = 0; i < 120; i++) {
+    const ctx = text.slice(-ctxLen);
+    const dist = model[ctx];
+    if (!dist) break;
+    const entries = Object.entries(dist);
+    const total = entries.reduce((s, [, n]) => s + n, 0);
+    let r = Math.random() * total;
+    let chosen = entries[0][0];
+    for (const [c, n] of entries) { r -= n; if (r <= 0) { chosen = c; break; } }
+    text += chosen;
+  }
+  // พิมพ์ทีละตัว — โมเดลภาษา "ผลิตทีละ token" เสมอ ไม่ว่าจะ n-gram หรือ GPT
+  const out = document.getElementById('gen');
+  clearInterval(genTimer);
+  out.innerHTML = '<span class="cursor">▌</span>';
+  let i = 0;
+  genTimer = setInterval(() => {
+    out.innerHTML = text.slice(0, ++i) + '<span class="cursor">▌</span>';
+    if (i >= text.length) { clearInterval(genTimer); out.textContent = text; }
+  }, 25);
+}
+trainN();
+</script>
+
+<script>
+/* ======================================================================
+   🌌 แผนที่ความหมายของคำ — word embeddings 3D
+   (หมุนออโต้ด้วย setInterval · ลากหมุนเอง · คลิกดูเพื่อนบ้าน cosine จริง)
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('embCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=640,H=420,CX=320,CY=208,K=52,F=8;
+  const GROUPS={
+    animal:{n:'สัตว์',c:'#2456e6'}, food:{n:'อาหาร/ผลไม้',c:'#12a150'},
+    royal:{n:'คน/ราชสำนัก',c:'#8b5cf6'}, verb:{n:'กริยา',c:'#d97706'}, mood:{n:'อารมณ์',c:'#e5484d'} };
+  /* พิกัดทำมือ: จัดหย่อมความหมายจริง + สี่เหลี่ยมด้านขนาน เพศ×เชื้อพระวงศ์ */
+  const WORDS=[
+    ['แมว','animal',-2.6,1.2,-0.7],['หมา','animal',-2.2,0.8,-1.3],['ช้าง','animal',-2.9,0.4,-1.2],
+    ['นก','animal',-2.1,1.6,-1.0],['ปลา','animal',-2.5,0.6,-0.3],
+    ['มะม่วง','food',2.6,1.4,-1.0],['กล้วย','food',2.2,0.9,-1.5],['ส้ม','food',2.8,0.8,-1.2],
+    ['แอปเปิล','food',2.3,1.6,-0.9],['ข้าว','food',2.0,0.6,-0.7],
+    ['ชาย','royal',-0.1,-1.7,1.9],['หญิง','royal',1.1,-1.3,2.4],['กษัตริย์','royal',-0.6,-0.2,2.6],
+    ['ราชินี','royal',0.66,0.15,3.1],['เจ้าชาย','royal',-0.13,-1.03,2.64],['เจ้าหญิง','royal',1.07,-0.63,3.14],
+    ['กิน','verb',-1.4,-2.1,-1.4],['วิ่ง','verb',-1.9,-1.7,-1.9],['นอน','verb',-1.5,-1.5,-2.1],
+    ['ว่ายน้ำ','verb',-2.1,-2.3,-1.3],['เดิน','verb',-1.7,-2.0,-1.7],
+    ['ดีใจ','mood',2.1,-1.9,-0.3],['เศร้า','mood',1.7,-2.3,-0.7],['โกรธ','mood',2.3,-2.2,-0.7]
+  ].map(a=>({w:a[0],g:a[1],p:[a[2],a[3],a[4]]}));
+  const idxOf=w=>WORDS.findIndex(o=>o.w===w);
+  const iKing=idxOf('กษัตริย์'), iMan=idxOf('ชาย'), iWoman=idxOf('หญิง');
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+  const lerp3=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+  const cos3=(a,b)=>(a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/(Math.hypot(a[0],a[1],a[2])*Math.hypot(b[0],b[1],b[2]));
+  const vstr=v=>'['+v.map(x=>(Math.round(x*10)/10).toFixed(1)).join(', ')+']';
+
+  let yaw=0.62, pitch=0.30, auto=true, drag=null, sel=-1;
+  const MG={on:false, ph:0, t:0};
+  const magicD=sub(WORDS[iKing].p, WORDS[iMan].p);
+  const magicTarget=add(WORDS[iWoman].p, magicD);
+  let magicBest=-1, magicBestCos=-2;
+  WORDS.forEach((o,i)=>{ if(i===iKing||i===iMan||i===iWoman) return;
+    const c=cos3(magicTarget,o.p); if(c>magicBestCos){ magicBestCos=c; magicBest=i; } });
+
+  function proj(p){
+    const cyw=Math.cos(yaw), syw=Math.sin(yaw);
+    let x=p[0]*cyw+p[2]*syw, z=-p[0]*syw+p[2]*cyw;
+    const cp=Math.cos(pitch), sp=Math.sin(pitch);
+    const y=p[1]*cp - z*sp; z=p[1]*sp + z*cp;
+    const s=F/(F+z);
+    return { x:CX+x*K*s, y:CY-y*K*s, s:s, z:z };
+  }
+  function topK(i,k){
+    return WORDS.map((o,j)=>({j:j,c:cos3(WORDS[i].p,o.p)}))
+      .filter(o=>o.j!==i).sort((a,b)=>b.c-a.c).slice(0,k);
+  }
+  function arrow(a,b,col,w){
+    ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=w; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    const ang=Math.atan2(b.y-a.y,b.x-a.x), hl=9+w;
+    ctx.beginPath(); ctx.moveTo(b.x,b.y);
+    ctx.lineTo(b.x-hl*Math.cos(ang-0.42), b.y-hl*Math.sin(ang-0.42));
+    ctx.lineTo(b.x-hl*Math.cos(ang+0.42), b.y-hl*Math.sin(ang+0.42));
+    ctx.closePath(); ctx.fill();
+  }
+  function tag(p,txt){
+    ctx.font='700 11px Kanit, Poppins, sans-serif';
+    const tw=ctx.measureText(txt).width+14;
+    ctx.fillStyle='#8b5cf6'; ctx.beginPath(); ctx.roundRect(p.x-tw/2,p.y-22,tw,18,8); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,p.x,p.y-13);
+    ctx.textBaseline='alphabetic';
+  }
+
+  function render(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    /* แกน 3 มิติจางๆ */
+    [[[3.4,0,0],'มิติ 1'],[[0,3.4,0],'มิติ 2'],[[0,0,3.4],'มิติ 3']].forEach(ax=>{
+      const E=proj(ax[0]), Em=proj([-ax[0][0],-ax[0][1],-ax[0][2]]);
+      ctx.strokeStyle='rgba(120,130,150,.22)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(Em.x,Em.y); ctx.lineTo(E.x,E.y); ctx.stroke();
+      ctx.fillStyle='rgba(120,130,150,.6)'; ctx.font='600 10px Poppins, Kanit, sans-serif';
+      ctx.textAlign='center'; ctx.fillText(ax[1],E.x,E.y-5);
+    });
+    const P=WORDS.map(o=>proj(o.p));
+    /* เส้นเชื่อมเพื่อนบ้านของคำที่เลือก */
+    let top=null;
+    if(sel>=0){
+      top=topK(sel,3);
+      top.forEach(o=>{
+        const a=P[sel], b=P[o.j];
+        ctx.setLineDash([5,4]); ctx.strokeStyle='rgba(124,58,237,.55)'; ctx.lineWidth=1.6;
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.setLineDash([]);
+        const mx=(a.x+b.x)/2, my=(a.y+b.y)/2, t=o.c.toFixed(2);
+        ctx.font='700 10.5px Poppins, Kanit, sans-serif';
+        const tw=ctx.measureText(t).width+8;
+        ctx.fillStyle='rgba(255,255,255,.92)';
+        ctx.beginPath(); ctx.roundRect(mx-tw/2,my-8,tw,16,5); ctx.fill();
+        ctx.fillStyle='#7c3aed'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t,mx,my);
+        ctx.textBaseline='alphabetic';
+      });
+    }
+    /* จุด+ป้าย วาดไกล→ใกล้ (ใกล้ทับไกล) */
+    const ord=WORDS.map((_,i)=>i).sort((a,b)=>P[b].z-P[a].z);
+    ord.forEach(i=>{
+      const p=P[i], o=WORDS[i], col=GROUPS[o.g].c;
+      const nr=(p.s-0.68)/1.1, al=Math.max(0.35,Math.min(1,0.3+0.75*nr));
+      const r=Math.max(2.5,5.6*p.s);
+      if(i===sel || (top&&top.some(t=>t.j===i)) || (MG.on&&MG.ph===2&&i===magicBest)){
+        ctx.beginPath(); ctx.arc(p.x,p.y,r+4.5,0,Math.PI*2);
+        ctx.strokeStyle=i===sel?'#7c3aed':col; ctx.lineWidth=2.4;
+        ctx.globalAlpha=.9; ctx.stroke(); ctx.globalAlpha=1;
+      }
+      ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2);
+      ctx.globalAlpha=al; ctx.fillStyle=col; ctx.fill(); ctx.globalAlpha=1;
+      const fs=Math.max(9,Math.min(16,11.5*p.s));
+      ctx.font='700 '+fs+'px Kanit, Poppins, sans-serif';
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.globalAlpha=Math.max(0.55,al);
+      ctx.lineWidth=3; ctx.strokeStyle='rgba(247,248,251,.85)';
+      ctx.strokeText(o.w,p.x+r+3,p.y);
+      ctx.fillStyle='#1f2533'; ctx.fillText(o.w,p.x+r+3,p.y);
+      ctx.globalAlpha=1; ctx.textBaseline='alphabetic';
+    });
+    /* 🪄 ลูกศรเวทมนตร์เวกเตอร์ */
+    if(MG.on){
+      const A=WORDS[iMan].p, B=WORDS[iKing].p, C=WORDS[iWoman].p;
+      const t=Math.min(1,MG.t/45), e=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+      if(MG.ph===0){
+        arrow(proj(A), proj(lerp3(A,B,Math.max(0.04,e))), 'rgba(139,92,246,.95)', 3.5);
+        tag(proj(lerp3(A,B,0.5*e)),'กษัตริย์ − ชาย');
+      } else {
+        arrow(proj(A), proj(B), 'rgba(139,92,246,.30)', 2.5);
+        const sh=MG.ph===1? e : 1;
+        const s0=lerp3(A,C,sh), e0=add(s0,magicD);
+        arrow(proj(s0), proj(e0), 'rgba(139,92,246,.95)', 3.5);
+        if(MG.ph===2){
+          const T=proj(magicTarget), pr=(MG.t%30)/30;
+          ctx.beginPath(); ctx.arc(T.x,T.y,8+pr*22,0,Math.PI*2);
+          ctx.strokeStyle='rgba(217,70,239,'+(0.85*(1-pr)).toFixed(2)+')'; ctx.lineWidth=3; ctx.stroke();
+          ctx.beginPath(); ctx.arc(T.x,T.y,4,0,Math.PI*2); ctx.fillStyle='#d946ef'; ctx.fill();
+          tag({x:T.x,y:T.y-24},'จุดตก = หญิง + (กษัตริย์ − ชาย)');
+        } else {
+          tag(proj(lerp3(lerp3(A,C,sh),add(lerp3(A,C,sh),magicD),0.5)),'ยกลูกศรไปตั้งที่ "หญิง"');
+        }
+      }
+    }
+  }
+
+  /* แผงข้าง */
+  const panel=document.getElementById('embPanel');
+  const legend=()=>'<div class="emb-legend">'+Object.keys(GROUPS).map(k=>
+    '<span><i style="background:'+GROUPS[k].c+'"></i>'+GROUPS[k].n+'</span>').join('')+'</div>';
+  function updPanel(){
+    if(sel<0){
+      panel.innerHTML='<h4>🖱️ คลิกคำในแผนที่</h4>'+legend()
+        +'<p style="margin:8px 0 0;color:var(--muted);font-size:.85rem;line-height:1.7">คลิกคำใดก็ได้เพื่อดู "เพื่อนบ้านความหมาย" 3 อันดับ พร้อมคะแนน cosine similarity ที่คำนวณจากพิกัดจริง · ลากบนภาพเพื่อหมุนดูรอบทิศ</p>';
+      return;
+    }
+    const o=WORDS[sel], top=topK(sel,3);
+    panel.innerHTML='<h4><span style="color:'+GROUPS[o.g].c+'">●</span> '+o.w+'</h4>'
+      +'<div style="font-size:.8rem;color:var(--muted)">เวกเตอร์ '+vstr(o.p)+' · กลุ่ม'+GROUPS[o.g].n+'</div>'
+      +'<p style="margin:10px 0 2px;font-weight:700;font-size:.86rem">เพื่อนบ้านใกล้สุด (cosine):</p>'
+      +top.map(t=>'<div class="sim-row"><span class="w">'+WORDS[t.j].w+'</span>'
+        +'<span class="bar"><i style="width:'+Math.max(4,Math.round(Math.max(0,t.c)*100))+'%"></i></span><b>'+t.c.toFixed(2)+'</b></div>').join('')
+      +'<p style="margin:10px 0 0;color:var(--muted);font-size:.8rem">cosine ยิ่งใกล้ 1 = ทิศทางความหมายยิ่งใกล้กัน</p>';
+  }
+
+  /* 🪄 ปุ่มเวทมนตร์ */
+  const magicBtn=document.getElementById('embMagic'), magicOut=document.getElementById('embMagicOut');
+  function stopMagic(){
+    MG.on=false;
+    magicBtn.textContent='🪄 เวทมนตร์เวกเตอร์: กษัตริย์ − ชาย + หญิง = ?';
+    magicOut.innerHTML='';
+  }
+  magicBtn.addEventListener('click',()=>{
+    if(MG.on){ stopMagic(); render(); return; }
+    sel=-1; updPanel();
+    MG.on=true; MG.ph=0; MG.t=0;
+    magicBtn.textContent='⏹ หยุดเวทมนตร์';
+    magicOut.innerHTML='① ลากลูกศรจาก "ชาย" ไป "กษัตริย์": กษัตริย์ − ชาย = '+vstr(magicD)+' — ทิศทาง "ความเป็นเชื้อพระวงศ์" ล้วนๆ (ความเป็นชายถูกลบทิ้งแล้ว)';
+    render();
+  });
+
+  /* นาฬิกาหลักของ widget: หมุนออโต้ + เดินเฟสเวทมนตร์ (setInterval ล้วน) */
+  setInterval(()=>{
+    let need=false;
+    if(auto && !drag){ yaw+=0.0042; need=true; }
+    if(MG.on){
+      MG.t++;
+      if(MG.ph<2 && MG.t>52){
+        MG.ph++; MG.t=0;
+        if(MG.ph===1) magicOut.innerHTML='② ยกลูกศรเดิมทั้งแท่ง ไปตั้งต้นที่ "หญิง": หญิง + '+vstr(magicD)+' = '+vstr(magicTarget);
+        else magicOut.innerHTML='③ จุดตกอยู่ใกล้ "<b>'+WORDS[magicBest].w+'</b>" ที่สุด (cosine '+magicBestCos.toFixed(2)+') ✨ สมการ กษัตริย์ − ชาย + หญิง ≈ ราชินี เกิดขึ้นจริงในปริภูมิ — <b>นี่คือสิ่งที่โมเดลเรียนเอง ไม่มีใครสอน</b>';
+      }
+      need=true;
+    }
+    if(need) render();
+  },33);
+
+  /* ลากหมุน + คลิกเลือกคำ */
+  cv.addEventListener('pointerdown',e=>{
+    drag={x:e.clientX,y:e.clientY,yaw:yaw,pitch:pitch,moved:false};
+    cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing';
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(Math.abs(dx)+Math.abs(dy)>5) drag.moved=true;
+    yaw=drag.yaw+dx*0.008;
+    pitch=Math.max(-1.25,Math.min(1.25,drag.pitch+dy*0.006));
+    render();
+  });
+  cv.addEventListener('pointerup',e=>{
+    cv.style.cursor='grab';
+    if(drag && !drag.moved){
+      const r=cv.getBoundingClientRect();
+      const mx=(e.clientX-r.left)*W/r.width, my=(e.clientY-r.top)*H/r.height;
+      let best=-1, bd=24;
+      WORDS.forEach((o,i)=>{ const p=proj(o.p), d=Math.hypot(p.x-mx,p.y-my); if(d<bd){bd=d;best=i;} });
+      if(best>=0){ if(MG.on) stopMagic(); sel=best; } else sel=-1;
+      updPanel(); render();
+    }
+    drag=null;
+  });
+  cv.addEventListener('pointercancel',()=>{ drag=null; cv.style.cursor='grab'; });
+
+  document.getElementById('embAuto').addEventListener('click',function(){
+    auto=!auto; this.textContent=auto?'⏸ หยุดหมุน':'🔄 หมุนอัตโนมัติ';
+  });
+  document.getElementById('embReset').addEventListener('click',()=>{
+    yaw=0.62; pitch=0.30; sel=-1; stopMagic(); updPanel(); render();
+  });
+  updPanel(); render();
+})();
+
+/* ======================================================================
+   🧠 สมองของโมเดล n-gram (เสริม demo เดิม — trainN() เรียกฟังก์ชันนี้)
+   ====================================================================== */
+window.brainUpdate=function(){
+  const wrap=document.getElementById('brain'), cnt=document.getElementById('ngCount');
+  if(!wrap||!cnt) return;
+  const contexts=Object.keys(model);
+  cnt.textContent='🧠 รู้จัก '+contexts.length.toLocaleString()+' บริบท จากข้อความ '
+    +corpusText.length.toLocaleString()+' ตัวอักษร (ความจำย้อนหลัง '+ctxLen+' ตัวอักษร)';
+  const disp=s=>s.replace(/ /g,'␣');
+  const rows=contexts
+    .map(c=>({c:c,total:Object.values(model[c]).reduce((a,b)=>a+b,0)}))
+    .sort((a,b)=>b.total-a.total).slice(0,8);
+  wrap.innerHTML=rows.map(r=>{
+    const dist=Object.entries(model[r.c]).sort((a,b)=>b[1]-a[1]);
+    return '<div class="brain-row"><span class="brain-ctx">"'+disp(r.c)+'"</span><span class="brain-arrow">→</span>'
+      +dist.slice(0,5).map(d=>{
+        const pct=Math.round(100*d[1]/r.total);
+        return '<span class="brain-next"><i style="width:'+pct+'%"></i><b>'+disp(d[0])+'</b><small>'+pct+'% ('+d[1]+')</small></span>';
+      }).join('')
+      +(dist.length>5?'<small style="color:var(--muted)">+อีก '+(dist.length-5)+' ตัว</small>':'')
+      +'</div>';
+  }).join('');
+};
+brainUpdate();
+
+/* ======================================================================
+   💻 ปุ่มคัดลอกโค้ด + ไฮไลต์คอมเมนต์
+   ====================================================================== */
+(function(){
+  document.querySelectorAll('.codebox code').forEach(el=>{
+    el.innerHTML=el.innerHTML.replace(/(^|\n)([^\n]*?)(#[^\n]*)/g,
+      (m,a,b,c)=> b.indexOf('"')>=0? m : a+b+'<span class="c">'+c+'</span>');
+  });
+  document.querySelectorAll('.codecopy').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const code=document.getElementById(btn.dataset.code);
+      if(!code) return;
+      const txt=code.textContent;
+      const ok=()=>{ btn.textContent='✓ คัดลอกแล้ว!'; setTimeout(()=>{ btn.textContent='📋 คัดลอก'; },1600); };
+      const fallback=()=>{
+        const ta=document.createElement('textarea'); ta.value=txt;
+        ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); ok(); }catch(err){}
+        document.body.removeChild(ta);
+      };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(ok, fallback);
+      } else fallback();
+    });
+  });
+})();
+</script>
+
+<script>
+/* ======================================================================
+   🔁 RNN คลี่ทีละจังหวะ — state machine เดินด้วยปุ่ม/setInterval
+   เลขชุดเดียวกับโค้ด (b) ในส่วนที่ 3 ทุกตัว
+   ====================================================================== */
+(function(){
+  const cvR=document.getElementById('rnnCv'); if(!cvR) return;
+  const g=cvR.getContext('2d');
+  const CW=760, CH=430;
+  const Wm=[[0.5,-0.3],[0.2,0.4]], Um=[[0.6,0.1],[-0.2,0.5]], bv=[0.1,-0.1];
+  const Vm=[[4,3],[2,0],[0,-2]], cvec=[0.3,0,0.1];
+  const CAND=['ปลา','ข้าว','หนังสือ'];
+  const EMB={'แมว':[1,0],'กิน':[0,1],'ที่':[0.2,-0.1],'อยู่':[-0.1,0.3],'บ้าน':[0.4,0.2],'ของ':[0.1,0.1],'ฉัน':[-0.2,0.2],'ชอบ':[0.3,-0.2]};
+  const SEQS={short:['แมว','กิน'], long:['แมว','ที่','อยู่','บ้าน','ของ','ฉัน','ชอบ','กิน']};
+  const SLICE=['#2456e6','#12a150','#f59e0b','#8b5cf6','#e5484d','#0ea5e9','#d946ef','#84cc16'];
+  const nf=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  const vstr=v=>'['+v.map(nf).join(', ')+']';
+
+  const RN={mode:'short', step:-1, timer:null, speed:1, data:null, tick:0};
+
+  function compute(seq){
+    let h=[0,0]; const X=[],Z=[],Hs=[];
+    seq.forEach(w=>{
+      const x=EMB[w];
+      const z=[ Wm[0][0]*x[0]+Wm[0][1]*x[1] + Um[0][0]*h[0]+Um[0][1]*h[1] + bv[0],
+                Wm[1][0]*x[0]+Wm[1][1]*x[1] + Um[1][0]*h[0]+Um[1][1]*h[1] + bv[1] ];
+      const hn=[Math.tanh(z[0]),Math.tanh(z[1])];
+      X.push(x); Z.push(z); Hs.push(hn); h=hn;
+    });
+    const logit=Vm.map((r,k)=>r[0]*h[0]+r[1]*h[1]+cvec[k]);
+    const m=Math.max.apply(null,logit);
+    const ex=logit.map(v=>Math.exp(v-m)), s=ex.reduce((a,b)=>a+b,0);
+    return {seq:seq, X:X, Z:Z, H:Hs, logit:logit, P:ex.map(v=>v/s)};
+  }
+  function setup(){ RN.data=compute(SEQS[RN.mode]); }
+  function maxStep(){ return RN.data.seq.length*3; }
+
+  const phaseEl=document.getElementById('rnnPhase'), eqEl=document.getElementById('rnnEq');
+  function pill(col,txt){ phaseEl.innerHTML='<span class="dot" style="background:'+col+'"></span> '+txt; }
+
+  /* ---- วาดทั้งฉาก (synchronous — เรียกทุกครั้งที่ state เปลี่ยน) ---- */
+  function draw(){
+    const D=RN.data, T=D.seq.length, maxS=T*3, st=RN.step;
+    const anim=st>=0 && st<maxS;
+    const curT=st<0?-1:Math.min(T-1,Math.floor(st/3));
+    const ph=st<0?-1:(st>=maxS?3:st%3);
+    const short=T===2;
+    const cellW=short?150:64, cellH=short?96:56, cy=252;
+    const cx=i=> short? 215+i*260 : 62+i*88;
+    const inY=short?372:364, ibw=short?150:72, ibh=short?54:40;
+    const tick=RN.tick;
+    g.clearRect(0,0,CW,CH);
+    g.fillStyle='#f7f8fb'; g.fillRect(0,0,CW,CH);
+
+    function rr(x,y,w,h,r,fill,stroke,lw){
+      g.beginPath(); g.roundRect(x,y,w,h,r);
+      if(fill){ g.fillStyle=fill; g.fill(); }
+      if(stroke){ g.strokeStyle=stroke; g.lineWidth=lw||2; g.stroke(); }
+    }
+    function txt(x,y,t,size,col,bold,align){
+      g.fillStyle=col||'#1f2533'; g.font=(bold?'700 ':'500 ')+size+'px Kanit, Poppins, sans-serif';
+      g.textAlign=align||'center'; g.textBaseline='middle'; g.fillText(t,x,y);
+    }
+    function arr(x1,y1,x2,y2,col,w){
+      g.strokeStyle=col; g.fillStyle=col; g.lineWidth=w; g.lineCap='round';
+      g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+      const a=Math.atan2(y2-y1,x2-x1), hl=8+w;
+      g.beginPath(); g.moveTo(x2,y2);
+      g.lineTo(x2-hl*Math.cos(a-0.45),y2-hl*Math.sin(a-0.45));
+      g.lineTo(x2-hl*Math.cos(a+0.45),y2-hl*Math.sin(a+0.45));
+      g.closePath(); g.fill();
+    }
+
+    /* ── แถบส่วนผสมความจำ (ซ้ายบน) ── */
+    let done=0;
+    if(st>=0) done = st>=maxS? T : Math.min(T, curT+(ph>=1?1:0));
+    txt(24,20,'ข้างในความจำ h ตอนนี้ — แต่ละคำเหลืออยู่เท่าไหร่ (ภาพจำลองการเขียนทับ)',11,'#5b6475',true,'left');
+    const bxx=24, byy=31, bwd=336, bhh=22;
+    rr(bxx,byy,bwd,bhh,7,'#ffffff','rgba(120,130,150,.45)',1);
+    if(done>0){
+      const decay=0.55, con=[];
+      for(let j=0;j<done;j++) con.push(Math.pow(decay,done-1-j));
+      const sum=con.reduce((a,b)=>a+b,0);
+      g.save(); g.beginPath(); g.roundRect(bxx,byy,bwd,bhh,7); g.clip();
+      let x0=bxx;
+      for(let j=0;j<done;j++){
+        const w=bwd*con[j]/sum;
+        g.globalAlpha=0.9; g.fillStyle=SLICE[j%8];
+        g.fillRect(x0,byy,Math.max(w,0.4),bhh);
+        g.globalAlpha=1;
+        if(w>36) txt(x0+w/2,byy+bhh/2,D.seq[j],10.5,'#ffffff',true);
+        x0+=w;
+      }
+      g.restore();
+      const first=con[0]/sum, fp=first*100;
+      txt(bxx,byy+bhh+12,'คำแรก "'+D.seq[0]+'" เหลือ '+(fp<2?fp.toFixed(1):fp.toFixed(0))+'%'+(first<0.03?' — แทบไม่เหลือ! (ความจำเสื่อม)':''),10.5,first<0.1?'#d4493e':'#5b6475',true,'left');
+    } else txt(bxx+bwd/2,byy+bhh/2,'ยังว่างเปล่า — h₀ = [0.00, 0.00]',10.5,'#9aa3b8',false);
+
+    /* ── แผงทำนาย (ขวาบน) ── */
+    const px0=468, py0=14, pwd=276, phg=136;
+    const predOn=st>=maxS;
+    const wI=D.P.indexOf(Math.max.apply(null,D.P));
+    g.globalAlpha=predOn?1:0.45;
+    rr(px0,py0,pwd,phg,10,'#ffffff',predOn?'#12a150':'rgba(120,130,150,.5)',predOn?2.4:1.2);
+    txt(px0+pwd/2,py0+16,'ทำนายคำถัดไป = softmax(V·h สุดท้าย + c)',11,predOn?'#0e7f43':'#8b93ad',true);
+    CAND.forEach((wd,k)=>{
+      const yy=py0+40+k*30;
+      txt(px0+52,yy,wd,12.5,'#1f2533',true,'right');
+      rr(px0+62,yy-8,146,16,4,'#f1f3f8','rgba(120,130,150,.35)',1);
+      if(predOn){
+        g.fillStyle=k===wI?'#12a150':'#94a3b8';
+        g.fillRect(px0+62,yy-8,Math.max(2,146*D.P[k]),16);
+        txt(px0+216,yy,(D.P[k]*100).toFixed(0)+'%',11.5,k===wI?'#0e7f43':'#5b6475',true,'left');
+      } else txt(px0+216,yy,'?',11.5,'#9aa3b8',true,'left');
+    });
+    g.globalAlpha=1;
+
+    /* ── เซลล์ + คำเข้า + ลูกศร ── */
+    for(let i=0;i<T;i++){
+      const XC=cx(i), top=cy-cellH/2;
+      const focus=!anim||curT===i;
+      const al=focus?1:0.38;
+      /* ลูกศรความจำ h เข้าเซลล์ (จากซ้าย) */
+      const hxFrom = i===0? (short?40:14) : cx(i-1)+cellW/2;
+      const hxTo = XC-cellW/2;
+      const hActive = anim && curT===i-1 && ph===2;       /* h กำลังไหลเข้ามา */
+      const hUse = anim && curT===i && ph===1;            /* h เดิมกำลังถูกผสม */
+      g.globalAlpha = (hActive||hUse)?1:al*0.9;
+      const hcol = hActive?'#f59e0b':(hUse?'#8b5cf6':'rgba(124,58,237,.45)');
+      arr(hxFrom,cy,hxTo-3,cy,hcol,hActive?3.5:(hUse?3:2));
+      if(hActive){
+        const tp=(tick%22)/22, dx=hxFrom+(hxTo-hxFrom)*tp;
+        g.beginPath(); g.arc(dx,cy,5,0,Math.PI*2); g.fillStyle='#f59e0b'; g.fill();
+        g.beginPath(); g.arc(hxFrom+(hxTo-hxFrom)*Math.max(0,tp-0.08),cy,3,0,Math.PI*2);
+        g.fillStyle='rgba(245,158,11,.5)'; g.fill();
+      }
+      const hv = i===0? '[0.00, 0.00]' : (st>=(i-1)*3+1? vstr(D.H[i-1]) : '?');
+      if(short){
+        txt((hxFrom+hxTo)/2,cy-15,'h'+i+' = '+hv,10.5,'#6d28d9',true);
+        txt((hxFrom+hxTo)/2,cy+14,'× U',9,'#8b93ad',false);
+      } else txt((hxFrom+hxTo)/2,cy-12,'h'+i,9,'#6d28d9',true);
+      /* ลูกศรคำเข้า (ล่างขึ้นบน) */
+      const xActive = anim && curT===i && ph<=1;
+      g.globalAlpha = xActive?1:al*0.9;
+      arr(XC,inY-ibh/2-2,XC,cy+cellH/2+3,xActive?'#f59e0b':'rgba(36,86,230,.5)',xActive?3.5:2);
+      if(short) txt(XC+13,(inY-ibh/2+cy+cellH/2)/2,'× W',9,'#8b93ad',false,'left');
+      if(xActive && ph===0){
+        const tp=(tick%22)/22;
+        const yy=(inY-ibh/2-2)+((cy+cellH/2+3)-(inY-ibh/2-2))*tp;
+        g.beginPath(); g.arc(XC,yy,5,0,Math.PI*2); g.fillStyle='#2456e6'; g.fill();
+      }
+      /* กล่องคำเข้า */
+      const inGlow=anim&&curT===i&&ph===0;
+      g.globalAlpha=inGlow?1:al;
+      if(inGlow){ g.save(); g.shadowColor='rgba(245,158,11,.7)'; g.shadowBlur=14; }
+      rr(XC-ibw/2,inY-ibh/2,ibw,ibh,9,'#eef2ff',inGlow?'#f59e0b':'#2456e6',inGlow?3:2);
+      if(inGlow) g.restore();
+      txt(XC,inY-(short?11:6),'"'+D.seq[i]+'"',short?13.5:11,'#1f2533',true);
+      if(short) txt(XC,inY+12,'x'+(i+1)+' = '+vstr(D.X[i]),10,'#2456e6',false);
+      else if(st>=i*3) txt(XC,inY+11,vstr(D.X[i]).replace(/\s/g,''),7.5,'#2456e6',false);
+      /* ตัวเซลล์ RNN */
+      const mix=anim&&curT===i&&ph===1;
+      g.globalAlpha=focus?1:0.38;
+      if(mix){ g.save(); g.shadowColor='rgba(139,92,246,.8)'; g.shadowBlur=16; }
+      rr(XC-cellW/2,top,cellW,cellH,12,'#f5f3ff','#7c3aed',mix?3.2:2.2);
+      if(mix) g.restore();
+      txt(XC,top+12,short?'RNN cell (W, U, b ชุดเดิม)':'RNN',short?10.5:8.5,'#8b5cf6',true);
+      if(st>=i*3+1){
+        if(short){
+          txt(XC,top+cellH/2+2,'h'+(i+1)+' = '+vstr(D.H[i]),13,'#4c1d95',true);
+          txt(XC,top+cellH-13,'= tanh(W·x'+(i+1)+' + U·h'+i+' + b)',9.5,'#8b93ad',false);
+        } else {
+          txt(XC,top+cellH/2+1,nf(D.H[i][0]),9.5,'#4c1d95',true);
+          txt(XC,top+cellH-10,nf(D.H[i][1]),9.5,'#4c1d95',true);
+        }
+      } else txt(XC,top+cellH/2+4,'?',14,'#9aa3b8',true);
+      g.globalAlpha=1;
+    }
+    /* ลูกศรจากเซลล์สุดท้าย → แผงทำนาย */
+    const lx=cx(T-1), lTop=cy-cellH/2;
+    const ax=lx+cellW/2-4, ay=lTop-2, bx2=px0+70, by2=py0+phg+8;
+    g.globalAlpha=predOn?1:0.35;
+    arr(ax,ay,bx2,by2,predOn?'#12a150':'rgba(18,161,80,.5)',predOn?3:1.8);
+    if(predOn){
+      const tp=(tick%22)/22;
+      g.beginPath(); g.arc(ax+(bx2-ax)*tp,ay+(by2-ay)*tp,4.5,0,Math.PI*2);
+      g.fillStyle='#12a150'; g.fill();
+    }
+    g.globalAlpha=1;
+    txt(24,CH-12,'W = [[0.5, −0.3],[0.2, 0.4]] · U = [[0.6, 0.1],[−0.2, 0.5]] · b = [0.1, −0.1] — weight ชุดเดียวใช้ซ้ำทุกจังหวะ (นี่แหละความหมายของ "recurrent")',10,'#8b93ad',false,'left');
+  }
+
+  /* ---- แผงสมการ + ป้ายจังหวะ ---- */
+  function eqFor(){
+    const D=RN.data, T=D.seq.length, maxS=T*3, st=RN.step;
+    if(st<0){ eqEl.style.display='none'; return; }
+    eqEl.style.display='block';
+    if(st>=maxS){
+      const h=D.H[T-1];
+      const rows=CAND.map((wd,k)=>
+        'คะแนน('+wd+') = '+nf(Vm[k][0])+'×'+nf(h[0])+' + '+nf(Vm[k][1])+'×'+nf(h[1])+' + '+nf(cvec[k])
+        +' = '+nf(D.logit[k])+' → softmax → <span class="t-res">'+(D.P[k]*100).toFixed(0)+'%</span>').join('<br>');
+      const wI=D.P.indexOf(Math.max.apply(null,D.P));
+      eqEl.innerHTML='<b>ชั้นออก:</b> ใช้ความจำสุดท้าย h = '+vstr(h)+' ให้คะแนนทุกคำ candidate:<br>'+rows
+        +'<br>✓ โมเดลเดา "<span class="t-res">'+CAND[wI]+'</span>" — ทั้งประโยคถูกบีบเหลือตัวเลขแค่ 2 ตัวก่อนตัดสินใจ';
+      return;
+    }
+    const t=Math.floor(st/3), ph=st%3, w=D.seq[t], x=D.X[t];
+    const hp=t===0?[0,0]:D.H[t-1];
+    if(ph===0){
+      eqEl.innerHTML='<b>x<sub>'+(t+1)+'</sub></b> = embedding("'+w+'") = <span class="t-x">'+vstr(x)+'</span> — คำกลายเป็นเวกเตอร์ตัวเลข (ชั้น embedding แบบเดียวกับแผนที่คำ 🌌 ข้างบน)';
+    } else if(ph===1){
+      const line=r=>'tanh(<span class="t-x">'+nf(Wm[r][0])+'×'+nf(x[0])+' + '+nf(Wm[r][1])+'×'+nf(x[1])+'</span>'
+        +' + <span class="t-h">'+nf(Um[r][0])+'×'+nf(hp[0])+' + '+nf(Um[r][1])+'×'+nf(hp[1])+'</span>'
+        +' + <span class="t-b">'+nf(bv[r])+'</span>) = tanh('+nf(D.Z[t][r])+') = <span class="t-res">'+nf(D.H[t][r])+'</span>';
+      eqEl.innerHTML='<b>h<sub>'+(t+1)+'</sub> = tanh( <span class="t-x">W·x<sub>'+(t+1)+'</sub></span> + <span class="t-h">U·h<sub>'+t+'</sub></span> + <span class="t-b">b</span> )</b>'
+        +' <span style="color:#8a94b8">— ฟ้า = คำใหม่ · ม่วง = ความจำเดิม · เขียว = bias</span>'
+        +'<br>ช่องบน: '+line(0)
+        +'<br>ช่องล่าง: '+line(1);
+    } else {
+      eqEl.innerHTML='<b>h<sub>'+(t+1)+'</sub></b> = <span class="t-res">'+vstr(D.H[t])+'</span> — กล่องความจำใบเดิม (2 ช่องเท่าเดิม) ถูกเขียนทับด้วยส่วนผสมใหม่ แล้ว'
+        +(t===D.seq.length-1?'หมดประโยคพอดี → เอาไปทำนายคำถัดไป':'ส่งต่อให้จังหวะถัดไป');
+    }
+  }
+  function pillFor(){
+    const D=RN.data, T=D.seq.length, maxS=T*3, st=RN.step;
+    if(st<0){ pill('#9aa3b8','พร้อม — กด ▶ เล่นทีละจังหวะ'); return; }
+    if(st>=maxS){
+      const wI=D.P.indexOf(Math.max.apply(null,D.P));
+      pill('#12a150','จบประโยค! softmax เลือกคำถัดไป → "'+CAND[wI]+'" '+(D.P[wI]*100).toFixed(0)+'%');
+      return;
+    }
+    const t=Math.floor(st/3), ph=st%3, w=D.seq[t];
+    if(ph===0) pill('#2456e6','จังหวะ '+(t+1)+'/'+T+' — ① คำ "'+w+'" เข้ามา แปลงเป็นเวกเตอร์ x'+(t+1));
+    else if(ph===1) pill('#8b5cf6','จังหวะ '+(t+1)+'/'+T+' — ② ผสมคำใหม่กับความจำเดิม h'+t+' (เลขจริงอยู่ในแผงล่าง)');
+    else pill('#f59e0b','จังหวะ '+(t+1)+'/'+T+' — ③ ความจำใหม่ h'+(t+1)+' ไหลไปช่องถัดไป');
+  }
+
+  /* ---- ปุ่มควบคุม ---- */
+  function stopAuto(){
+    if(RN.timer){ clearInterval(RN.timer); RN.timer=null; }
+    document.getElementById('rnnAuto').textContent='🎬 เล่นต่อเนื่อง';
+  }
+  function advance(){
+    if(RN.step>=maxStep()){ stopAuto(); return; }
+    RN.step++;
+    pillFor(); eqFor(); draw();
+    if(RN.step>=maxStep()) stopAuto();
+  }
+  function reset(){ stopAuto(); RN.step=-1; setup(); pillFor(); eqFor(); draw(); }
+  function startAuto(){
+    if(RN.step>=maxStep()) RN.step=-1;
+    document.getElementById('rnnAuto').textContent='⏸ หยุด';
+    advance();
+    RN.timer=setInterval(advance, 2300/RN.speed);
+  }
+  document.getElementById('rnnStep').addEventListener('click',()=>{
+    stopAuto();
+    if(RN.step>=maxStep()) RN.step=-1;
+    advance();
+  });
+  document.getElementById('rnnAuto').addEventListener('click',function(){
+    if(RN.timer){ stopAuto(); return; }
+    startAuto();
+  });
+  document.getElementById('rnnSpeed').addEventListener('click',function(){
+    RN.speed=RN.speed===1?2:1;
+    this.textContent=RN.speed===1?'🐢 ความเร็ว ×1':'🐇 ความเร็ว ×2';
+    if(RN.timer){ clearInterval(RN.timer); RN.timer=setInterval(advance, 2300/RN.speed); }
+  });
+  document.getElementById('rnnReset').addEventListener('click',reset);
+  document.getElementById('rnnLong').addEventListener('click',function(){
+    RN.mode=RN.mode==='short'?'long':'short';
+    this.textContent=RN.mode==='long'?'🐈 กลับประโยคสั้น 2 คำ':'🐘 ประโยคยาว 8 คำ';
+    this.style.background=RN.mode==='long'
+      ?'linear-gradient(135deg,#12a150,#0ea371)'
+      :'linear-gradient(135deg,#64748b,#94a3b8)';
+    reset();
+    if(RN.mode==='long') startAuto();   /* สลับแล้วเล่นซ้ำให้ดูความจำจางทันที */
+  });
+  /* จุดวิ่งตกแต่งบนลูกศร active (setInterval — วาดซ้ำเฉพาะตอนมีอะไรให้ดู) */
+  setInterval(()=>{ if(RN.step>=0){ RN.tick++; draw(); } },60);
+  setup(); pillFor(); draw();
+})();
+
+/* ======================================================================
+   📉 สัญญาณเลือนหาย — โซ่คูณ gradient
+   ====================================================================== */
+(function(){
+  const bars=document.getElementById('vgBars'); if(!bars) return;
+  const seg=document.getElementById('vgSeg'), slider=document.getElementById('vgN');
+  const out=document.getElementById('vgOut'), verdict=document.getElementById('vgVerdict'), nv=document.getElementById('vgNv');
+  let factor=0.9;
+  const supStr=n=>String(n).split('').map(d=>'⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]).join('');
+  function fmt(v){
+    if(v===0) return '0';
+    if(v>=0.001 && v<1000) return v>=100? v.toFixed(0) : (v>=1? v.toFixed(2) : v.toFixed(3));
+    const e=v.toExponential(1).split('e');
+    return e[0]+'×10<sup>'+(+e[1])+'</sup>';
+  }
+  function build(){
+    const n=+slider.value;
+    nv.textContent=n+' จังหวะ';
+    bars.innerHTML='';
+    for(let k=1;k<=n;k++){
+      const c=document.createElement('div'); c.className='vg-cell';
+      c.innerHTML='<div class="bar" style="height:1.5px"></div><span class="k">'+k+'</span>';
+      bars.appendChild(c);
+    }
+    setTimeout(update,30);   /* ให้ CSS transition ของแท่งได้ทำงาน */
+  }
+  function update(){
+    const n=+slider.value, cells=bars.querySelectorAll('.vg-cell .bar');
+    let v=1;
+    cells.forEach((b,i)=>{
+      v*=factor;
+      b.style.height=Math.min(112,Math.max(1.5,64*v))+'px';
+      b.style.opacity=Math.max(0.15,Math.min(1,v));
+      b.style.background = v>3?'#d4493e' : (v>1.001?'#f59e0b' : (v<0.05?'#94a3b8':'var(--accent)'));
+      b.title='ผ่านจังหวะที่ '+(i+1)+': สัญญาณเหลือ '+(v*100).toPrecision(3)+'%';
+    });
+    const fv=Math.pow(factor,n);
+    out.innerHTML='สัญญาณที่รอดถึงคำแรก: '+factor.toFixed(1)+supStr(n)
+      +' = <span style="color:var(--accent)">'+fmt(fv)+'</span>'
+      +(fv<=1? ' (เหลือ '+fmt(fv*100)+'%)' : ' (พองเป็น '+fmt(fv)+' เท่า)');
+    if(fv<0.25){
+      verdict.className='vg-verdict die';
+      verdict.textContent='👻 เลือนหาย (vanishing) — เหลือแค่ '+(fv*100).toPrecision(2)+'% : คำต้นประโยคแทบไม่ส่งผลต่อการเรียนรู้ RNN จึงเรียนความสัมพันธ์ระยะไกลไม่ได้';
+    } else if(fv>3){
+      verdict.className='vg-verdict boom';
+      verdict.textContent='💥 ระเบิด (exploding) — gradient พอง '+fmt(fv).replace(/<[^>]*>/g,'')+' เท่า : ค่า weight กระเด็นคนละทิศ การเทรนพังทันที';
+    } else {
+      verdict.className='vg-verdict ok';
+      verdict.textContent='✓ พอดี — สัญญาณรอด... แต่เงื่อนไขคือตัวคูณต้องอยู่ใกล้ 1.000 ตลอดการเทรน ซึ่งบังคับไม่ได้จริง (weight เปลี่ยนตลอดเวลา)';
+    }
+  }
+  seg.addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    seg.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    factor=+b.dataset.f;
+    update();
+  });
+  slider.addEventListener('input',build);
+  build();
+})();
+</script>
+
+</body>
+</html>

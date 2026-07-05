@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>วิชา AI — บันไดสู่การเข้าใจ LLM</title>
+<link rel="stylesheet" href="assets/style.css">
+<script defer src="assets/anim.js"></script>
+<style>
+  /* บันไดแบบ timeline — จุดแทนเลขสัปดาห์ (ชื่อเรื่องอยู่ในการ์ดแล้ว) */
+  .ladder .step-no {
+    flex: 0 0 14px; width: 14px; height: 14px; min-width: 0;
+    border-radius: 50%; padding: 0; font-size: 0; margin-top: 5px;
+    background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .ladder li.milestone .step-no { background: var(--green); box-shadow: inset 0 0 0 2px var(--green); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <h1>ปัญญาประดิษฐ์ (Artificial Intelligence)</h1>
+    <p class="subtitle">ภาคเรียนที่ 1/2569 — เส้นทางจากการทำนายตัวเลข สู่การเข้าใจว่า LLM ทำงานอย่างไร</p>
+    <div class="hero-demo">
+      <span class="label">⚡ สิ่งที่ LLM ทำตลอดเวลา — ทำนายคำถัดไป (วิชานี้จะพาไปดูข้างในว่าทำได้อย่างไร):</span>
+      <span id="hero-ctx"></span><span class="cursor">▌</span>
+      <div id="hero-chips"></div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>แกนของวิชานี้:</strong> AI สมัยใหม่คือ <strong>"เครื่องทำนายที่เรียนรู้จากข้อมูล"</strong><br>
+    เราจะเริ่มจากเครื่องทำนายที่เล็กที่สุด แล้วต่อบันไดขึ้นทีละขั้น —
+    ทำนายตัวเลข → ทำนายหมวดหมู่ → ทำนายจากภาพ → <strong>ทำนายคำถัดไป</strong> —
+    จนสุดท้ายนักศึกษาตอบได้ด้วยตัวเองว่า ChatGPT/Claude ข้างในทำงานอย่างไร
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">รูปแบบของทุกสัปดาห์</h3>
+    <p style="margin-bottom:0">
+      <span class="badge">1. แนวคิด</span> เนื้อหาหลักพร้อมภาพประกอบ &nbsp;
+      <span class="badge">2. ทดลองเล่น</span> demo แบบโต้ตอบบนหน้าเว็บ &nbsp;
+      <span class="badge green">3. แบบฝึกหัด</span> ทำในคาบ + การบ้าน &nbsp;
+      <span class="badge amber">4. ขั้นบันได</span> สรุปว่าสัปดาห์นี้พาเข้าใกล้ LLM อย่างไร
+    </p>
+  </div>
+
+  <h2>🪜 เส้นทางการเรียนรู้ทั้งหมด</h2>
+
+  <div class="card">
+    <ol class="ladder">
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week01.html">AI คืออะไร มาจากไหน — และโมเดลภาษาที่เล็กที่สุดในโลก</a></strong>
+          ประวัติ AI 4 ยุค + ลองสร้าง language model จิ๋วด้วยมือ
+          <div class="toward">เห็นภาพรวมว่า LLM คือปลายทางของเส้นทาง 70 ปี และแก่นของมันคือ "การทำนายตัวถัดไป"</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week02.html">Linear Regression — การถดถอยเชิงเส้น (ฉบับลงมือทำ)</a></strong>
+          ลากเส้นทำนายค่าด้วย Least Squares — เดโมปรับเส้นสด, ตัวอย่างจริง 2 โจทย์, และสร้างข้อมูลเอง
+          <div class="toward">หัวใจ ML: หา weight (a, b) ที่ทำให้ความคลาดเคลื่อนน้อยที่สุด — แนวคิดเดียวกับที่ LLM ใช้เทรน เพียงแต่ LLM มี weight เป็นแสนล้านตัว</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week03.html">เมื่อข้อมูลไม่เป็นเส้นตรง — Polynomial Regression</a></strong>
+          มุมมอง 3 มิติ "ยกมิติ z=x²" + เวทีเล่นดัด degree สด พร้อมกราฟตัว U ของ overfitting วาดตัวเอง
+          <div class="toward">บทเรียนสำคัญของ ML: ยิ่งโมเดลซับซ้อน (degree สูง) ยิ่ง fit ข้อมูลฝึกเป๊ะ แต่ทำนายข้อมูลใหม่แย่ลง — ที่มาของการแยกชุดฝึก/ทดสอบ</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week04.html">จำแนกด้วยเพื่อนบ้านใกล้ที่สุด — K-Nearest Neighbors (KNN)</a></strong>
+          จัดประเภทของใหม่จากเสียงข้างมากของเพื่อนบ้าน k จุดที่ใกล้ที่สุด — วัดระยะ, เลือก k, โหวต
+          <div class="toward">บทเรียนสำคัญของ AI: "ความหมาย = ความใกล้ในปริภูมิ" — KNN บนเวกเตอร์ embedding คือหัวใจของ semantic search และ RAG ที่ LLM ใช้ค้นความรู้</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week05.html">จับกลุ่มข้อมูลเอง — K-means Clustering</a></strong>
+          Unsupervised: เวทีอนิเมชัน assign/update จนลู่เข้า + Elbow method รันสด + บีบสีรูปภาพเหลือ K สี
+          <div class="toward">โลกของ "เรียนรู้จากข้อมูลที่ไม่มีเฉลย" แบบเดียวกับที่ LLM ถูก pretrain — และ clustering บน embedding คือหัวใจของ vector quantization / การจัดกลุ่มความหมาย</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week06.html">Decision Tree &amp; Random Forest — เครื่องที่ "ถามทีละคำถาม"</a></strong>
+          ต้นไม้ if/else ที่อ่านออกได้ + เวทีแบ่งพื้นที่เห็นเส้นขั้นบันได + เลือกจุดตัดด้วย Gini ทีละสเต็ป + ป่าสุ่มโหวตรวมพลัง
+          <div class="toward">โมเดลที่ "อธิบายได้" และครองข้อมูลตาราง (tabular/Kaggle) — ตรงข้ามกับกล่องดำอย่าง Neural Network ที่กำลังจะเรียน</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week07.html">SVM — เส้นแบ่งที่กว้างที่สุด (และเวทมนตร์ Kernel)</a></strong>
+          หาเส้นที่ margin กว้างสุด + จุด support vectors + ปุ่ม C ปรับความยืดหยุ่น + ยก 2 มิติขึ้น 3 มิติให้ระนาบแบ่งได้
+          <div class="toward">แชมป์ยุคก่อน deep learning — เข้าใจ margin/kernel แล้วจะซึ้งว่าทำไม Neural Network ถึงมาแทนในเวลาต่อมา</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week08.html">Neural Network — สมองจำลอง จาก Perceptron สู่ MLP</a></strong>
+          ไทม์ไลน์ประวัติ 80 ปี + นิวรอนใส่ค่าเอง + MLP Playground เห็นค่าวิ่งทุกโหนด + แก้ปริศนา XOR + softmax
+          <div class="toward">ได้ "หน่วยก่อสร้าง" ที่ LLM ใช้จริง — ข้างใน Transformer คือ MLP ซ้อนกัน และ softmax ชั้นสุดท้ายคือวิธีที่ LLM เลือก "คำถัดไป"</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week09.html">Backpropagation — เครื่องจักรเรียนรู้ได้อย่างไร (ฉบับตามได้ทุกตัวเลข)</a></strong>
+          ลูกบอลกลิ้งลงเขา gradient descent + chain rule + ห้องแล็บ backprop เห็นเลขจริงทุกขั้น เทรนวนดู loss ลด
+          <div class="toward">นี่คืออัลกอริทึมเดียวกันเป๊ะที่ใช้เทรน GPT — ไม่มีเวทมนตร์อื่น</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week10.html">CNN — สอนเครื่องให้มองเห็น</a></strong>
+          วาดภาพเอง + convolution ไถลทีละช่องเห็นเลขคูณ-บวก + pooling + เดโมจำแนก O/X ทั้งไปป์ไลน์
+          <div class="toward">บทเรียนสำคัญ: สถาปัตยกรรมที่เหมาะกับชนิดข้อมูลชนะเสมอ — แล้วข้อความล่ะ ควรใช้สถาปัตยกรรมแบบไหน?</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week11.html">เทรนจริงให้เป็น — Loss, Overfitting, Train/Test Split</a></strong>
+          ปฏิบัติการเทรนโมเดลใน Colab
+          <div class="toward">เข้าใจว่าทำไม LLM ต้องใช้ข้อมูล "ทั้งอินเทอร์เน็ต" — เพราะโมเดลใหญ่ overfit ง่าย</div>
+        </div>
+      </li>
+      <li class="milestone">
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week12.html">สอบกลางภาค + ทบทวนครึ่งทาง</a></strong>
+          <div class="toward">ครึ่งแรกจบ: เรามีเครื่องทำนายที่เรียนรู้ได้แล้ว — ครึ่งหลังคือทำให้มัน "เข้าใจภาษา"</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week13.html">ทำนายคำถัดไป — Language Model, RNN/LSTM และทำไมมันไม่พอ</a></strong>
+          จาก n-gram (เรื่อง AI คืออะไร) สู่ RNN — และปัญหาความจำสั้น
+          <div class="toward">เจอกำแพงที่ทำให้ AI ภาษา "ติดหล่ม" อยู่หลายปี — กำแพงที่ Transformer จะทลายในสัปดาห์หน้า</div>
+        </div>
+      </li>
+      <li class="milestone">
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week14.html">Attention &amp; Transformer — หัวใจของ AI ยุคปัจจุบัน</a></strong>
+          attention คือการ "เลือกมองคำที่เกี่ยวข้อง", โครงสร้าง Transformer ทีละบล็อก
+          <div class="toward">⭐ ขั้นสำคัญที่สุดของเทอม — สถาปัตยกรรมตัวจริงข้างใน GPT, Claude, Gemini</div>
+        </div>
+      </li>
+      <li class="milestone">
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week15.html">LLM ทำงานอย่างไร — Tokenization, Pretraining, Fine-tuning, RLHF</a></strong>
+          ต่อจิ๊กซอว์ทุกชิ้นที่ผ่านมาเข้าด้วยกัน
+          <div class="toward">🏁 ถึงยอดบันได: นักศึกษาอธิบายได้ครบวงจรว่า ChatGPT ทำงานอย่างไร และทำไมมันถึง hallucinate</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week16.html">ใช้ LLM อย่างคนที่รู้ข้างใน — Prompting, RAG, Agents</a></strong>
+          เขียน prompt อย่างมีหลักการ, ต่อ LLM กับข้อมูลภายนอก
+          <div class="toward">เปลี่ยนจาก "เข้าใจ" เป็น "ใช้งานจริง" — ทักษะที่ตลาดงานต้องการที่สุดตอนนี้</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week17.html">AI สร้างภาพและเสียงได้อย่างไร — Diffusion &amp; Multimodal</a></strong>
+          หลักการเดียวกัน (ทำนาย) แต่ทำนาย "noise ที่ต้องลบออก"
+          <div class="toward">เห็นว่าแก่นความรู้ทั้งเทอมใช้อธิบาย AI ชนิดอื่นได้หมด ไม่ใช่แค่ภาษา</div>
+        </div>
+      </li>
+      <li>
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week18.html">ข้อจำกัด จริยธรรม และอนาคต</a></strong>
+          hallucination, bias, ผลกระทบต่ออาชีพ, การใช้อย่างรับผิดชอบ
+          <div class="toward">เพราะเข้าใจข้างในแล้ว จึงวิจารณ์ได้อย่างมีหลักการ ไม่ใช่กลัวหรือเชื่อแบบงมงาย</div>
+        </div>
+      </li>
+      <li class="milestone">
+        <div class="step-no"></div>
+        <div class="step-body">
+          <strong><a href="weeks/week19.html">นำเสนอโปรเจกต์ปลายภาค</a></strong>
+          <div class="toward">โจทย์เปิด: สร้างหรือวิเคราะห์ระบบ AI หนึ่งอย่าง แล้วอธิบาย "ข้างใน" ให้เพื่อนเข้าใจ</div>
+        </div>
+      </li>
+    </ol>
+  </div>
+
+  <h2>📚 ห้องสมุดคอร์สระดับโลก — เรียนคู่ขนานกับมหาวิทยาลัยชั้นนำ</h2>
+
+  <div class="resources">
+    <h3>วิดีโอและคอร์สที่แนะนำให้ดูประกอบ (ฟรีทั้งหมด)</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span>
+        ซีรีส์ <a href="https://www.3blue1brown.com/topics/neural-networks" target="_blank">Neural Networks</a>
+        — แอนิเมชันคณิตศาสตร์ที่สวยที่สุดในโลกเรื่อง NN, gradient descent, backprop และ "But what is a GPT?"
+        (ดูคู่กับเรื่อง K-means, Neural Network, Language Model &amp; RNN, Attention)</li>
+      <li><span class="src">Karpathy</span>
+        <a href="https://karpathy.ai/zero-to-hero.html" target="_blank">Neural Networks: Zero to Hero</a>
+        — อดีตผู้อำนวยการ AI ของ Tesla สอนสร้าง GPT จากศูนย์ทีละบรรทัด
+        และ <a href="https://www.youtube.com/watch?v=zjkBMFhNj_g" target="_blank">Intro to Large Language Models</a> (1 ชม. ดูคู่เรื่อง Attention &amp; Transformer)</li>
+      <li><span class="src">MIT</span>
+        <a href="https://introtodeeplearning.com" target="_blank">6.S191 Introduction to Deep Learning</a>
+        — คอร์ส MIT ของจริง สไลด์+วิดีโอครบ อัปเดตทุกปี</li>
+      <li><span class="src">Stanford</span>
+        <a href="https://cs231n.github.io" target="_blank">CS231n</a> (CNN / computer vision — ประกอบเรื่อง CNN)
+        และ <a href="https://web.stanford.edu/class/cs224n/" target="_blank">CS224n</a> (NLP / Transformer — ประกอบเรื่อง RNN และ Attention)</li>
+      <li><span class="src">Jay Alammar</span>
+        <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank">The Illustrated Transformer</a>
+        — บทความภาพประกอบที่ถูกใช้สอนในมหาวิทยาลัยทั่วโลก (ประกอบเรื่อง Language Model &amp; RNN)</li>
+      <li><span class="src">Interactive</span>
+        <a href="https://playground.tensorflow.org" target="_blank">TensorFlow Playground</a> ·
+        <a href="https://poloclub.github.io/cnn-explainer/" target="_blank">CNN Explainer</a> ·
+        <a href="https://poloclub.github.io/transformer-explainer/" target="_blank">Transformer Explainer</a> ·
+        <a href="https://tiktokenizer.vercel.app" target="_blank">Tiktokenizer</a></li>
+    </ul>
+  </div>
+
+  <h2>การวัดผล (เสนอ)</h2>
+  <div class="card">
+    <table class="simple">
+      <tr><th>องค์ประกอบ</th><th>สัดส่วน</th></tr>
+      <tr><td>แบบฝึกหัดท้ายสัปดาห์ (เก็บทุกสัปดาห์)</td><td>30%</td></tr>
+      <tr><td>สอบกลางภาค (กลางเทอม)</td><td>25%</td></tr>
+      <tr><td>สอบปลายภาค</td><td>25%</td></tr>
+      <tr><td>โปรเจกต์ + นำเสนอ (ปลายภาค)</td><td>20%</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// แอนิเมชัน hero: วนตัวอย่างการทำนายคำถัดไป เหมือนที่ LLM ทำจริง
+const EXAMPLES = [
+  { ctx: 'วันนี้อากาศ', preds: [['ร้อน', 41], ['ดี', 27], ['แจ่มใส', 18], ['เย็น', 9]] },
+  { ctx: 'นักศึกษากำลังตั้งใจ', preds: [['เรียน', 56], ['ฟัง', 22], ['ทำงาน', 12], ['อ่าน', 6]] },
+  { ctx: 'ปัญญาประดิษฐ์คือเครื่อง', preds: [['ทำนาย', 38], ['มือ', 25], ['จักร', 21], ['คิด', 10]] },
+  { ctx: 'แมวน้อยชอบกิน', preds: [['ปลา', 62], ['ขนม', 15], ['ข้าว', 13], ['นม', 7]] }
+];
+
+async function heroLoop() {
+  const ctxEl = document.getElementById('hero-ctx');
+  const chipsEl = document.getElementById('hero-chips');
+  let i = 0;
+  for (;;) {
+    const ex = EXAMPLES[i % EXAMPLES.length];
+    chipsEl.innerHTML = '';
+    await typeText(ctxEl, '"' + ex.ctx + ' ___"', 55);
+    await sleep(250);
+    chipsEl.innerHTML = ex.preds.map(([w, p], j) =>
+      `<span class="chip ${j === 0 ? 'win' : ''}">${w} <span class="p">${p}%</span></span>`).join('');
+    const chips = chipsEl.querySelectorAll('.chip');
+    for (const c of chips) { c.classList.add('in'); await sleep(180); }
+    await sleep(2600);
+    i++;
+  }
+}
+document.addEventListener('DOMContentLoaded', heroLoop);
+</script>
+
+</body>
+</html>

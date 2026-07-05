@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI คืออะไร มาจากไหน | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>AI คืออะไร มาจากไหน</h1>
+    <p class="subtitle">และโมเดลภาษาที่เล็กที่สุดในโลก ที่นักศึกษาจะสร้างเองวันนี้</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>เล่าได้ว่า AI ผ่านมากี่ยุค แต่ละยุคต่างกันอย่างไร และทำไมยุคก่อนๆ ถึง "ไปต่อไม่ได้"</li>
+      <li>อธิบายได้ว่าแก่นของ LLM คือ <strong>"การทำนายตัวถัดไป"</strong> (next-token prediction)</li>
+      <li>สร้าง language model อย่างง่ายที่สุด (bigram) ด้วยมือบนกระดาษได้</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด: AI สี่ยุค <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ (ให้นักศึกษาตอบก่อนเรียน): <em>"ChatGPT ฉลาดเพราะอะไร — มีคนเขียนกฎคำตอบใส่ไว้ หรือมันเรียนรู้เอง?"</em></p>
+
+    <button onclick="playEras()" style="font-family:Kanit; font-weight:600; background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 18px; cursor:pointer; margin-bottom:14px">▶ เล่นไทม์ไลน์ 70 ปีของ AI</button>
+
+    <ul class="timeline" id="eras">
+      <li>
+        <span class="era">ยุคที่ 1: Symbolic AI / กฎที่มนุษย์เขียน (1950s–1980s)</span><br>
+        ความฉลาด = กฎ if-then ที่ผู้เชี่ยวชาญเขียนใส่เครื่อง (expert systems)
+        เก่งในโลกแคบๆ เช่นเล่นหมากรุก แต่<strong>พังเมื่อเจอโลกจริง</strong>เพราะเขียนกฎให้ครอบคลุมทุกกรณีไม่ไหว
+        → เกิด "AI Winter"
+      </li>
+      <li>
+        <span class="era">ยุคที่ 2: Machine Learning (1990s–2000s)</span><br>
+        เปลี่ยนวิธีคิด: <strong>ไม่เขียนกฎเอง แต่ให้เครื่อง "เดากฎ" จากตัวอย่างข้อมูล</strong>
+        — regression, decision tree, SVM ใช้ได้จริงในวงกว้าง แต่มนุษย์ยังต้องเลือก feature ให้
+      </li>
+      <li>
+        <span class="era">ยุคที่ 3: Deep Learning (2012–2017)</span><br>
+        neural network หลายชั้น <strong>หา feature เองได้</strong>จากข้อมูลดิบ
+        จุดระเบิดคือ AlexNet (2012) ชนะการแข่งจำแนกรูปภาพแบบขาดลอย
+        ตามด้วย AlphaGo (2016) — แต่ด้านภาษายังติดขัด (เราจะเจอสาเหตุในเรื่อง Language Model &amp; RNN)
+      </li>
+      <li>
+        <span class="era">ยุคที่ 4: Transformer &amp; LLM (2017–ปัจจุบัน)</span><br>
+        งานวิจัย "Attention Is All You Need" (2017) ให้กำเนิดสถาปัตยกรรม Transformer
+        → GPT, ChatGPT (2022), Claude, Gemini
+        ความลับที่จะค่อยๆ เฉลยทั้งเทอม: ข้างในมันทำแค่อย่างเดียวคือ <strong>ทำนายว่าตัวถัดไปคืออะไร</strong>
+      </li>
+    </ul>
+
+    <p><strong>ข้อสังเกตให้จำ:</strong> ทุกครั้งที่ AI ก้าวกระโดด คือทุกครั้งที่เรา <em>ลดบทบาทมนุษย์ในการป้อนความรู้</em> —
+    จากเขียนกฎเอง → เลือก feature ให้ → ป้อนแค่ข้อมูลดิบมหาศาล</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — สร้างโมเดลภาษาบนกระดาษใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">อ่านเองได้ ทำตามได้ ใช้แค่ปากกากับกระดาษ — จบ 6 ขั้นนี้คุณจะสร้างสิ่งเดียวกับที่ GPT เป็น (เวอร์ชันจิ๋ว) ด้วยมือเปล่า</p>
+    <ol class="steps">
+      <li><strong>เลือก "ข้อมูลฝึก" สั้นๆ</strong>
+        สมมุติข้อความฝึกคือ <code>"แมวกิน แมวนอน"</code> — โมเดลภาษาทุกตัวเริ่มจากข้อความตัวอย่างแบบนี้ ต่างแค่ GPT ใช้ทั้งอินเทอร์เน็ต</li>
+      <li><strong>จับคู่ตัวอักษรที่ติดกัน</strong>
+        เขียนทุกคู่ "ตัวหน้า→ตัวตาม" (ไม่ข้ามช่องว่าง):<br>
+        จาก "แมวกิน": <code>แ→ม, ม→ว, ว→ก, ก→ิ, ิ→น</code><br>
+        จาก "แมวนอน": <code>แ→ม, ม→ว, ว→น, น→อ, อ→น</code></li>
+      <li><strong>นับเป็นตาราง</strong>
+        <table class="simple" style="max-width:420px">
+          <tr><th>หลังตัว...</th><th>เจอตัวอะไร (กี่ครั้ง)</th></tr>
+          <tr><td>แ</td><td>ม (2)</td></tr>
+          <tr><td>ม</td><td>ว (2)</td></tr>
+          <tr><td>ว</td><td>ก (1), น (1)</td></tr>
+          <tr><td>น</td><td>อ (1)</td></tr>
+        </table>
+        ตารางนี้แหละคือ "โมเดล" — ความรู้ทั้งหมดที่มันมี</li>
+      <li><strong>เปลี่ยนจำนวนครั้งเป็นความน่าจะเป็น</strong>
+        หลัง "ว" เจอ ก 1 ครั้ง น 1 ครั้ง จากทั้งหมด 2 ครั้ง → P(ก|ว) = 1/2 = <strong>50%</strong>, P(น|ว) = <strong>50%</strong><br>
+        ส่วนหลัง "แ" เจอแต่ ม → P(ม|แ) = <strong>100%</strong></li>
+      <li><strong>ทำนาย!</strong>
+        มีคนพิมพ์ "ว" มา — โมเดลตอบ: "ตัวถัดไปน่าจะเป็น ก หรือ น อย่างละครึ่ง" แล้วสุ่มเลือกตามสัดส่วนนั้น
+        <div class="try">ปิดตำราแล้วตอบ: ถ้าเห็น "ม" โมเดลทำนายว่าอะไร ด้วยความน่าจะเป็นเท่าไหร่? (เฉลย: ว 100%)</div></li>
+      <li><strong>ต่อลูกโซ่ = แต่งข้อความ</strong>
+        เริ่มจาก "แ" → ทำนายได้ "ม" → เอา "ม" ไปทำนายต่อได้ "ว" → สุ่มได้ "น" → ... ได้ข้อความใหม่ที่โมเดลแต่งเอง<br>
+        <strong>ChatGPT ตอบแชทด้วยวิธีนี้เป๊ะ</strong> — ทำนายทีละชิ้นแล้วต่อลูกโซ่ ต่างแค่ฉลาดกว่าเพราะมองย้อนหลังได้ไกลและเรียนจากข้อมูลมหาศาล
+        <div class="try">ไปที่ demo ข้างล่าง พิมพ์ "แมวกิน แมวนอน" เป็นข้อมูลฝึก กดเทรน แล้วเช็คว่าตรงกับตารางที่คุณนับมือไหม</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — "ทำนายตัวถัดไป" เจอได้หลายหน้าตา</h3>
+    <p style="color:var(--muted); font-size:.95rem">ลองทำเองก่อน แล้วค่อยกางเฉลย — โจทย์เดียวกับที่เรียน แค่เปลี่ยนฉาก</p>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — bigram กับชื่อภาษาอังกฤษ "ANNA"</summary>
+      <p>ข้อมูลฝึก: <code>ANNA</code> — สร้างตารางนับ แล้วตอบ: หลังตัว N โมเดลทำนายอะไร?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — จับคู่ตัวอักษรที่ติดกัน:</strong> A-N-N-A ให้ 3 คู่: A→N, N→N, N→A<br>
+      <strong>ขั้น 2 — นับแยกตามตัวหน้า:</strong> หลัง A: เจอ N 1 ครั้ง (จาก 1 ครั้ง) | หลัง N: เจอ N 1, A 1 (จาก 2 ครั้ง)<br>
+      <strong>ขั้น 3 — แปลงเป็นความน่าจะเป็น:</strong> P(N|A) = 1/1 = 100% | P(N|N) = 1/2 = 50%, P(A|N) = 1/2 = 50%<br>
+      ✅ <strong>คำตอบ:</strong> หลัง N โมเดลทาย N หรือ A อย่างละครึ่ง — เวลาแต่งชื่อเองจึงสุ่ม N ซ้ำได้ เกิดของแปลกอย่าง "ANNNNA"</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — ระดับ "คำ" กับเนื้อเพลง</summary>
+      <p>ข้อมูลฝึก (นับเป็นคำ): <code>"รักเธอ รักเธอ รักเขา"</code> — หลังคำว่า "รัก" โมเดลทำนายอะไร ด้วยความน่าจะเป็นเท่าไหร่?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตัดเป็นคำ:</strong> รัก / เธอ / รัก / เธอ / รัก / เขา<br>
+      <strong>ขั้น 2 — เขียนคู่คำติดกัน:</strong> รัก→เธอ, เธอ→รัก, รัก→เธอ, เธอ→รัก, รัก→เขา<br>
+      <strong>ขั้น 3 — นับหลังคำว่า "รัก":</strong> เธอ 2 ครั้ง, เขา 1 ครั้ง (รวม 3 ครั้ง)<br>
+      <strong>ขั้น 4 — หารเป็นความน่าจะเป็น:</strong> P(เธอ|รัก) = 2/3 ≈ 67%, P(เขา|รัก) = 1/3 ≈ 33%<br>
+      ✅ <strong>คำตอบ:</strong> ทาย "เธอ" 67% — หลักการเดียวกับระดับตัวอักษรเป๊ะ และ LLM จริงก็ทำงานระดับ "ชิ้นคำ" (token) แบบนี้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — ทำไมพิมพ์ "วันนี้อากาศ" แล้วมือถือเดาคำต่อได้</summary>
+      <p>สมมุติระบบเคยเห็นข้อความ: <code>"วันนี้อากาศดี วันนี้อากาศร้อน วันนี้อากาศดี"</code> — แป้นพิมพ์จะเสนอคำไหนก่อน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หาทุกครั้งที่ "อากาศ" โผล่ แล้วดูคำตาม:</strong> อากาศ→ดี, อากาศ→ร้อน, อากาศ→ดี<br>
+      <strong>ขั้น 2 — นับ:</strong> ดี 2 ครั้ง, ร้อน 1 ครั้ง (รวม 3)<br>
+      <strong>ขั้น 3 — หารแล้วเรียงจากมากไปน้อย:</strong> ดี 2/3 = 67% &gt; ร้อน 1/3 = 33%<br>
+      ✅ <strong>คำตอบ:</strong> เสนอ "ดี" ก่อน "ร้อน" — ปุ่มเดาคำบนมือถือคือ n-gram แบบเดียวกับที่เราสร้างวันนี้ คุณใช้มันมาหลายปีโดยไม่รู้ตัว</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — โจทย์ยากขึ้น: "MISSISSIPPI"</summary>
+      <p>สร้างตารางนับจากคำนี้ แล้วตอบ: หลังตัว S โมเดลทำนายอะไร?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ไล่คู่ทั้ง 10 คู่จาก M-I-S-S-I-S-S-I-P-P-I:</strong> MI, IS, SS, SI, IS, SS, SI, IP, PP, PI<br>
+      <strong>ขั้น 2 — กรองเฉพาะคู่ที่ขึ้นต้นด้วย S:</strong> SS, SI, SS, SI → หลัง S: S 2 ครั้ง, I 2 ครั้ง (รวม 4)<br>
+      <strong>ขั้น 3 — หาร:</strong> P(S|S) = 2/4 = 50%, P(I|S) = 2/4 = 50%<br>
+      ✅ <strong>คำตอบ:</strong> หลัง S ทาย S หรือ I อย่างละครึ่ง — แถม: หลัง I มีคู่ IS, IS, IP → P(S|I) = 2/3 = 67% — คำเดียวก็มีโครงสร้างสถิติให้เรียนแล้ว</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — ระบบแนะนำเพลง: next-item prediction</summary>
+      <p>ประวัติการฟัง: หลังเพลง A คนฟังต่อด้วยเพลง B 3 ครั้ง, เพลง C 1 ครั้ง — แอปจะเสนอเพลงไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — นับเหตุการณ์ "ฟังต่อจาก A" ทั้งหมด:</strong> A→B 3 ครั้ง, A→C 1 ครั้ง รวม 4 ครั้ง<br>
+      <strong>ขั้น 2 — หารเป็นความน่าจะเป็น:</strong> P(B|A) = 3/4 = 75%, P(C|A) = 1/4 = 25%<br>
+      <strong>ขั้น 3 — เรียงแล้วเลือกตัวสูงสุดมาเสนอ:</strong> B ชนะ<br>
+      ✅ <strong>คำตอบ:</strong> เสนอเพลง B (75%) — ระบบแนะนำเพลง/คลิป/สินค้า คือ "bigram ของพฤติกรรม" ทำนายชิ้นถัดไปจากสถิติ ตระกูลเดียวกับบทเรียนวันนี้เป๊ะ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — DNA ก็เป็น "ภาษา"</summary>
+      <p>ลำดับพันธุกรรม <code>ATATAT</code> — หลังตัว A โมเดลทำนายอะไร? แล้วเรื่องนี้มีประโยชน์จริงไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — จับคู่จาก A-T-A-T-A-T:</strong> A→T, T→A, A→T, T→A, A→T<br>
+      <strong>ขั้น 2 — นับหลัง A:</strong> T 3 ครั้งจาก 3 ครั้ง<br>
+      <strong>ขั้น 3 — หาร:</strong> P(T|A) = 3/3 = 100%<br>
+      ✅ <strong>คำตอบ:</strong> หลัง A ทาย T แน่นอน — และมีประโยชน์จริง: ชีวสารสนเทศใช้โมเดลภาษากับ DNA/โปรตีนจริงจัง
+      (มี "LLM ของชีววิทยา" อย่างตระกูล AlphaFold) เพราะอะไรที่เป็น "ลำดับ" ใช้เครื่องมือเดียวกันได้หมด</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — จุดที่ bigram พัง: คำว่า "ไม่"</summary>
+      <p>ข้อมูลฝึก: <code>"ฉันไม่ชอบผัก ฉันชอบปลา"</code> (ระดับคำ) — หลังคำว่า "ชอบ" โมเดลทำนายอะไร? มันรู้ไหมว่าประโยคไหนปฏิเสธ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เขียนคู่ระดับคำ:</strong> ฉัน→ไม่, ไม่→ชอบ, ชอบ→ผัก | ฉัน→ชอบ, ชอบ→ปลา<br>
+      <strong>ขั้น 2 — นับหลัง "ชอบ":</strong> ผัก 1, ปลา 1 → อย่างละ 50%<br>
+      <strong>ขั้น 3 — เช็คว่าโมเดลเห็นคำว่า "ไม่" ไหม:</strong> ไม่เห็น! "ไม่" อยู่ 2 คำก่อนหน้า แต่ bigram มองย้อนได้แค่ 1 คำ<br>
+      ✅ <strong>คำตอบ:</strong> ทายผัก/ปลาอย่างละครึ่ง โดยไม่รู้เลยว่าประโยคไหนปฏิเสธ — อาจแต่ง "ฉันไม่ชอบปลา" ทั้งที่ข้อมูลบอกตรงข้าม
+      ความหมายอยู่ที่คำไกลๆ ด้วย — ปมนี้คลี่คลายที่เรื่อง Attention &amp; Transformer (attention)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — พยากรณ์อากาศแบบ Markov</summary>
+      <p>สถิติ 100 วัน: วันที่ฝนตก → วันถัดมาตกอีก 70 ครั้ง, แดดออก 30 ครั้ง — วันนี้ฝนตก พรุ่งนี้ทำนายว่าอะไร?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตีกรอบข้อมูล:</strong> สนใจเฉพาะ "วันถัดจากวันฝนตก" ซึ่งมี 100 วัน<br>
+      <strong>ขั้น 2 — นับผลลัพธ์:</strong> ตกต่อ 70 วัน, แดดออก 30 วัน<br>
+      <strong>ขั้น 3 — หาร:</strong> P(ฝน|ฝน) = 70/100 = 70%<br>
+      ✅ <strong>คำตอบ:</strong> ทายว่าพรุ่งนี้ฝนตก (70%) — "bigram ของสภาพอากาศ" มีชื่อทางการว่า Markov chain
+      ใช้จริงในพยากรณ์อากาศยุคแรก การเงิน และเกม — เครื่องทำนายตัวถัดไปอยู่ทุกวงการ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — อัปเกรดเป็น trigram (จำ 2 ตัว)</summary>
+      <p>ข้อมูลฝึก: <code>"แมวกินปลา"</code> ถ้าจำย้อน 2 ตัวอักษร: หลัง "แม" คืออะไร? ตารางต้องใหญ่ขึ้นแค่ไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตัดบริบททีละ 2 ตัวอักษร พร้อมตัวตาม:</strong> "แม"→ว, "มว"→ก, "วก"→ิ, "กิ"→น<br>
+      <strong>ขั้น 2 — สังเกตความแม่น:</strong> ทุกบริบทมีตัวตามแบบเดียว → ทำนายเป๊ะขึ้นกว่าจำตัวเดียว (ที่ "ว" เคยกำกวมระหว่าง ก/น)<br>
+      <strong>ขั้น 3 — นับขนาดตาราง:</strong> บริบท 1 ตัว = 70 แบบ | บริบท 2 ตัว = 70×70 = 4,900 แบบ<br>
+      ✅ <strong>คำตอบ:</strong> แม่นขึ้นจริง แต่ตารางบวมขึ้น 70 เท่า — แลกความแม่นด้วยขนาด ซึ่งจะระเบิดเต็มตัวในเรื่อง Language Model &amp; RNN</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — ถอดรหัสยุค AI จากของใช้จริง</summary>
+      <p>จัดยุคให้ของ 3 ชิ้น: (ก) เครื่องคิดเลข (ข) ฟิลเตอร์หน้าสวยในแอปกล้อง (ค) ปุ่ม "ตอบอัตโนมัติ" ใน Gmail</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตั้งคำถามตัดสิน:</strong> "ความฉลาดของมันมาจากไหน — กฎที่คนเขียน หรือเรียนจากข้อมูล? เรียนจากข้อมูลแบบไหน?"<br>
+      <strong>ขั้น 2 — เครื่องคิดเลข:</strong> ทุกการคำนวณคือกฎที่มนุษย์เขียนล้วน ไม่เรียนรู้อะไร → <strong>ยุค 1</strong><br>
+      <strong>ขั้น 3 — ฟิลเตอร์หน้า:</strong> ต้องหาตำแหน่งตา/จมูกจากภาพดิบ — feature ที่เครื่องเรียนเอง → <strong>ยุค 3</strong> (deep learning)<br>
+      <strong>ขั้น 4 — ตอบอัตโนมัติใน Gmail:</strong> ทำนายข้อความตอบจากบริบทอีเมล → <strong>ยุค 4</strong> (โมเดลภาษา)<br>
+      ✅ <strong>คำตอบ:</strong> ก=1, ข=3, ค=4 — ของรอบตัวผสมหลายยุค มือถือเครื่องเดียวมีครบทั้ง 4 ยุค</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น: โมเดลภาษาที่เล็กที่สุดในโลก <span class="badge">ทดลองเล่น</span></h2>
+
+  <p>LLM ทำนาย "คำถัดไป" จากสถิติของข้อความมหาศาล — วันนี้เราจะสร้างเวอร์ชันจิ๋วที่ทำนาย
+  <strong>"ตัวอักษรถัดไป"</strong> จากสถิติของข้อความสั้นๆ เรียกว่าโมเดล <strong>bigram</strong>
+  (นับว่าตัวอักษรแต่ละตัว มีตัวอะไรตามหลังบ่อยแค่ไหน)</p>
+
+  <div class="demo">
+    <h3>🧪 Bigram Language Model</h3>
+    <p style="margin-top:0"><strong>ขั้นที่ 1:</strong> ใส่ "ข้อมูลฝึก" (training data) — ลองแก้ข้อความแล้วดูว่าโมเดลเปลี่ยนนิสัยอย่างไร</p>
+    <textarea id="corpus" rows="4">แมวกินปลา แมวนอนบนเสื่อ ปลาว่ายน้ำ แมวชอบกินปลาทู น้ำในแม่น้ำไหลแรง แมวนอนทั้งวัน</textarea>
+    <button onclick="train()">เทรนโมเดล (นับสถิติ)</button>
+
+    <p><strong>ขั้นที่ 2:</strong> พิมพ์ตัวอักษร 1 ตัว แล้วดูว่าโมเดล "ทำนาย" ตัวถัดไปว่าอะไร ด้วยความน่าจะเป็นเท่าไหร่</p>
+    <input type="text" id="seed" maxlength="1" placeholder="พิมพ์ตัวอักษร 1 ตัว เช่น ม" oninput="predict()">
+    <div class="output" id="probs">— เทรนโมเดลก่อน แล้วพิมพ์ตัวอักษร —</div>
+
+    <p><strong>ขั้นที่ 3:</strong> ให้โมเดล "แต่งข้อความ" เอง โดยทำนายต่อกันเป็นลูกโซ่ (เหมือนที่ LLM ตอบแชท!)</p>
+    <button onclick="generate()">✨ ให้โมเดลแต่งข้อความ</button>
+    <div class="output" id="generated">—</div>
+  </div>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่น demo:</strong>
+    <ul>
+      <li>ทำไมข้อความที่โมเดลแต่ง "ดูคล้ายภาษาไทย" แต่อ่านไม่รู้เรื่อง? (มันรู้สถิติแค่ 1 ตัวอักษรย้อนหลัง)</li>
+      <li>ถ้าอยากให้รู้เรื่องขึ้น ต้องทำอย่างไร? (มองย้อนหลังให้ยาวขึ้น → นี่แหละปมปัญหาที่พาเราไปถึง Transformer)</li>
+      <li>GPT ต่างจากของเล่นชิ้นนี้ตรงไหน? — หลักการเดียวกัน แต่ทำนายเป็น "token" มองย้อนหลังนับแสน token และมี weight แสนล้านตัว</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 3 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ, จับคู่) — Bigram ด้วยมือ</div>
+    <p>กำหนดข้อมูลฝึก: <code>"ABAB ABBA"</code> (ไม่นับช่องว่าง)
+    จงสร้างตารางนับว่า หลังตัว A มีตัวอะไรตามกี่ครั้ง และหลังตัว B มีตัวอะไรตามกี่ครั้ง
+    แล้วตอบ: ถ้าข้อความขึ้นต้นด้วย A โมเดลจะทำนายตัวถัดไปว่าอะไร ด้วยความน่าจะเป็นเท่าไหร่</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ลำดับตัวอักษร: A→B, B→A, A→B, B→A(ข้ามช่องว่าง? ไม่ข้าม — เริ่มคู่ใหม่ A→B), A→B, B→B, B→A<br>
+      นับเฉพาะคู่ที่ติดกันในแต่ละคำ: <code>AB, BA, AB</code> และ <code>AB, BB, BA</code><br>
+      หลัง A: เป็น B ทั้ง 3 ครั้ง → P(B|A) = 3/3 = <strong>100%</strong><br>
+      หลัง B: เป็น A 2 ครั้ง, เป็น B 1 ครั้ง → P(A|B) = 2/3 ≈ 67%, P(B|B) = 1/3 ≈ 33%<br>
+      ดังนั้นถ้าขึ้นต้นด้วย A โมเดลทำนายตัวถัดไปเป็น <strong>B แน่นอน (100%)</strong>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — จัดยุคให้ถูก</div>
+    <p>ระบบต่อไปนี้อยู่ในยุคไหนของ AI (1–4) เพราะอะไร:
+    (ก) ระบบวินิจฉัยโรคจากกฎ if-then ที่หมอเขียนให้ &nbsp;
+    (ข) โปรแกรมกรองสแปมที่เรียนจากอีเมลตัวอย่าง 10,000 ฉบับ &nbsp;
+    (ค) แอปแยกรูปแมว/หมาจากภาพถ่ายดิบ &nbsp;
+    (ง) แชทบอทที่เขียนเรียงความได้</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      (ก) ยุค 1 Symbolic — มนุษย์เขียนกฎเอง &nbsp;
+      (ข) ยุค 2 ML — เรียนจากตัวอย่าง แต่ feature (คำต้องสงสัย) มนุษย์ช่วยเลือก &nbsp;
+      (ค) ยุค 3 Deep Learning — หา feature จากภาพดิบเอง &nbsp;
+      (ง) ยุค 4 LLM — ทำนายคำถัดไปจากข้อมูลมหาศาล
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — โมเดลภาษาจากชื่อตัวเอง</div>
+    <p>นำ "ชื่อ-นามสกุลภาษาอังกฤษของตัวเอง พิมพ์ซ้ำ 3 รอบ" เป็นข้อมูลฝึก
+    ใส่ใน demo ด้านบน แล้ว (1) จดความน่าจะเป็นของตัวอักษรถัดไปหลังตัวอักษรตัวแรกของชื่อ
+    (2) กดแต่งข้อความ 5 ครั้ง เลือกผลที่ "เหมือนชื่อเรา" ที่สุดมาส่ง
+    (3) อธิบาย 2–3 ประโยค: ทำไมผลถึงเหมือนบ้างไม่เหมือนบ้าง</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน, ส่งสัปดาห์หน้า) — สัมภาษณ์ LLM</div>
+    <p>ถาม ChatGPT/Claude/Gemini ตัวใดตัวหนึ่งว่า <em>"คุณทำงานอย่างไร อธิบายแบบง่ายๆ"</em>
+    คัดลอกคำตอบมา แล้ววงกลมคำที่ตรงกับที่เรียนวันนี้ (เช่น ทำนาย, ข้อมูลฝึก, ความน่าจะเป็น)
+    พร้อมเขียน 1 ย่อหน้า: คำตอบของมันตรงกับ "AI สี่ยุค" ที่เรียนอย่างไร</p>
+  </div>
+
+  <h2>ส่วนที่ 4 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    เราได้เห็นแล้วว่า LLM โดยแก่นคือ "เครื่องทำนายตัวถัดไปจากสถิติ" — bigram ของเราคือบรรพบุรุษสายตรงของ GPT
+    ปัญหาคือมันมองย้อนหลังได้แค่ 1 ตัวอักษร และ "นับสถิติ" ตรงๆ ไม่ไหวเมื่อข้อมูลใหญ่ขึ้น<br>
+    <strong>สัปดาห์หน้า:</strong> เราจะแก้ปัญหา "นับไม่ไหว" ด้วยแนวคิดที่ทรงพลังที่สุดใน ML —
+    แทนที่จะนับ ให้<em>ปรับตัวเลข (weight) ไปเรื่อยๆ จนทำนายแม่น</em> เริ่มจากเครื่องทำนายตัวเลข: Linear Regression
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">Karpathy</span> <a href="https://www.youtube.com/watch?v=zjkBMFhNj_g" target="_blank">Intro to Large Language Models</a> — ภาพรวม LLM 1 ชั่วโมงที่ดีที่สุด (ดูได้เลยตั้งแต่สัปดาห์แรก แล้วกลับมาดูซ้ำเรื่อง LLM จะเข้าใจคนละระดับ)</li>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=LPZh9BOjkQs" target="_blank">Large Language Models explained briefly</a> — แอนิเมชัน 8 นาที สรุปแก่นเดียวกับคาบนี้</li>
+      <li><span class="src">MIT 6.S191</span> <a href="https://introtodeeplearning.com" target="_blank">Lecture 1: Intro to Deep Learning</a> — เทียบโครงคอร์สเราได้ตรงตัว</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="../index.html">← หน้าหลัก</a>
+    <a href="week02.html">Linear Regression →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== Bigram demo: นับสถิติ "ตัวอักษรถัดไป" จากข้อความฝึก =====
+let counts = {};   // counts[a][b] = จำนวนครั้งที่ b ตามหลัง a
+
+function train() {
+  counts = {};
+  const text = document.getElementById('corpus').value.replace(/\s+/g, ' ').trim();
+  for (let i = 0; i < text.length - 1; i++) {
+    const a = text[i], b = text[i + 1];
+    if (a === ' ' || b === ' ') continue;          // ไม่ข้ามขอบเขตคำ
+    counts[a] = counts[a] || {};
+    counts[a][b] = (counts[a][b] || 0) + 1;
+  }
+  const nPairs = Object.values(counts).reduce((s, m) => s + Object.values(m).reduce((x, y) => x + y, 0), 0);
+  document.getElementById('probs').innerHTML =
+    `✅ เทรนเสร็จ! โมเดลนับคู่ตัวอักษรได้ ${nPairs} คู่ — ลองพิมพ์ตัวอักษรดู`;
+  document.getElementById('generated').textContent = '—';
+  predict();
+}
+
+function distribution(ch) {
+  const m = counts[ch];
+  if (!m) return null;
+  const total = Object.values(m).reduce((a, b) => a + b, 0);
+  return Object.entries(m)
+    .map(([c, n]) => [c, n / total])
+    .sort((x, y) => y[1] - x[1]);
+}
+
+function predict() {
+  const ch = document.getElementById('seed').value;
+  const box = document.getElementById('probs');
+  if (!ch) return;
+  const dist = distribution(ch);
+  if (!dist) {
+    box.innerHTML = `โมเดลไม่เคยเห็นตัว "<strong>${ch}</strong>" ในข้อมูลฝึกเลย — ทำนายไม่ได้ (LLM ก็มีปัญหาแบบนี้กับสิ่งที่ไม่อยู่ในข้อมูลฝึก!)`;
+    return;
+  }
+  box.innerHTML = `หลังตัว "<strong>${ch}</strong>" โมเดลทำนายว่า:` + dist.slice(0, 6).map(([c, p]) =>
+    `<div class="prob-bar"><span class="char">${c}</span>` +
+    `<span class="bar" style="width:${Math.round(p * 220)}px"></span>` +
+    `<span class="pct">${(p * 100).toFixed(0)}%</span></div>`
+  ).join('');
+}
+
+function sample(dist) {
+  let r = Math.random();
+  for (const [c, p] of dist) { r -= p; if (r <= 0) return c; }
+  return dist[0][0];
+}
+
+let genTimer = null;
+function generate() {
+  const starts = Object.keys(counts);
+  const out = document.getElementById('generated');
+  if (!starts.length) { out.textContent = 'กดเทรนโมเดลก่อนครับ'; return; }
+  let ch = starts[Math.floor(Math.random() * starts.length)];
+  let text = ch;
+  for (let i = 0; i < 40; i++) {
+    const dist = distribution(ch);
+    if (!dist) break;                              // เจอทางตัน หยุดแต่ง
+    ch = sample(dist);
+    text += ch;
+  }
+  // พิมพ์ทีละตัวอักษร — ให้เห็นว่าโมเดล "ผลิตทีละตัว" เหมือน LLM จริงตอนสตรีมคำตอบ
+  clearInterval(genTimer);
+  out.innerHTML = '<span class="cursor">▌</span>';
+  let i = 0;
+  genTimer = setInterval(() => {
+    out.innerHTML = text.slice(0, ++i) + '<span class="cursor">▌</span>';
+    if (i >= text.length) { clearInterval(genTimer); out.textContent = text; }
+  }, 45);
+}
+
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big fade">📄 ข้อมูลฝึก: "แมวกิน แมวนอน"</div>' +
+    '<div class="note">โมเดลภาษาทุกตัวเริ่มจากข้อความตัวอย่างแบบนี้ — GPT แค่ใช้ทั้งอินเทอร์เน็ต</div>',
+  s => {
+    const pairs = ['แ→ม', 'ม→ว', 'ว→ก', 'ก→ิ', 'ิ→น', 'แ→ม', 'ม→ว', 'ว→น', 'น→อ', 'อ→น'];
+    s.innerHTML = '<div class="note" style="margin:0 0 6px">จับคู่ "ตัวหน้า→ตัวตาม" ทีละคู่:</div>' +
+      pairs.map((p, i) => `<span class="chip" style="animation-delay:${i * .22}s">${p}</span>`).join('');
+  },
+  s => s.innerHTML = '<table class="fade"><tr><th>หลังตัว</th><th>เจอตัวอะไร (กี่ครั้ง)</th></tr>' +
+    '<tr><td>แ</td><td>ม (2)</td></tr><tr><td>ม</td><td>ว (2)</td></tr>' +
+    '<tr class="hl"><td>ว</td><td>ก (1), น (1)</td></tr><tr><td>น</td><td>อ (1)</td></tr></table>' +
+    '<div class="note">ตารางนับนี้คือ "โมเดล" ทั้งตัว — ความรู้ทั้งหมดที่มันมี</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">เปลี่ยนจำนวนครั้งเป็นความน่าจะเป็น:</div>' +
+    '<div class="bar-row"><span class="lbl">ก | ว</span><span class="bar" data-w="42%"></span>50%</div>' +
+    '<div class="bar-row"><span class="lbl">น | ว</span><span class="bar" data-w="42%"></span>50%</div>' +
+    '<div class="bar-row"><span class="lbl">ม | แ</span><span class="bar" data-w="84%"></span>100%</div>',
+  s => {
+    const tbl = { 'แ': [['ม', 100]], 'ม': [['ว', 100]], 'ว': [['ก', 50], ['น', 50]], 'น': [['อ', 100]], 'อ': [['น', 100]] };
+    s.innerHTML = '<div class="note" style="margin:0 0 6px">👆 กดเลือกตัวอักษรที่โมเดล "เห็น" แล้วดูคำทำนาย:</div>' +
+      '<div id="w1b"></div><div id="w1o" style="margin-top:8px"></div>';
+    s.querySelector('#w1b').innerHTML = Object.keys(tbl).map(c => `<button class="mini-btn" data-c="${c}">${c}</button>`).join('');
+    const show = c => {
+      s.querySelectorAll('.mini-btn').forEach(x => x.classList.toggle('sel', x.dataset.c === c));
+      s.querySelector('#w1o').innerHTML = tbl[c].map(([ch, p]) =>
+        `<div class="bar-row"><span class="lbl">${ch}</span><span class="bar" style="width:${p * .75}%"></span>${p}%</div>`).join('');
+    };
+    s.querySelectorAll('.mini-btn').forEach(b => b.onclick = () => show(b.dataset.c));
+    show('ว');
+  },
+  s => {
+    s.innerHTML = '<div class="note" style="margin:0 0 6px">ต่อลูกโซ่ทีละตัว — วิธีเดียวกับที่ ChatGPT พิมพ์คำตอบ:</div>' +
+      '<div class="big" id="sgen"></div><button class="mini-btn" id="w1r">🎲 ให้โมเดลแต่งอีกครั้ง</button>';
+    const outs = ['แ → แม → แมว → แมวก → แมวกิ → แมวกิน ✓', 'แ → แม → แมว → แมวน → แมวนอ → แมวนอน ✓'];
+    const run = () => typeText(s.querySelector('#sgen'), outs[Math.floor(Math.random() * outs.length)], 55);
+    s.querySelector('#w1r').onclick = run;
+    run();
+  },
+];
+
+// แอนิเมชันเล่าเรื่อง 4 ยุค: ไฮไลต์ทีละยุค
+let eraTimer = null;
+function playEras() {
+  const eras = document.querySelectorAll('#eras > li');
+  clearInterval(eraTimer);
+  eras.forEach(li => li.classList.remove('active'));
+  let i = -1;
+  const step = () => {
+    if (i >= 0) eras[i].classList.remove('active');
+    i++;
+    if (i >= eras.length) { clearInterval(eraTimer); return; }
+    eras[i].classList.add('active');
+    eras[i].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+  step();
+  eraTimer = setInterval(step, 3500);
+}
+</script>
+
+</body>
+</html>

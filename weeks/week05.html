@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-means การจับกลุ่มข้อมูลเอง | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ===== เวทีเล่น K-means (ชิ้นเอกของสัปดาห์) ===== */
+  .km-stage {
+    position: relative; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border); background: #f7f8fb;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+    touch-action: none;
+  }
+  .km-stage canvas { display: block; width: 100%; height: auto; cursor: pointer; }
+  .km-stage.addmode canvas { cursor: copy; }
+
+  /* ป้ายสถานะลอยมุมบนซ้ายของเวที */
+  .km-status {
+    position: absolute; top: 10px; left: 10px; right: 10px; z-index: 3;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    pointer-events: none;
+  }
+  .km-badge {
+    background: rgba(255,255,255,.93); border: 1px solid #d5dae6;
+    border-radius: 999px; padding: 5px 12px; font-size: .86rem; color: #1f2533;
+    box-shadow: 0 4px 14px -8px rgba(15,23,42,.5); backdrop-filter: blur(3px);
+    display: inline-flex; align-items: center; gap: 7px; font-weight: 600;
+  }
+  .km-badge .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .km-badge.big { font-size: .95rem; }
+  .km-badge.done { background: linear-gradient(135deg,#12a150,#0ea371); color:#fff; border-color:transparent; }
+
+  /* แผงขั้นตอนสด (สลับ 2 สเต็ป) */
+  .km-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 4px; }
+  .km-step {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--card);
+    transition: border-color .25s, box-shadow .25s, background .25s; position: relative;
+  }
+  .km-step .st-no {
+    display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%;
+    background: var(--accent-soft); color: var(--accent); font-weight:700; margin-right:8px; font-size:.9rem;
+  }
+  .km-step b { font-size: .96rem; }
+  .km-step p { margin: 6px 0 0; font-size: .85rem; color: var(--muted); }
+  .km-step.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); background: var(--accent-soft); }
+  .km-step.on .st-no { background: var(--accent); color:#fff; }
+
+  /* แผงควบคุม */
+  .km-ctl { margin-top: 14px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .km-field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .km-field > label.cap { flex: 0 0 auto; font-weight: 600; min-width: 108px; }
+  .km-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button {
+    font-family: inherit; font-size: .85rem; font-weight: 600; border: none; background: transparent;
+    color: var(--ink); padding: 6px 14px; cursor: pointer; margin: 0; box-shadow: none; transition: background .2s, color .2s;
+  }
+  .seg button.on { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+  .seg button:not(.on):hover { background: rgba(127,127,127,.1); }
+
+  .km-toggle {
+    font-family: inherit; font-size: .85rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    border-radius: 999px; padding: 6px 14px; margin: 0; box-shadow: none;
+    display: inline-flex; align-items: center; gap: 6px; transition: all .2s;
+  }
+  .km-toggle.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .km-toggle .box { width: 14px; height: 14px; border-radius: 4px; border: 2px solid currentColor; position: relative; }
+  .km-toggle.on .box::after { content: "✓"; position: absolute; inset: -4px 0 0; font-size: 11px; text-align: center; }
+
+  .km-count { display: inline-flex; align-items: center; gap: 4px; }
+  .km-count button {
+    font-family: inherit; font-size: 1.15rem; font-weight: 700; line-height: 1; width: 32px; height: 32px;
+    border: 1px solid var(--border); background: var(--card); color: var(--accent); border-radius: 9px;
+    cursor: pointer; margin: 0; box-shadow: none; padding: 0; transition: all .15s;
+  }
+  .km-count button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+  .km-count button:disabled { opacity: .35; cursor: not-allowed; }
+  .km-count-val { font-weight: 700; font-size: 1.05rem; min-width: 26px; text-align: center; color: var(--ink); }
+
+  /* ปุ่มเล่นหลัก */
+  .km-run { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .km-run button { display:inline-flex; align-items:center; gap:7px; }
+  #btnPlay { background: linear-gradient(135deg, var(--accent), #8b5cf6); min-width: 132px; justify-content:center; }
+
+  /* มาตรวัด inertia (WCSS) */
+  .km-inertia { display:flex; align-items:center; gap:10px; font-size:.9rem; }
+  .km-inertia .cap { font-weight:600; min-width:108px; }
+  .km-meter { flex:1 1 140px; height:14px; background: rgba(127,127,127,.14); border-radius:8px; overflow:hidden; min-width:120px; }
+  .km-meter > i { display:block; height:100%; width:100%; border-radius:8px;
+    background: linear-gradient(90deg,#12a150,#f59e0b,#e5484d); transition: width .45s cubic-bezier(.2,.8,.3,1); }
+  .km-inertia .val { font-weight:700; color:var(--accent); min-width:74px; text-align:right; font-variant-numeric: tabular-nums; }
+
+  .km-hint { font-size: .85rem; color: var(--muted); margin: 2px 0 0; }
+  .km-hint b { color: var(--accent); }
+
+  @media (min-width: 620px) {
+    .km-ctl { grid-template-columns: 1fr 1fr; }
+    .km-ctl .span2 { grid-column: 1 / -1; }
+  }
+
+  .cdot { display: inline-block; width: .72em; height: .72em; border-radius: 50%; vertical-align: middle; margin: 0 1px; }
+  .cx { display:inline-block; font-weight:800; vertical-align: middle; }
+
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+
+  .eq-final { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin:12px 0; text-align:center; }
+  [data-theme="dark"] .eq-final { background: var(--card); }
+  .wsec { margin-bottom: 8px; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>K-means: จับกลุ่มข้อมูลเอง (โจทย์ที่ "ไม่มีเฉลย")</h1>
+    <p class="subtitle">สัปดาห์ที่แล้ว KNN มี "ป้ายคำตอบ" ให้ดูเพื่อนบ้าน — แต่ถ้าไม่มีใครติดป้ายไว้เลยล่ะ? K-means ให้เครื่อง <strong>ค้นพบกลุ่มเอง</strong> จากความใกล้ในปริภูมิ นี่คือประตูสู่ Unsupervised Learning</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="9" r="3"/><circle cx="11" cy="17" r="3"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>แยกได้ว่า <strong>Supervised</strong> (มีเฉลย เช่น KNN, Classification) ต่างจาก <strong>Unsupervised</strong> (ไม่มีเฉลย เช่น Clustering) อย่างไร</li>
+      <li>อธิบายวงจร <strong>Lloyd's algorithm</strong> ของ K-means ได้ 2 ขั้นวน: <em>①&nbsp;จับจุดเข้าเซนทรอยด์ที่ใกล้สุด</em> → <em>②&nbsp;ขยับเซนทรอยด์ไปที่ค่าเฉลี่ยของสมาชิก</em> → ซ้ำจนนิ่ง</li>
+      <li>คำนวณด้วยมือ 1–2 รอบได้ และเข้าใจว่า <strong>inertia (WCSS)</strong> ลดลงทุกรอบจนลู่เข้า</li>
+      <li>รู้จุดอ่อน: ต้องเลือก <strong>K</strong> เอง (elbow method), ไวต่อ <strong>จุดเริ่ม</strong> (k-means++), และชอบกลุ่มทรงกลม</li>
+      <li>เชื่อมโยงได้ว่า clustering บนเวกเตอร์ <strong>embedding</strong> คือหัวใจของการจัดกลุ่มความหมาย, vector quantization และการสร้าง "โค้ดบุ๊ก" ใน AI</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: "ไม่มีใครบอกว่าถูก แล้วจะรู้กลุ่มได้ไง?" <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">ลองนึกภาพ: เทข้อมูลลูกค้า 500 คน (อายุ, ยอดใช้จ่าย) ลงกระดาษ — <em>ไม่มี</em> ใครติดป้ายว่าใครเป็น "กลุ่มไหน" แต่พอมองด้วยตา เราก็ <strong>เห็นก้อน</strong> ของจุดที่เกาะกันเป็นกระจุกอยู่ดี สมองเราจับกลุ่มเองอัตโนมัติ — K-means คือการสอนให้เครื่องทำแบบนั้น</p>
+    <p>ต่างจากสัปดาห์ที่แล้วชัดเจน: <strong>KNN เป็น Supervised</strong> (ข้อมูลฝึกมีป้ายคลาสกำกับ เอาไว้ให้จุดใหม่ลอกเพื่อนบ้าน) — ส่วน <strong>K-means เป็น Unsupervised</strong> (ข้อมูลไม่มีป้ายเลย เป้าหมายคือ <em>ค้นพบ</em> โครงสร้างกลุ่มที่ซ่อนอยู่)</p>
+
+    <p style="margin-bottom:6px"><strong>หัวใจ K-means วนแค่ 2 ขั้น</strong> (เริ่มจากสุ่มวาง "ศูนย์กลางกลุ่ม" หรือ <em>centroid</em> มา K อัน):</p>
+    <style>
+      .km-cycle { display:flex; align-items:stretch; gap:12px; flex-wrap:wrap; margin:12px 0 8px; }
+      .kc-step { flex:1 1 250px; border:1.5px solid var(--border); border-radius:14px; padding:13px 16px 14px;
+        background:var(--card); position:relative; overflow:hidden; }
+      .kc-step::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; }
+      .kc-a::before { background:#2456e6; } .kc-b::before { background:#8b5cf6; }
+      .kc-head { display:flex; align-items:center; gap:9px; margin-bottom:7px; }
+      .kc-no { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+        font-weight:800; color:#fff; font-size:1rem; flex:none; }
+      .kc-a .kc-no { background:#2456e6; } .kc-b .kc-no { background:#8b5cf6; }
+      .kc-head h5 { margin:0; font-size:1.04rem; font-weight:700; }
+      .kc-a h5 { color:#2456e6; } .kc-b h5 { color:#7c3aed; }
+      .kc-head .em { font-size:1.3rem; }
+      .kc-step p { margin:0; font-size:.92rem; line-height:1.7; color:var(--ink); }
+      .kc-arrow { align-self:center; font-size:1.7rem; color:#94a3b8; font-weight:800; flex:none; }
+      .km-loop { display:flex; align-items:center; gap:11px; margin:0; padding:11px 16px; border-radius:12px;
+        background:linear-gradient(135deg, rgba(18,161,80,.13), rgba(14,163,113,.05));
+        border:1px solid rgba(18,161,80,.32); font-size:.95rem; line-height:1.6; }
+      .km-loop .spin { font-size:1.5rem; color:#12a150; display:inline-block; flex:none; animation:kcSpin 3.4s linear infinite; }
+      .km-loop b { color:#12a150; }
+      @keyframes kcSpin { to { transform:rotate(360deg); } }
+      @media (prefers-reduced-motion:reduce){ .km-loop .spin{ animation:none; } }
+      @media (max-width:620px){ .kc-arrow{ transform:rotate(90deg); align-self:center; } }
+    </style>
+    <div class="km-cycle">
+      <div class="kc-step kc-a">
+        <div class="kc-head"><span class="kc-no">1</span><span class="em"><svg class="ico" viewBox="0 0 24 24" style="color:#2456e6"><path d="M12 21s6-5.7 6-11a6 6 0 1 0-12 0c0 5.3 6 11 6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></span><h5>Assign — จับกลุ่ม</h5></div>
+        <p>จับ<b>ทุกจุด</b>เข้ากับ centroid ที่ <b>ใกล้ที่สุด</b> แล้วระบายสีตามกลุ่มที่ได้</p>
+      </div>
+      <div class="kc-arrow">→</div>
+      <div class="kc-step kc-b">
+        <div class="kc-head"><span class="kc-no">2</span><span class="em"><svg class="ico" viewBox="0 0 24 24" style="color:#8b5cf6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle class="f" cx="12" cy="12" r="1.4"/></svg></span><h5>Update — ขยับศูนย์กลาง</h5></div>
+        <p>เลื่อน centroid แต่ละอันไปที่ <b>ค่าเฉลี่ย (mean)</b> ของสมาชิกในกลุ่มมัน</p>
+      </div>
+    </div>
+    <div class="km-loop"><span class="spin"><svg class="ico" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.7L20 8"/><path d="M20 12a8 8 0 0 1-13.7 5.7L4 16"/><path d="M20 4v4h-4M4 20v-4h4"/></svg></span><span>ทำ ① → ② <b>ซ้ำไปเรื่อยๆ</b> จนไม่มีจุดไหนย้ายกลุ่มอีก = <b>ลู่เข้า (converged)</b> <svg class="ico" viewBox="0 0 24 24" style="color:#12a150"><path d="M20 6L9 17l-5-5"/></svg> แล้วหยุด</span></div>
+    <p style="margin-bottom:0">คำว่า "means" ในชื่อก็คือขั้น ② นี่เอง — centroid คือ <em>ค่าเฉลี่ยตำแหน่ง</em> ของสมาชิกในกลุ่ม · อัลกอริทึมนี้มีชื่อทางการว่า <strong>Lloyd's algorithm</strong></p>
+  </div>
+
+  </section>
+
+  <!-- ===================== ส่วนที่ 2 — เวทีเล่นชิ้นเอก ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: กดเล่นแล้วดู K-means "ค้นพบกลุ่ม" ต่อหน้า <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo km" id="km">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M8.2 8.4l7.6 .2M7.3 9.2l4 5.5M16.7 10.2l-3.6 4.6"/></svg>K-means Playground</h3>
+    <p style="margin-top:0">กด <b style="color:#2456e6">▶ เล่นอัตโนมัติ</b> แล้วดูเซนทรอยด์ (เครื่องหมาย <span class="cx" style="color:#e5484d">✕</span>) ค่อย ๆ เลื่อนเข้าใจกลางกลุ่ม พร้อมจุดเปลี่ยนสีตามกลุ่มที่มันสังกัด · หรือกด <b style="color:#8b5cf6">⏭ ทีละขั้น</b> เพื่อดูสลับ ①Assign / ②Update ทีละสเต็ป ·
+    ลอง <b style="color:#12a150"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle class="f" cx="9" cy="9" r="1.3"/><circle class="f" cx="15" cy="15" r="1.3"/><circle class="f" cx="15" cy="9" r="1.3"/><circle class="f" cx="9" cy="15" r="1.3"/></svg> สุ่มเริ่มใหม่</b> หลาย ๆ ครั้งเพื่อเห็นว่า "จุดเริ่มต่างกัน ได้ผลต่างกัน" · หรือ <b>ลากเซนทรอยด์</b>ด้วยเมาส์เองก็ได้!</p>
+
+    <div class="km-stage" id="kmStage">
+      <div class="km-status" id="kmStatus">
+        <span class="km-badge big" id="kmPhase"><span class="dot" style="background:#9aa3b8"></span> พร้อมเริ่ม — กด ▶</span>
+        <span class="km-badge" id="kmIter">รอบที่ 0</span>
+      </div>
+      <canvas id="kmCanvas" width="780" height="460"></canvas>
+    </div>
+
+    <!-- แผงสองขั้นตอนสด -->
+    <div class="km-steps">
+      <div class="km-step" id="stAssign">
+        <b><span class="st-no">1</span>Assign — จับจุดเข้ากลุ่มใกล้สุด</b>
+        <p>วัดระยะจากทุกจุดไปยังเซนทรอยด์ทั้ง K อัน แล้วให้จุดนั้น "เป็นสมาชิก" ของตัวที่ใกล้ที่สุด (เส้นบาง = สังกัดใคร)</p>
+      </div>
+      <div class="km-step" id="stUpdate">
+        <b><span class="st-no">2</span>Update — ขยับเซนทรอยด์ไปค่าเฉลี่ย</b>
+        <p>เลื่อนเซนทรอยด์แต่ละอันไปที่ "จุดกึ่งกลาง (mean)" ของสมาชิกในกลุ่มมัน แล้ววนกลับไปขั้น 1 ใหม่</p>
+      </div>
+    </div>
+
+    <div class="km-inertia" style="margin:8px 0 2px">
+      <span class="cap"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V6M4 20h16M8 20v-6M12 20v-9M16 20v-4M20 20V9"/></svg>inertia (ยิ่งน้อยยิ่งกอดกลุ่มแน่น)</span>
+      <span class="km-meter"><i id="kmMeter"></i></span>
+      <span class="val" id="kmInertia">—</span>
+    </div>
+
+    <div class="km-ctl">
+      <div class="km-field span2 km-run">
+        <button id="btnPlay"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg><span id="playLbl">เล่นอัตโนมัติ</span></button>
+        <button id="btnStep"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M5 5v14M9 12h11"/><path d="M15 7l5 5-5 5"/></svg>ทีละขั้น</button>
+        <button id="btnReseed" style="background:linear-gradient(135deg,#12a150,#0ea371)"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>สุ่มเริ่มใหม่</button>
+        <button id="btnNewData" style="background:linear-gradient(135deg,#64748b,#94a3b8)"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg>สุ่มข้อมูลใหม่</button>
+      </div>
+
+      <div class="km-field">
+        <label class="cap" for="kInput">จำนวนกลุ่ม K</label>
+        <div class="km-count">
+          <button id="kMinus" title="ลด K">−</button>
+          <span class="km-count-val" id="kVal">3</span>
+          <button id="kPlus" title="เพิ่ม K (สูงสุด 6)">+</button>
+        </div>
+        <span class="km-hint" style="margin:0">(2–6 กลุ่ม)</span>
+      </div>
+
+      <div class="km-field">
+        <label class="cap">ชุดข้อมูล</label>
+        <div class="seg" id="dsSeg">
+          <button data-ds="blobs" class="on">ก้อนกลม</button>
+          <button data-ds="uneven">ขนาดต่างกัน</button>
+          <button data-ds="moons">พระจันทร์คู่</button>
+        </div>
+      </div>
+
+      <div class="km-field">
+        <label class="cap">วิธีวางจุดเริ่ม</label>
+        <div class="seg" id="initSeg">
+          <button data-init="random" class="on">สุ่มล้วน</button>
+          <button data-init="kpp">k-means++</button>
+        </div>
+      </div>
+
+      <div class="km-field km-chips">
+        <button class="km-toggle on" id="tgVoronoi"><span class="box"></span> แสดงอาณาเขตกลุ่ม</button>
+        <button class="km-toggle on" id="tgSpokes"><span class="box"></span> เส้นโยงสังกัด</button>
+        <button class="km-toggle" id="tgAdd"><span class="box"></span> โหมดวางจุดเอง</button>
+      </div>
+
+      <p class="km-hint span2" id="kmHint"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ลองเลือกชุด <b>พระจันทร์คู่</b> แล้วตั้ง K=2 กดเล่น — จะเห็นว่า K-means <b>ตัดตรง</b> ผ่ากลาง แยกพระจันทร์ไม่ได้ (มันชอบกลุ่มทรงกลม) นี่คือจุดอ่อนสำคัญที่ต้องรู้!</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่น demo:</strong>
+    <ul style="margin:6px 0 0">
+      <li>กด "<svg class="ico" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle class="f" cx="9" cy="9" r="1.3"/><circle class="f" cx="15" cy="15" r="1.3"/><circle class="f" cx="15" cy="9" r="1.3"/><circle class="f" cx="9" cy="15" r="1.3"/></svg> สุ่มเริ่มใหม่" ด้วย <em>สุ่มล้วน</em> หลาย ๆ ครั้ง — ทำไมบางครั้งได้กลุ่มสวย บางครั้งได้กลุ่มเพี้ยน? แล้วสลับเป็น <em>k-means++</em> ผลนิ่งขึ้นไหม?</li>
+      <li>ดูมาตร inertia ระหว่างเล่น — มันลดลง <em>ทุกรอบ</em> จริงไหม? มีรอบไหนที่มัน "เพิ่มขึ้น" บ้างหรือเปล่า? (คำใบ้: ไม่มีทางเพิ่ม)</li>
+      <li>เพิ่ม K ให้มากกว่าจำนวนก้อนจริง (เช่นข้อมูล 3 ก้อน แต่ตั้ง K=6) — เกิดอะไรขึ้นกับก้อนข้อมูล? inertia ยิ่งเล็กลงเรื่อย ๆ แปลว่า "ยิ่ง K มากยิ่งดี" หรือไม่?</li>
+    </ul>
+  </div>
+
+  <!-- ═════════ Elbow Method — กราฟหา K วาดตัวเองสดๆ ═════════ -->
+  <style>
+    .el-wrap { border:1px solid var(--border); border-radius:14px; background:var(--card); padding:14px 16px; margin-top:14px; }
+    .el-wrap canvas { display:block; width:100%; height:auto; }
+    #elRun { background:linear-gradient(135deg,#12a150,#0ea371); }
+    .el-note { font-size:.85rem; color:var(--muted); margin:8px 0 0; }
+    .el-note b { color:#12a150; }
+    .elk { font-family:inherit; font-weight:700; font-size:.86rem; border:1px solid var(--border);
+      background:var(--card); color:var(--ink); border-radius:9px; padding:5px 13px; cursor:pointer; margin:0; }
+    .elk.on { background:linear-gradient(135deg,#12a150,#0ea371); color:#fff; border-color:transparent; }
+    /* ═════════ บีบสีรูปภาพ ═════════ */
+    .iq-row { display:grid; grid-template-columns:1fr; gap:12px; margin-top:10px; }
+    @media(min-width:700px){ .iq-row{ grid-template-columns:1fr 1fr; } }
+    .iq-cell { position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+    .iq-cell canvas { display:block; width:100%; height:auto; }
+    .iq-tag { position:absolute; top:8px; left:8px; background:rgba(10,14,30,.72); color:#fff;
+      border-radius:999px; padding:4px 12px; font-size:.8rem; font-weight:700; backdrop-filter:blur(3px); }
+    .iq-pal { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; min-height:40px; align-items:center; }
+    .iq-sw { height:38px; border-radius:9px; border:2px solid rgba(255,255,255,.75);
+      box-shadow:0 2px 8px rgba(0,0,0,.25); min-width:22px; flex:1 1 0;
+      transition:background .25s, flex-grow .4s; position:relative; }
+    .iq-ctl { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:12px; }
+    .iq-ctl input[type=range]{ flex:1 1 130px; accent-color:var(--accent); min-width:120px; }
+    .iq-kv { font-weight:800; font-size:1.1rem; color:var(--accent); background:var(--accent-soft);
+      border-radius:9px; padding:1px 12px; min-width:40px; text-align:center; }
+    #iqRun { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+    .iq-status { font-size:.86rem; color:var(--muted); font-weight:600; min-width:150px; }
+    .iq-status b { color:var(--accent); }
+    /* ── หัวข้อ widget ให้เด่นชัด: แถบ banner ไล่สี ── */
+    .demo > h3 {
+      display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+      font-size:1.14rem; font-weight:700; letter-spacing:.2px; color:#fff;
+      background:linear-gradient(135deg,#7c3aed 0%, #4f46e5 55%, #2456e6 100%);
+      border-radius:11px; padding:11px 16px; margin:0 0 14px;
+      box-shadow:0 6px 18px -9px rgba(79,70,229,.75);
+    }
+    .demo > h3 .ico { color:#fff; flex:none; width:1.25em; height:1.25em; }
+    .demo > h3 b, .demo > h3 strong { color:#fff; }
+    /* ── เลขข้อ ①②③ เป็นวงกลม badge ให้เด่น ── */
+    .h-step { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:1.12rem; font-weight:700; }
+    .step-badge { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; flex:none;
+      border-radius:50%; color:#fff; font-weight:800; font-size:1.02rem; box-shadow:0 3px 9px -3px rgba(15,23,42,.55); }
+    .sb-1 { background:linear-gradient(135deg,#2456e6,#4f46e5); }
+    .sb-2 { background:linear-gradient(135deg,#12a150,#0ea371); }
+    .sb-3 { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+    /* ── กริดตัวอย่างการจับกลุ่ม K=1..8 ── */
+    .k-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+    @media(max-width:640px){ .k-grid{ grid-template-columns:repeat(2,1fr); } }
+    .k-cell { border:1px solid var(--border); border-radius:10px; padding:6px 6px 4px; background:var(--card); text-align:center; }
+    .k-cell.elbow { border:2px solid #12a150; box-shadow:0 0 0 3px rgba(18,161,80,.14); }
+    .k-cell canvas { display:block; width:100%; height:auto; border-radius:6px; }
+    .k-cell .lab { font-size:.82rem; font-weight:700; margin-top:4px; color:var(--ink); }
+    .k-cell .lab .tag { color:#12a150; }
+  </style>
+
+  <div class="demo" id="elbow">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M4 15l5-6 4 3 6-7"/></svg> แล้วจะรู้ได้ไงว่า K ควรเป็นเท่าไหร่? — ดู Elbow Method รันสดๆ</h3>
+    <p style="margin-top:0">กดปุ่มแล้วเครื่องจะ <strong>รัน K-means จริง 8 ครั้ง</strong> (K=1 ถึง 8, อย่างละ 3 รอบเอาค่าดีสุด) บนข้อมูล 3 ก้อน
+    แล้ววาดกราฟ inertia ทีละจุด · <b>ตัวช่วยเข้าใจที่มา:</b> พื้นหลังแบ่งเป็น <b style="color:#12a150">โซนคุ้ม</b> / <b style="color:#7a879b">โซนไม่คุ้ม</b>
+    และมี<b>แท่ง "ลดลงกี่ %"</b> ใต้กราฟ — จะเห็นชัดว่าช่วงแรกลดฮวบ (คุ้ม) พอเลย <b style="color:#12a150">"ข้อศอก"</b> ก็ลดนิดเดียว (ไม่คุ้ม) นั่นคือ K ที่พอดี</p>
+    <!-- ① เซนทรอยด์มาจากไหน (k-means วนหาค่าเฉลี่ย) -->
+    <div style="border:1px dashed var(--border); border-radius:12px; padding:12px 14px; margin:6px 0 14px; background:rgba(36,86,230,.045)">
+      <h4 class="h-step" style="margin:0 0 8px"><span class="step-badge sb-1">1</span>เซนทรอยด์มาจากไหน? — มันไม่ได้ "สุ่มแล้วจบ" แต่ "ขยับจนเข้าที่"</h4>
+      <p style="margin:0 0 8px; font-size:.92rem; line-height:1.75">
+        ถ้าเริ่มมีแค่จุด แล้วเซนทรอยด์โผล่มาจากไหน? — <b>สุ่มแค่ตอนเริ่ม (init) เท่านั้น!</b>
+        จากนั้น k-means วน 2 สเต็ปซ้ำ → <b>①จับแต่ละจุดเข้าเซนทรอยด์ที่ใกล้สุด</b> แล้ว <b>②ย้ายเซนทรอยด์ไปที่ "ค่าเฉลี่ย (average)" ของจุดในกลุ่มมัน</b>
+        ทำซ้ำจน<b>เซนทรอยด์ไม่ขยับ (นิ่ง)</b> · ตัวอย่างจริง 6 จุด K=2 กดไล่ทีละสเต็ป คำนวณตามได้:</p>
+      <div style="border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px; text-align:center">
+        <canvas id="elCE" width="430" height="430" style="width:100%; max-width:430px; height:auto"></canvas>
+      </div>
+      <div class="km-run" style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+        <button id="ceP" class="elk">◀ ก่อนหน้า</button>
+        <button id="ceN" class="elk on" style="background:linear-gradient(135deg,#2456e6,#4f46e5);color:#fff;border-color:transparent">▶ ถัดไป</button>
+        <button id="ceR" class="elk">↺ เริ่มใหม่</button>
+        <span class="el-note" id="ceMsg" style="margin:0; color:#2456e6"></span>
+      </div>
+      <div id="ceDetail" style="margin-top:8px; font-size:.9rem; line-height:1.85; background:rgba(36,86,230,.05); border-radius:9px; padding:9px 13px; min-height:46px"></div>
+    </div>
+    <script>
+    /* ① ตัวอย่างคำนวณ k-means 6 จุด K=2 — เซนทรอยด์ = ค่าเฉลี่ย วนจนนิ่ง */
+    (function(){
+      const cv=document.getElementById('elCE'); if(!cv) return;
+      const cx=cv.getContext('2d'); const CW=430,CH=430, dpr=Math.min(2,window.devicePixelRatio||1);
+      cv.width=CW*dpr; cv.height=CH*dpr; cx.setTransform(dpr,0,0,dpr,0,0);
+      const P=[[1,1],[2,1],[1,2],[7,7],[8,7],[7,8]];   /* 6 จุด: ก้อนซ้ายล่าง + ขวาบน */
+      const COL=['#2456e6','#e5484d'];
+      const pad=34, sc=(CW-2*pad)/9;   /* สเกลเท่ากันทั้ง x,y → ช่องจัตุรัส */
+      const mX=x=>pad+x*sc, mY=y=>(CH-pad)-y*sc;
+      const STEPS=[
+        { c:null, a:null,
+          m:'เริ่มต้น — มีแค่ 6 จุด',
+          d:'ยังไม่มีกลุ่ม ยังไม่มีเซนทรอยด์ · เรารู้แค่พิกัดจุด 6 จุดนี้เท่านั้น' },
+        { c:[[1,1],[2,1]], a:null, rnd:true,
+          m:'สุ่มวางเซนทรอยด์เริ่มต้น (K=2)',
+          d:'<svg class="ico" viewBox="0 0 24 24" style="color:#e5484d"><path d="M12 4v16M4 8l16 8M20 8L4 16"/></svg> <b>ตรงนี้แหละที่ "สุ่ม"</b> — วางเซนทรอยด์ 2 ตัวมั่วๆ (นิยมสุ่มไปทับตำแหน่งจุดข้อมูล) · ตอนนี้ <b style="color:#2456e6">●</b>=(1,1) <b style="color:#e5484d">●</b>=(2,1) ยังไม่มีความหมายอะไร' },
+        { c:[[1,1],[2,1]], a:[0,1,0,1,1,1],
+          m:'รอบ 1 · จับกลุ่ม (assign)',
+          d:'แต่ละจุดเลือกเซนทรอยด์ที่<b>ใกล้ที่สุด</b> → จุด 1,3 เข้า <b style="color:#2456e6">●</b> · จุด 2,4,5,6 เข้า <b style="color:#e5484d">●</b> (การจับกลุ่มยังเพี้ยนอยู่ เพราะเซนทรอยด์เพิ่งสุ่มมา)' },
+        { c:[[1,1.5],[6,5.75]], a:[0,1,0,1,1,1], mean:true,
+          m:'รอบ 1 · ขยับเซนทรอยด์ = ค่าเฉลี่ย',
+          d:'<b>นี่คือหัวใจ:</b> เซนทรอยด์ใหม่ = ค่าเฉลี่ยของจุดในกลุ่ม (ไม่ใช่จุดสุ่มแล้ว!)<br><b style="color:#2456e6">●</b> = เฉลี่ย{(1,1),(1,2)} = ( (1+1)/2 , (1+2)/2 ) = <b>(1, 1.5)</b><br><b style="color:#e5484d">●</b> = เฉลี่ย{(2,1),(7,7),(8,7),(7,8)} = ( (2+7+8+7)/4 , (1+7+7+8)/4 ) = <b>(6, 5.75)</b>' },
+        { c:[[1,1.5],[6,5.75]], a:[0,0,0,1,1,1],
+          m:'รอบ 2 · จับกลุ่มใหม่',
+          d:'พอเซนทรอยด์ขยับ จุดบางจุดเปลี่ยนเจ้าของ → คราวนี้จุด 2 ใกล้ <b style="color:#2456e6">●</b> มากกว่า เลยย้ายมา <b style="color:#2456e6">●</b> · ตอนนี้ <b style="color:#2456e6">●</b>={1,2,3} <b style="color:#e5484d">●</b>={4,5,6} เริ่มตรงก้อนจริงแล้ว' },
+        { c:[[4/3,4/3],[22/3,22/3]], a:[0,0,0,1,1,1], mean:true,
+          m:'รอบ 2 · ขยับอีกครั้ง = ค่าเฉลี่ยใหม่',
+          d:'<b style="color:#2456e6">●</b> = เฉลี่ย{(1,1),(2,1),(1,2)} = ( (1+2+1)/3 , (1+1+2)/3 ) = <b>(1.33, 1.33)</b><br><b style="color:#e5484d">●</b> = เฉลี่ย{(7,7),(8,7),(7,8)} = ( 22/3 , 22/3 ) = <b>(7.33, 7.33)</b> → เข้าใจกลางก้อนพอดี' },
+        { c:[[4/3,4/3],[22/3,22/3]], a:[0,0,0,1,1,1],
+          m:'รอบ 3 · จับกลุ่ม → ไม่มีใครเปลี่ยนแล้ว',
+          d:'<svg class="ico" viewBox="0 0 24 24" style="color:#12a150"><path d="M20 6L9 17l-5-5"/></svg> <b>ไม่มีจุดไหนเปลี่ยนกลุ่มอีก = "นิ่ง" (converged)</b> → หยุดวน · เซนทรอยด์เข้าที่เรียบร้อย (ผ่านการสุ่มครั้งเดียวตอนแรก + ขยับ 2 รอบ)' },
+        { c:[[4/3,4/3],[22/3,22/3]], a:[0,0,0,1,1,1], inertia:true,
+          m:'ตอนนี้ค่อยวัด inertia!',
+          d:'<b>วัดตอนเซนทรอยด์นิ่งแล้วเท่านั้น!</b> · inertia = Σ d² โดย d² ของแต่ละจุด = (Δx)²+(Δy)² ถึงเซนทรอยด์กลุ่มตัวเอง:'
+            +'<br><b style="color:#2456e6">●</b> กลุ่มซ้าย (ศูนย์กลาง 1.33, 1.33):'
+            +'<br>&nbsp;&nbsp;จุด1 (1,1): (1−1.33)²+(1−1.33)² = 0.11+0.11 = <b>0.22</b>'
+            +'<br>&nbsp;&nbsp;จุด2 (2,1): (2−1.33)²+(1−1.33)² = 0.44+0.11 = <b>0.56</b>'
+            +'<br>&nbsp;&nbsp;จุด3 (1,2): (1−1.33)²+(2−1.33)² = 0.11+0.44 = <b>0.56</b>'
+            +'<br><b style="color:#e5484d">●</b> กลุ่มขวา (ศูนย์กลาง 7.33, 7.33): จุด4,5,6 คำนวณแบบเดียวกัน = <b>0.22, 0.56, 0.56</b>'
+            +'<br><b>รวม = (0.22+0.56+0.56) + (0.22+0.56+0.56) = 2.67</b> ← ที่มาเลข inertia ในข้อ ②' }
+      ];
+      let i=0;
+      function draw(s){
+        cx.clearRect(0,0,CW,CH); cx.fillStyle='#f7f8fb'; cx.fillRect(0,0,CW,CH);
+        cx.strokeStyle='rgba(127,127,127,.12)'; cx.lineWidth=1;
+        for(let g=0;g<=9;g++){ cx.beginPath(); cx.moveTo(mX(g),mY(0)); cx.lineTo(mX(g),mY(9)); cx.stroke();
+          cx.beginPath(); cx.moveTo(mX(0),mY(g)); cx.lineTo(mX(9),mY(g)); cx.stroke(); }
+        if(s.inertia&&s.c){ cx.lineWidth=1.5;
+          P.forEach((p,k)=>{ const c=s.c[s.a[k]]; cx.strokeStyle=COL[s.a[k]]; cx.globalAlpha=.5;
+            cx.beginPath(); cx.moveTo(mX(p[0]),mY(p[1])); cx.lineTo(mX(c[0]),mY(c[1])); cx.stroke(); }); cx.globalAlpha=1; }
+        P.forEach((p,k)=>{ cx.beginPath(); cx.arc(mX(p[0]),mY(p[1]),8,0,Math.PI*2);
+          cx.fillStyle=(s.a?COL[s.a[k]]:'#94a3b8'); cx.fill();
+          cx.fillStyle='#fff'; cx.font='700 10px Poppins,sans-serif'; cx.textAlign='center'; cx.textBaseline='middle';
+          cx.fillText(k+1,mX(p[0]),mY(p[1])); });
+        cx.textBaseline='alphabetic';
+        if(s.c){ s.c.forEach((c,j)=>{ const X=mX(c[0]),Y=mY(c[1]), r=9;
+          cx.strokeStyle=COL[j]; cx.lineWidth=4;
+          if(s.rnd){ cx.setLineDash([4,3]); }
+          cx.beginPath(); cx.moveTo(X-r,Y-r); cx.lineTo(X+r,Y+r); cx.moveTo(X+r,Y-r); cx.lineTo(X-r,Y+r); cx.stroke();
+          cx.setLineDash([]);
+          cx.fillStyle=COL[j]; cx.font='700 10.5px Kanit,sans-serif'; cx.textAlign='center';
+          cx.fillText('เซนทรอยด์',X,Y-14); }); }
+      }
+      function render(){ const s=STEPS[i]; draw(s);
+        document.getElementById('ceMsg').innerHTML='ขั้น '+(i+1)+'/'+STEPS.length+' — <b>'+s.m+'</b>';
+        document.getElementById('ceDetail').innerHTML=s.d;
+        const bn=document.getElementById('ceN'); bn.textContent=i>=STEPS.length-1?'✓ ครบแล้ว':'▶ ถัดไป';
+      }
+      document.getElementById('ceN').addEventListener('click',()=>{ if(i<STEPS.length-1){i++;render();} });
+      document.getElementById('ceP').addEventListener('click',()=>{ if(i>0){i--;render();} });
+      document.getElementById('ceR').addEventListener('click',()=>{ i=0;render(); });
+      render();
+    })();
+    </script>
+
+    <!-- ② inertia มาจากไหน -->
+    <div style="border:1px dashed var(--border); border-radius:12px; padding:12px 14px; margin:6px 0 14px; background:rgba(18,161,80,.04)">
+      <h4 class="h-step" style="margin:0 0 8px"><span class="step-badge sb-2">2</span>ทีนี้ "inertia" คำนวณยังไง?</h4>
+      <p style="margin:0 0 8px; font-size:.92rem; line-height:1.75">
+        พอรู้แล้วว่าเซนทรอยด์มาจากการวนหาค่าเฉลี่ยจนนิ่ง (ข้อ ①) · <b>inertia = ผลรวมของ (ระยะจากแต่ละจุด → เซนทรอยด์ของกลุ่มตัวเอง)²</b> รวมทุกจุด ·
+        แต่ละ <b>"ก้าน"</b> ในภาพคือ 1 ระยะ · เอาความยาวก้านมายกกำลังสองแล้วบวกกันหมด = inertia ·
+        ยิ่ง K มาก เซนทรอยด์ยิ่งเยอะ จุดยิ่งใกล้เซนทรอยด์ → <b>ก้านสั้นลง → inertia น้อยลง</b> ·
+        กดเปลี่ยน K ดู แล้วเลขที่ได้ = <b>เลขเดียวกับที่ไปโผล่บนกราฟข้อ ③</b></p>
+      <div style="border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px; text-align:center"><canvas id="elCalc" width="460" height="460" style="width:100%; max-width:460px; height:auto"></canvas></div>
+      <div class="km-run" style="margin-top:10px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+        <span style="font-weight:600; font-size:.9rem">ลองเปลี่ยน K:</span>
+        <button class="elk" data-k="1">K=1</button>
+        <button class="elk" data-k="2">K=2</button>
+        <button class="elk on" data-k="3">K=3</button>
+        <span class="el-note" id="elCalcMsg" style="margin:0"></span>
+      </div>
+    </div>
+
+    <h4 class="h-step" style="margin:16px 0 6px"><span class="step-badge sb-3">3</span>ทีนี้พล็อต inertia ของทุก K (1→8) แล้วมองหา "ข้อศอก"</h4>
+    <div class="el-wrap"><canvas id="elCanvas" width="700" height="340"></canvas></div>
+    <div class="km-run" style="margin-top:10px">
+      <button id="elRun">▶ รัน K = 1 → 8</button>
+      <span class="el-note" id="elMsg">ยังไม่ได้รัน — กดปุ่มเลย</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <div style="font-weight:600; font-size:.92rem; margin-bottom:8px">แล้วแต่ละ K จับกลุ่มออกมาหน้าตาแบบไหน? — <b style="color:#12a150">K=3</b> จับได้พอดี 3 ก้อนจริง · ตั้งแต่ K=4 เริ่ม<b>ซอยก้อนที่แน่นอยู่แล้ว</b>ให้ย่อยลง (จุดสี × = เซนทรอยด์)</div>
+      <div id="kGrid" class="k-grid"></div>
+    </div>
+  </div>
+
+  <div class="demo" id="iq">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.5"/><path d="M20 16l-5-4-9 7"/></svg> K-means ในโลกจริง: บีบรูป "ล้านสี" ให้เหลือ K สี — ดูมันเกิดทีละรอบ</h3>
+    <p style="margin-top:0">ทุกพิกเซลคือ <strong>จุดในปริภูมิสี RGB 3 มิติ</strong> — K-means หากลุ่มสี K กลุ่ม แล้วแทนทุกพิกเซลด้วย "เซนทรอยด์สี" ที่ใกล้สุด
+    กดรันแล้วดูภาพขวา<strong>คมขึ้นทีละรอบ</strong>พร้อมจานสีที่ค่อยๆ ลงตัว — นี่แหละ <em>vector quantization</em> เทคนิคเดียวกับที่ใช้บีบอัดข้อมูลใน AI</p>
+    <div class="iq-row">
+      <div class="iq-cell"><span class="iq-tag">ต้นฉบับ (สีต่อเนื่องนับล้าน)</span><canvas id="iqSrc" width="360" height="240"></canvas></div>
+      <div class="iq-cell"><span class="iq-tag" id="iqTagOut">เหลือ K สี</span><canvas id="iqOut" width="360" height="240"></canvas></div>
+    </div>
+    <div class="iq-pal" id="iqPal"><span style="font-size:.84rem;color:var(--muted)">จานสี K สีจะโผล่ตรงนี้ (ความกว้าง = สัดส่วนพิกเซล)</span></div>
+    <div class="iq-ctl">
+      <label style="font-weight:600">จำนวนสี K</label>
+      <input type="range" id="iqK" min="2" max="16" step="1" value="5">
+      <span class="iq-kv" id="iqKv">5</span>
+      <button id="iqRun">▶ บีบสีด้วย K-means</button>
+      <span class="iq-status" id="iqStatus"></span>
+    </div>
+    <p class="el-note" style="margin-top:8px"><b>ลอง:</b> K=2 (เหลือแค่โทนมืด/สว่าง) → K=5 (เริ่มเห็นภาพ) → K=16 (เกือบแยกไม่ออกจากต้นฉบับ) — จำนวนบิตที่ใช้เก็บภาพลดมหาศาล!</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — เดินทีละขั้น ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — K-means ทำงานทีละขั้น (มโนภาพการวน) <span class="badge">ทีละขั้น</span></h2>
+  <p>ในเวทีด้านบน กดปุ่ม <b>⏭ ทีละขั้น</b> ค้าง ๆ แล้วจับคู่กับลำดับนี้ จะเห็นชัดว่าแต่ละกดคือครึ่งรอบ (สลับ ①/②):</p>
+  <ol class="steps">
+    <li><strong>เริ่ม (Initialize):</strong> สุ่มวางเซนทรอยด์ K อันลงในสนาม — ยังไม่มีจุดไหนมีสี (ยังไม่สังกัดกลุ่ม)</li>
+    <li><strong>① Assign:</strong> แต่ละจุดมองหาเซนทรอยด์ที่ใกล้ตัวที่สุด แล้วเปลี่ยนสีตามกลุ่มนั้น (เกิด "อาณาเขต" ให้เห็น)</li>
+    <li><strong>② Update:</strong> เซนทรอยด์แต่ละอันเลื่อนไปที่ค่าเฉลี่ยตำแหน่งของสมาชิกในกลุ่มมัน (✕ ขยับเข้าใจกลางก้อน)</li>
+    <li><strong>วนซ้ำ:</strong> พอเซนทรอยด์ขยับ จุดบางจุดก็มีเจ้าของใหม่ → กลับไปทำ ① แล้ว ② อีก inertia ลดลงทุกครั้ง</li>
+    <li><strong>ลู่เข้า (Converged):</strong> เมื่อทำ ① แล้วไม่มีจุดไหนเปลี่ยนกลุ่ม และ ② เซนทรอยด์แทบไม่ขยับ → หยุด ป้ายขึ้น "นิ่งแล้ว!"</li>
+    <li><strong>ตีความ:</strong> กลุ่มที่ได้คือ "โครงสร้างที่ K-means ค้นพบ" — เอาไปตั้งชื่อ/วิเคราะห์ต่อได้ (เช่น "กลุ่มลูกค้าใช้จ่ายสูง")</li>
+  </ol>
+
+  <!-- ═════════ ห้องแล็บ K-means: วางจุดเอง → ดูตัวเลขคำนวณจริงทุกรอบ ═════════ -->
+  <style>
+    .kml-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+    @media(min-width:860px){ .kml-grid{ grid-template-columns: 480px 1fr; align-items:start; } }
+    .kml-stage { position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);
+      background:#f7f8fb; touch-action:none; }
+    .kml-stage canvas { display:block; width:100%; height:auto; cursor:copy; }
+    .kml-tip { font-size:.82rem; color:var(--muted); margin:8px 0 0; }
+    .kml-tip b { color:var(--accent); }
+    .kml-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+    #kmlNext { background:linear-gradient(135deg,var(--accent),#8b5cf6); min-width:190px; }
+    /* log ของรอบคำนวณ */
+    .kml-log { display:flex; flex-direction:column; gap:10px; max-height:640px; overflow-y:auto; padding-right:4px; }
+    .kml-blk { border:1.5px solid var(--border); border-radius:12px; padding:11px 14px; background:var(--card); }
+    .kml-blk.cur { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+    .kml-blk h5 { margin:0 0 7px; font-size:.93rem; display:flex; align-items:center; gap:8px; }
+    .kml-blk h5 .rn { background:var(--accent-soft); color:var(--accent); border-radius:999px;
+      padding:1px 11px; font-size:.8rem; font-weight:700; }
+    .kml-body { font-size:.87rem; line-height:1.8; overflow-x:auto; }
+    .kml-body table { border-collapse:collapse; margin:4px 0; }
+    .kml-body th, .kml-body td { border:1px solid var(--border); padding:3px 9px; text-align:center;
+      font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .kml-body th { background:var(--accent-soft); color:var(--accent); }
+    .kml-body td .fm { display:block; font-size:.74rem; color:var(--muted); }
+    .kml-body td.win { font-weight:700; }
+    .kml-chip { display:inline-block; padding:0 9px; border-radius:999px; color:#fff; font-weight:700; font-size:.8rem; }
+    .kml-mv { color:#e5484d; font-weight:700; font-size:.78rem; }
+    .kml-mean { background:rgba(127,127,127,.07); border-radius:9px; padding:5px 11px; margin:3px 0;
+      font-variant-numeric:tabular-nums; overflow-x:auto; white-space:nowrap; }
+    .kml-done { background:linear-gradient(135deg,#12a150,#0ea371); color:#fff; border-radius:10px;
+      padding:8px 14px; font-weight:700; text-align:center; }
+  </style>
+
+  <div class="demo" id="kmLab">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 8.5A2 2 0 0 0 7 21h10a2 2 0 0 0 1.8-3.5L14 9V3"/><path d="M8 15h8"/></svg> ห้องแล็บ K-means — วางจุดเองไม่กี่จุด แล้วดู "เลขจริง" ของทุกรอบ Assign / Update</h3>
+    <p style="margin-top:0"><b style="color:var(--accent)">คลิกวางจุด</b> สัก 4–6 จุด (พิกัดล็อกที่ .5 ให้เลขสวย) — เซนทรอยด์ <b style="color:#e5484d">✕</b> ลากวางเองได้
+    แล้วกดปุ่มเดินทีละครึ่งรอบ: เครื่องจะกาง<strong>ตารางระยะทางทุกคู่</strong> (สูตร √ พร้อมเลขข้างใน) ไฮไลต์ตัวที่ชนะ → แล้วโชว์<strong>การเฉลี่ยพิกัดใหม่</strong>แบบเห็นผลบวกจริง วนจนลู่เข้า</p>
+
+    <div class="kml-grid">
+      <div>
+        <div class="kml-stage"><canvas id="kmlCv" width="480" height="476"></canvas></div>
+        <p class="kml-tip"><b>คลิก</b> = เพิ่มจุด (สูงสุด 20) · <b>ลากจุด/✕</b> = ย้าย · <b>ดับเบิลคลิกจุด</b> = ลบ</p>
+        <div class="kml-btns">
+          <button id="kmlNext">① คำนวณระยะ + จัดกลุ่ม</button>
+        </div>
+        <div class="kml-btns">
+          <span style="font-weight:600">จำนวนกลุ่ม K</span>
+          <div class="seg" id="kmlKSeg">
+            <button data-k="2" class="on">2</button><button data-k="3">3</button><button data-k="4">4</button>
+          </div>
+          <span class="kml-tip" style="margin:0">(เปลี่ยน K = เริ่มรอบใหม่)</span>
+        </div>
+        <div class="kml-btns">
+          <button id="kmlPreset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ตัวอย่างสวยตาม K</button>
+          <button id="kmlReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">เริ่มใหม่ (เคลียร์รอบ)</button>
+          <button id="kmlClear" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ล้างจุด</button>
+        </div>
+      </div>
+      <div class="kml-log" id="kmlLog">
+        <div class="kml-blk"><div class="kml-body" style="color:var(--muted)">ตารางคำนวณจะโผล่ตรงนี้ — วางจุดแล้วกดปุ่ม ① ได้เลย</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const cv=document.getElementById('kmlCv'); if(!cv) return;
+    const ctx=cv.getContext('2d');
+    const W=480,H=476, dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+    const PAD={l:34,r:12,t:12,b:30}, X0=PAD.l,X1=W-PAD.r,Y0=PAD.t,Y1=H-PAD.b;   /* X1−X0 = Y1−Y0 = 434 → ช่องจัตุรัส */
+    const px=x=>X0+x/10*(X1-X0), py=y=>Y1-y/10*(Y1-Y0);
+    const ux=p=>(p-X0)/(X1-X0)*10, uy=p=>(Y1-p)/(Y1-Y0)*10;
+    const snap=v=>Math.max(0,Math.min(10,Math.round(v*2)/2));
+    const COLS=['#2456e6','#e5484d','#12a150','#f59e0b'];
+    const nf=v=>{ const r=Math.round(v*100)/100; return (Math.abs(r-Math.round(r))<1e-9? String(Math.round(r)) : String(r)); };
+
+    /* ตำแหน่งเซนทรอยด์ตั้งต้น + ชุดจุดตัวอย่างต่อค่า K */
+    const CENT0=[{x:1,y:6},{x:6,y:2},{x:9,y:8},{x:4,y:9}];
+    const PRESET={
+      2:[{x:1,y:2},{x:2,y:1},{x:2,y:3},{x:7,y:7},{x:8,y:6}],
+      3:[{x:1,y:2},{x:2,y:1},{x:2,y:3},{x:7,y:7},{x:8,y:6},{x:8,y:1},{x:9,y:2}],
+      4:[{x:1,y:2},{x:2,y:1},{x:7,y:7},{x:8,y:6},{x:8,y:1},{x:9,y:2},{x:1,y:8},{x:2,y:9}]
+    };
+    const S={ pts:PRESET[2].map(p=>({x:p.x,y:p.y})), K:2,
+      cents:CENT0.slice(0,2).map(c=>({x:c.x,y:c.y})),
+      asg:[], phase:'assign', round:1, converged:false, drag:null };
+    S.asg=new Array(S.pts.length).fill(-1);
+
+    const chip=k=>'<span class="kml-chip" style="background:'+COLS[k]+'">C'+(k+1)+'</span>';
+    const logEl=document.getElementById('kmlLog'), btn=document.getElementById('kmlNext');
+
+    function addBlock(title, body){
+      logEl.querySelectorAll('.kml-blk').forEach(b=>b.classList.remove('cur'));
+      const d=document.createElement('div'); d.className='kml-blk cur';
+      d.innerHTML='<h5><span class="rn">รอบ '+S.round+'</span>'+title+'</h5><div class="kml-body">'+body+'</div>';
+      logEl.appendChild(d);   /* ไม่ auto-scroll หน้า — ผู้ใช้เลื่อนแถบขวาเองตามต้องการ */
+    }
+
+    /* ---- ① Assign: ตารางระยะทุกคู่ ---- */
+    function stepAssign(){
+      if(!S.pts.length){ return; }
+      const prev=S.asg.slice();
+      let body='<table><tr><th>จุด (x, y)</th>'+S.cents.map((c,k)=>'<th>ระยะ → '+chip(k)+' ('+nf(c.x)+', '+nf(c.y)+')</th>').join('')+'<th>สังกัด</th></tr>';
+      let moves=0;
+      S.pts.forEach((p,i)=>{
+        const ds=S.cents.map(c=>{
+          const dx=p.x-c.x, dy=p.y-c.y;
+          return { v:Math.sqrt(dx*dx+dy*dy), dx, dy };
+        });
+        let bi=0; ds.forEach((d,k)=>{ if(d.v<ds[bi].v-1e-12) bi=k; });
+        S.asg[i]=bi;
+        const mv = prev[i]!==-1 && prev[i]!==bi;
+        if(mv) moves++;
+        body+='<tr><td><b>P'+(i+1)+'</b> ('+nf(p.x)+', '+nf(p.y)+')</td>'
+          +ds.map((d,k)=>'<td class="'+(k===bi?'win':'')+'" style="'+(k===bi?'background:'+COLS[k]+'18;color:'+COLS[k]:'')+'">'
+            +'<span class="fm">√(('+nf(p.x)+'−'+nf(S.cents[k].x)+')² + ('+nf(p.y)+'−'+nf(S.cents[k].y)+')²) = √'+nf(d.dx*d.dx+d.dy*d.dy)+'</span>'
+            +'<b>'+d.v.toFixed(2)+'</b>'+(k===bi?' ✓':'')+'</td>').join('')
+          +'<td>'+chip(bi)+(mv?' <span class="kml-mv">ย้าย!</span>':'')+'</td></tr>';
+      });
+      body+='</table>';
+      const first = prev.every(a=>a===-1);
+      if(!first && moves===0){
+        body+='<div class="kml-done" style="margin-top:6px"><svg class="ico" viewBox="0 0 24 24" style="color:#12a150"><path d="M20 6L9 17l-5-5"/></svg> ไม่มีจุดไหนย้ายกลุ่ม → <b>ลู่เข้าแล้ว!</b> ใช้ทั้งหมด '+(S.round-1)+' รอบเต็ม</div>';
+        S.converged=true;
+        addBlock('① คำนวณระยะ + จัดกลุ่ม', body);
+        btn.textContent='✓ ลู่เข้าแล้ว — เริ่มใหม่ได้'; animate('assign'); return;
+      }
+      body+='<div style="margin-top:4px">'+(first?'ทุกจุดได้กลุ่มครั้งแรก':'มีจุดย้ายกลุ่ม '+moves+' จุด — ยังไม่นิ่ง')+' → ต่อไปขยับเซนทรอยด์</div>';
+      addBlock('① คำนวณระยะ + จัดกลุ่ม (เลือกตัวที่ใกล้สุด)', body);
+      S.phase='update';
+      btn.textContent='② ขยับเซนทรอยด์ไปค่าเฉลี่ย';
+      animate('assign');
+    }
+
+    /* ---- ② Update: ค่าเฉลี่ยแบบกางผลบวก ---- */
+    function stepUpdate(){
+      const from=S.cents.map(c=>({x:c.x,y:c.y}));
+      let body='';
+      S.cents.forEach((c,k)=>{
+        const mem=S.pts.map((p,i)=>({p,i})).filter(o=>S.asg[o.i]===k);
+        if(!mem.length){ body+='<div class="kml-mean">'+chip(k)+' ไม่มีสมาชิก — อยู่ที่เดิม ('+nf(c.x)+', '+nf(c.y)+')</div>'; return; }
+        const sx=mem.reduce((s,o)=>s+o.p.x,0), sy=mem.reduce((s,o)=>s+o.p.y,0);
+        const nx=sx/mem.length, ny=sy/mem.length;
+        const mv=Math.hypot(nx-c.x, ny-c.y);
+        body+='<div class="kml-mean">'+chip(k)+' ใหม่ = ( ('+mem.map(o=>nf(o.p.x)).join('+')+')/'+mem.length
+          +' , ('+mem.map(o=>nf(o.p.y)).join('+')+')/'+mem.length+' ) = ( <b>'+nx.toFixed(2)+'</b> , <b>'+ny.toFixed(2)+'</b> )'
+          +' <span style="color:var(--muted)">· ขยับ '+mv.toFixed(2)+'</span></div>';
+        c.x=nx; c.y=ny;
+      });
+      body+='<div style="margin-top:4px">เซนทรอยด์ขยับแล้ว → กลับไปวัดระยะใหม่ (รอบถัดไป)</div>';
+      addBlock('② ขยับเซนทรอยด์ไปค่าเฉลี่ยของสมาชิก', body);
+      S.phase='assign'; S.round++;
+      btn.textContent='① คำนวณระยะ + จัดกลุ่ม (รอบ '+S.round+')';
+      animate('update', from);
+    }
+
+    /* ---- อนิเมชัน tween (setInterval ล้วนตามกติกาโปรเจกต์) ---- */
+    function animate(type, from){ S.anim={ type, from:from||null, t:0 }; }
+
+    btn.addEventListener('click', ()=>{
+      if(S.converged){ resetRounds(); return; }
+      if(!S.pts.length) return;
+      S.phase==='assign'? stepAssign() : stepUpdate();
+    });
+
+    function resetRounds(){
+      S.asg=new Array(S.pts.length).fill(-1);
+      S.phase='assign'; S.round=1; S.converged=false;
+      logEl.innerHTML='';
+      btn.textContent='① คำนวณระยะ + จัดกลุ่ม';
+      draw();
+    }
+    document.getElementById('kmlReset').addEventListener('click', resetRounds);
+    /* เลือกจำนวนกลุ่ม K = 2/3/4 */
+    function setK(k, keepPts){
+      S.K=k;
+      S.cents=CENT0.slice(0,k).map(c=>({x:c.x,y:c.y}));
+      if(!keepPts) S.pts=PRESET[k].map(p=>({x:p.x,y:p.y}));
+      document.querySelectorAll('#kmlKSeg button').forEach(b=>b.classList.toggle('on', +b.dataset.k===k));
+      resetRounds();
+    }
+    document.getElementById('kmlKSeg').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      setK(+b.dataset.k, true);          /* คงจุดเดิม เปลี่ยนเฉพาะจำนวนเซนทรอยด์ */
+    });
+    document.getElementById('kmlPreset').addEventListener('click', ()=> setK(S.K, false));
+    document.getElementById('kmlClear').addEventListener('click', ()=>{ S.pts=[]; resetRounds(); });
+
+    /* ---- แคนวาส ---- */
+    let _t=0, t0=0;
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.lineWidth=1;
+      for(let v=0;v<=10;v+=2){
+        ctx.strokeStyle='rgba(90,100,120,.13)';
+        ctx.beginPath(); ctx.moveTo(px(v),Y0); ctx.lineTo(px(v),Y1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X0,py(v)); ctx.lineTo(X1,py(v)); ctx.stroke();
+        ctx.fillStyle='#5b6475'; ctx.font='600 10px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(v,px(v),Y1+6);
+        ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(v,X0-6,py(v));
+      }
+      ctx.strokeStyle='rgba(90,100,120,.33)'; ctx.strokeRect(X0,Y0,X1-X0,Y1-Y0);
+      /* ตำแหน่งเซนทรอยด์ระหว่างอนิเมชัน: update = glide จากที่เดิมไปค่าเฉลี่ยใหม่ */
+      const ae = S.anim ? 1-Math.pow(1-Math.min(1,S.anim.t),3) : 1;
+      const cpos = k => { const c=S.cents[k];
+        if(S.anim && S.anim.type==='update' && S.anim.from[k])
+          return { x:S.anim.from[k].x+(c.x-S.anim.from[k].x)*ae, y:S.anim.from[k].y+(c.y-S.anim.from[k].y)*ae };
+        return { x:c.x, y:c.y }; };
+      /* เส้นโยงสังกัด — assign: เส้นค่อยๆ งอกจากจุดไปเซนทรอยด์ · update: เส้นตามเซนทรอยด์ที่กำลังขยับ */
+      S.pts.forEach((p,i)=>{
+        const a=S.asg[i]; if(a<0) return;
+        const cp=cpos(a), sx=px(p.x), sy=py(p.y), fx=px(cp.x), fy=py(cp.y);
+        const frac = (S.anim && S.anim.type==='assign') ? ae : 1;
+        ctx.strokeStyle=COLS[a]+'66'; ctx.lineWidth=1.4;
+        ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx+(fx-sx)*frac, sy+(fy-sy)*frac); ctx.stroke();
+      });
+      /* จุด */
+      S.pts.forEach((p,i)=>{
+        const a=S.asg[i];
+        ctx.beginPath(); ctx.arc(px(p.x),py(p.y),6.2,0,Math.PI*2);
+        ctx.fillStyle=a>=0?COLS[a]:'#9aa3b8'; ctx.fill();
+        ctx.lineWidth=1.6; ctx.strokeStyle='#fff'; ctx.stroke();
+        ctx.fillStyle='#1f2533'; ctx.font='700 10.5px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText('P'+(i+1)+' ('+nf(p.x)+', '+nf(p.y)+')', px(p.x), py(p.y)-9);
+      });
+      /* เซนทรอยด์ ✕ — เต้นเบาๆ เหมือนหายใจ (ตกแต่ง) + ขยับลื่นตอน update */
+      S.cents.forEach((c,k)=>{
+        const cp=cpos(k), X=px(cp.x), Y=py(cp.y);
+        const br = 11 + Math.sin(_t*3 + k*1.3) * 1.4;
+        ctx.beginPath(); ctx.arc(X,Y,br+5,0,Math.PI*2);
+        ctx.globalAlpha=.22; ctx.lineWidth=2; ctx.strokeStyle=COLS[k]; ctx.stroke(); ctx.globalAlpha=1;
+        ctx.beginPath(); ctx.arc(X,Y,br,0,Math.PI*2);
+        ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=3; ctx.strokeStyle=COLS[k]; ctx.stroke();
+        ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(X-4.5,Y-4.5); ctx.lineTo(X+4.5,Y+4.5);
+        ctx.moveTo(X+4.5,Y-4.5); ctx.lineTo(X-4.5,Y+4.5); ctx.stroke();
+        ctx.fillStyle=COLS[k]; ctx.font='700 10.5px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText('C'+(k+1)+' ('+nf(c.x)+', '+nf(c.y)+')', X, Y+15);
+      });
+      if(!S.pts.length){
+        ctx.fillStyle='#9aa3b8'; ctx.font='600 14px Kanit, sans-serif'; ctx.textAlign='center';
+        ctx.fillText('คลิกที่นี่เพื่อวางจุด', W/2, H/2);
+      }
+    }
+
+    const loc=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; };
+    cv.addEventListener('pointerdown', e=>{
+      S.anim=null;
+      const p=loc(e);
+      /* จับเซนทรอยด์ก่อน (รัศมีกว้างกว่า) */
+      let ci=-1,cd=16*16;
+      S.cents.forEach((c,k)=>{ const dx=px(c.x)-p.x, dy=py(c.y)-p.y, d2=dx*dx+dy*dy; if(d2<cd){cd=d2;ci=k;} });
+      if(ci>=0){ S.drag={type:'c', i:ci}; try{cv.setPointerCapture(e.pointerId);}catch(_){} return; }
+      let bi=-1,bd=13*13;
+      S.pts.forEach((q,i)=>{ const dx=px(q.x)-p.x, dy=py(q.y)-p.y, d2=dx*dx+dy*dy; if(d2<bd){bd=d2;bi=i;} });
+      if(bi>=0){ S.drag={type:'p', i:bi}; try{cv.setPointerCapture(e.pointerId);}catch(_){} }
+      else if(S.pts.length<20){ S.pts.push({x:snap(ux(p.x)), y:snap(uy(p.y))}); S.asg.push(-1); draw(); }
+    });
+    cv.addEventListener('pointermove', e=>{
+      if(!S.drag) return;
+      const p=loc(e);
+      const o = S.drag.type==='c'? S.cents[S.drag.i] : S.pts[S.drag.i];
+      o.x=snap(ux(p.x)); o.y=snap(uy(p.y));
+      draw();
+    });
+    cv.addEventListener('pointerup', ()=>S.drag=null);
+    cv.addEventListener('dblclick', e=>{
+      const p=loc(e); let bi=-1,bd=13*13;
+      S.pts.forEach((q,i)=>{ const dx=px(q.x)-p.x, dy=py(q.y)-p.y, d2=dx*dx+dy*dy; if(d2<bd){bd=d2;bi=i;} });
+      if(bi>=0){ S.pts.splice(bi,1); S.asg.splice(bi,1); draw(); }
+    });
+
+    /* ลูปวาดต่อเนื่อง — เซนทรอยด์หายใจ + เดินอนิเมชัน tween (rAF = ตกแต่งล้วน) */
+    function frame(ts){
+      if(!t0) t0=ts;
+      _t=(ts-t0)/1000;
+      if(S.anim){ S.anim.t += 0.05; if(S.anim.t>=1) S.anim=null; }
+      draw();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+  </script>
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — ตัวอย่างคำนวณด้วยมือ ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ตัวอย่างคำนวณด้วยมือ (K=2, 1 มิติ ให้เห็นเลขชัด) <span class="badge green">ลงมือ</span></h2>
+
+  <details class="example">
+    <summary>ตัวอย่าง A — ข้อมูล 6 ตัวเลข วน K-means 1 รอบเต็ม</summary>
+    <div class="ans">
+      <strong>โจทย์:</strong> ข้อมูล 1 มิติ: 2, 3, 4, &nbsp; 10, 11, 12 &nbsp; ตั้ง K=2 เริ่มเซนทรอยด์ที่ μ₁=3, μ₂=11
+      <strong>ขั้น ① Assign — จับแต่ละจุดเข้าตัวที่ใกล้กว่า:</strong>
+      2,3,4 ใกล้ μ₁(3) มากกว่า → กลุ่ม 1 · 10,11,12 ใกล้ μ₂(11) มากกว่า → กลุ่ม 2
+      <strong>ขั้น ② Update — เฉลี่ยใหม่:</strong> μ₁ = (2+3+4)/3 = <strong>3.0</strong> · μ₂ = (10+11+12)/3 = <strong>11.0</strong>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>เซนทรอยด์ไม่ขยับเลย (3→3, 11→11) และไม่มีจุดเปลี่ยนกลุ่ม → <strong>ลู่เข้าแล้ว!</strong> ได้กลุ่ม {2,3,4} กับ {10,11,12} ตรงตามสามัญสำนึก
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง B — จุดเริ่มแย่ ทำให้ผลเพี้ยน (บทเรียน k-means++)</summary>
+    <div class="ans">
+      <strong>โจทย์เดิม</strong> 2,3,4,10,11,12 แต่เริ่มเซนทรอยด์แย่ ๆ: μ₁=2, μ₂=3
+      <strong>① Assign:</strong> จุด 2 → μ₁ · จุด 3,4,10,11,12 ใกล้ μ₂(3) กว่า → กลุ่ม 2 (ก้อนขวาโดนดูดหมด)
+      <strong>② Update:</strong> μ₁ = 2/1 = <strong>2.0</strong> · μ₂ = (3+4+10+11+12)/5 = <strong>8.0</strong>
+      <strong>① อีกรอบ:</strong> 2,3,4 → μ₁(2) · 10,11,12 → μ₂(8) · <strong>②:</strong> μ₁=3, μ₂=11 → รอบถัดไปนิ่ง
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>คราวนี้ต้องวน <strong>หลายรอบกว่า</strong> จะได้คำตอบเดิม — จุดเริ่มที่กระจุกกันทำให้ช้า/เสี่ยงติด local minimum · <strong>k-means++</strong> จะเลี่ยงโดยเลือกจุดเริ่มให้ห่างกันไว้ก่อน
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง C — Elbow method: เลือก K จาก inertia</summary>
+    <div class="ans">
+      <strong>ทดลอง:</strong> รันข้อมูลเดิมด้วย K=1,2,3,4 แล้วจด inertia (WCSS):
+      K=1 → 148 &nbsp;·&nbsp; K=2 → <strong>4</strong> &nbsp;·&nbsp; K=3 → 2 &nbsp;·&nbsp; K=4 → 1
+      <strong>อ่านกราฟ:</strong> จาก K=1→2 ลดฮวบ (148→4) แต่ K=2→3→4 ลดทีละนิด
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>"ข้อศอก" อยู่ที่ <strong>K=2</strong> — เพิ่มเกินนี้ inertia ลดไม่คุ้ม (แค่ซอยก้อนที่แน่นอยู่แล้วให้ย่อยลง) จึงเลือก K=2
+    </div>
+  </details>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — วน K-means ด้วยมือ</div>
+    <p>ข้อมูล 1 มิติ: 1, 2, 3, &nbsp;8, 9 &nbsp; ตั้ง K=2 เริ่มที่ μ₁=1, μ₂=2
+    <br>จงวน Assign → Update ไปจนลู่เข้า (แสดงทุกรอบ) แล้วบอกกลุ่มสุดท้ายและเซนทรอยด์</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      <strong>รอบ 1 — ①</strong> จุด 1→μ₁ · 2,3,8,9 ใกล้ μ₂(2) กว่า → กลุ่ม 2 &nbsp; <strong>②</strong> μ₁=1, μ₂=(2+3+8+9)/4=5.5<br>
+      <strong>รอบ 2 — ①</strong> 1,2,3 ใกล้ μ₁(1) กว่า, 8,9 ใกล้ μ₂(5.5) กว่า &nbsp; <strong>②</strong> μ₁=(1+2+3)/3=2, μ₂=(8+9)/2=8.5<br>
+      <strong>รอบ 3 — ①</strong> 1,2,3→μ₁(2) · 8,9→μ₂(8.5) ไม่มีใครย้าย → <strong>ลู่เข้า</strong><br>
+      คำตอบ: กลุ่ม {1,2,3} เซนทรอยด์ 2.0 · กลุ่ม {8,9} เซนทรอยด์ 8.5
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — K-means ≠ KNN</div>
+    <p>เพื่อนสับสนว่า "K ในสองอัลกอริทึมนี้เหมือนกัน" จงอธิบายให้ชัดว่า K ใน <strong>KNN</strong> (เรื่อง KNN) กับ K ใน <strong>K-means</strong> คืออะไร ต่างกันอย่างไร และอันไหน supervised / unsupervised</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      KNN: K = จำนวน<em>เพื่อนบ้าน</em>ที่เอามาโหวตตอนทำนายคลาสของจุดใหม่ — เป็น <strong>supervised</strong> (ต้องมีป้ายคำตอบ)<br>
+      K-means: K = จำนวน<em>กลุ่ม</em>ที่ต้องการแบ่ง — เป็น <strong>unsupervised</strong> (ไม่มีป้าย ค้นกลุ่มเอง)<br>
+      เหมือนกันแค่แนวคิด "วัดระยะ = ความคล้าย" แต่คนละงานคนละจังหวะการใช้
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 3 (การบ้าน) — เลือก K และรับมือจุดอ่อน</div>
+    <p>(ก) อธิบาย <em>elbow method</em> ว่าใช้ inertia เลือก K อย่างไร ทำไมเราไม่เลือก K ที่ inertia ต่ำสุด (K = จำนวนจุด)
+    <br>(ข) ยกตัวอย่างข้อมูลรูปทรงที่ K-means จะจับกลุ่มพลาด และเสนออัลกอริทึมทางเลือก
+    <br>(ค) k-means++ ช่วยแก้ปัญหาอะไร และแก้ด้วยหลักการใด (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — โยงสู่ AI จริง</div>
+    <p>ระบบหนึ่งแปลงรีวิวสินค้า 10,000 ชิ้นเป็นเวกเตอร์ <em>embedding</em> แล้วใช้ K-means จับกลุ่ม
+    จงอธิบายว่า "จุด" และ "ระยะทาง" ในที่นี้คืออะไร, ผลลัพธ์ K กลุ่มเอาไปทำอะไรได้ (เช่นสรุปหัวข้อที่ลูกค้าพูดถึง), และทำไมคุณภาพ embedding จึงสำคัญต่อผลการจับกลุ่ม (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 6 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    K-means เปิดโลก <strong>Unsupervised Learning</strong> — "เรียนรู้โครงสร้างจากข้อมูลดิบที่ไม่มีเฉลย" ซึ่งเป็นจิตวิญญาณเดียวกับที่ LLM ถูก <em>pretrain</em> บนข้อความมหาศาลที่ไม่มีใครติดป้าย<br>
+    ที่ตรงกว่านั้น: เมื่อคำ/เอกสารกลายเป็นเวกเตอร์ <strong>embedding</strong> การ <strong>clustering</strong> ก็คือการจัดกลุ่ม "ความหมายที่คล้ายกัน" เข้าด้วยกัน — ใช้สรุปหัวข้อ (topic discovery), ลดข้อมูลซ้ำ, และจัดระเบียบคลังความรู้ก่อนป้อน RAG · แนวคิด <strong>vector quantization</strong> (แทนเวกเตอร์ด้วย "เซนทรอยด์/โค้ดบุ๊ก" ที่ใกล้สุด) เป็นหัวใจของโมเดลอย่าง <strong>VQ-VAE</strong> และตัวบีบอัด token ของโมเดลภาพ/เสียง — ทั้งหมดคือ K-means ในเสื้อคลุมใหม่<br>
+    <strong>สัปดาห์หน้า:</strong> เราจะกลับสู่โลก <em>supervised</em> อีกครั้งด้วย <strong>Neural Network</strong> — สมองจำลองที่ <em>เรียนรู้</em> เส้นแบ่งเขต/ความน่าจะเป็นเองได้ (รวมถึง softmax ที่ LLM ใช้เลือกคำ) — บล็อกก่อสร้างของ AI ยุคใหม่ทั้งหมด
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=4b5d3muPQmA" target="_blank">K-means clustering, Clearly Explained</a> — อธิบายวงจร assign/update ด้วยภาพ เข้าใจง่ายมากใน 8 นาที</li>
+      <li><span class="src">Visual</span> <a href="https://www.naftaliharris.com/blog/visualizing-k-means-clustering/" target="_blank">Visualizing K-Means Clustering</a> — เว็บอินเทอแอ็กทีฟกดดูทีละสเต็ปบนชุดข้อมูลจริง</li>
+      <li><span class="src">scikit-learn</span> <a href="https://scikit-learn.org/stable/modules/clustering.html#k-means" target="_blank">Clustering — User Guide</a> — เอกสารทางการ พร้อมโค้ด <code>KMeans</code> และการเลือก K ที่เอาไปลองจริงได้ทันที</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week04.html">← KNN</a>
+    <a href="week06.html">Decision Tree &amp; Random Forest →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ======================================================================
+   เวทีเล่น K-means — Lloyd's algorithm มีชีวิต (assign / update วนจนลู่เข้า)
+   ====================================================================== */
+(function () {
+  const PALETTE = ['#2456e6', '#e5484d', '#12a150', '#f59e0b', '#a855f7', '#0ea5e9'];
+  const RGB = [[36,86,230],[229,72,77],[18,161,80],[245,158,11],[168,85,247],[14,165,233]];
+
+  const cv = document.getElementById('kmCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = 780, H = 460;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.aspectRatio = W + '/' + H;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const PAD = { l: 44, r: 16, t: 42, b: 42 };
+  const RX0 = PAD.l, RX1 = W - PAD.r, RY0 = PAD.t, RY1 = H - PAD.b;
+  const clampX = v => Math.max(RX0 + 8, Math.min(RX1 - 8, v));
+  const clampY = v => Math.max(RY0 + 8, Math.min(RY1 - 8, v));
+
+  const bcv = document.createElement('canvas'); bcv.width = W; bcv.height = H;
+  const bctx = bcv.getContext('2d');
+
+  const S = {
+    K: 3, dataset: 'blobs', init: 'random',
+    voronoi: true, spokes: true, addMode: false,
+    pts: [], cents: [], assign: [],
+    phase: 'ready',        // ready | assigned | moving | moved
+    iter: 0, running: false, tween: false, lastMove: 99,
+    converged: false, assignChanged: true,
+    inertia: null, inertia0: null,
+    drag: null, boundaryDirty: true, lastStep: 0
+  };
+
+  let seed = 20260705;
+  function rnd() { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }
+  function gauss() { return (rnd() + rnd() + rnd() + rnd() - 2) * 0.5; }
+
+  /* -------- สร้างข้อมูล -------- */
+  function makeData(name) {
+    const P = [];
+    if (name === 'blobs') {
+      const C = [[220,150],[560,150],[390,340]];
+      C.forEach(([cx, cy]) => { for (let i=0;i<20;i++) P.push({ x: cx+gauss()*140, y: cy+gauss()*140 }); });
+    } else if (name === 'uneven') {
+      const C = [[230,180,26,90],[560,150,16,150],[520,340,10,80]];
+      C.forEach(([cx,cy,n,sp]) => { for (let i=0;i<n;i++) P.push({ x: cx+gauss()*sp, y: cy+gauss()*sp }); });
+    } else if (name === 'moons') {
+      for (let i=0;i<30;i++){
+        const t = Math.PI*(i/29);
+        P.push({ x: 250+Math.cos(t)*190+gauss()*45, y: 300-Math.sin(t)*150+gauss()*45 });
+        P.push({ x: 530-Math.cos(t)*190+gauss()*45, y: 190+Math.sin(t)*150+gauss()*45 });
+      }
+    }
+    P.forEach(p => { p.x = clampX(p.x); p.y = clampY(p.y); });
+    return P;
+  }
+
+  /* -------- วางเซนทรอยด์เริ่มต้น -------- */
+  function seedCents() {
+    const pts = S.pts, K = S.K, cs = [];
+    if (pts.length === 0) { S.cents = []; return; }
+    if (S.init === 'kpp') {
+      let first = pts[Math.floor(rnd() * pts.length)];
+      cs.push({ x: first.x, y: first.y });
+      while (cs.length < K) {
+        const d2 = pts.map(p => {
+          let m = Infinity;
+          cs.forEach(c => { const dx=p.x-c.x, dy=p.y-c.y, d=dx*dx+dy*dy; if (d<m) m=d; });
+          return m;
+        });
+        let sum = d2.reduce((a,b)=>a+b,0), r = rnd()*sum, acc = 0, pick = pts[pts.length-1];
+        for (let i=0;i<pts.length;i++){ acc += d2[i]; if (acc>=r){ pick = pts[i]; break; } }
+        cs.push({ x: pick.x, y: pick.y });
+      }
+    } else {
+      const idx = pts.map((_,i)=>i);
+      for (let i=idx.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); const t=idx[i]; idx[i]=idx[j]; idx[j]=t; }
+      for (let i=0;i<K;i++){ const p = pts[idx[i % pts.length]]; cs.push({ x: p.x + gauss()*8, y: p.y + gauss()*8 }); }
+    }
+    S.cents = cs.map((c, i) => ({ tx: c.x, ty: c.y, px: c.x, py: c.y, trail: [{x:c.x,y:c.y}], ci: i }));
+    S.assign = new Array(pts.length).fill(-1);
+    S.phase = 'ready'; S.iter = 0; S.converged = false; S.tween = false; S.lastMove = 99;
+    S.assignChanged = true; S.inertia = null; S.boundaryDirty = true;
+    updateUI();
+  }
+
+  function resetAll(newData) {
+    if (newData) S.pts = makeData(S.dataset);
+    seedCents();
+  }
+
+  /* -------- ระยะ + ขั้นตอน -------- */
+  // ใช้ตำแหน่ง "ตรรกะ" (tx,ty) ไม่ใช่ตำแหน่งวาด (px,py) — ตรรกะจึงเดินได้แม้ tween ยังไม่จบ
+  function nearest(x, y) {
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < S.cents.length; i++) {
+      const c = S.cents[i], dx = x - c.tx, dy = y - c.ty, d = dx*dx + dy*dy;
+      if (d < bd) { bd = d; bi = i; }
+    }
+    return { i: bi, d2: bd };
+  }
+  function doAssign() {
+    let changed = false, inertia = 0;
+    for (let i = 0; i < S.pts.length; i++) {
+      const r = nearest(S.pts[i].x, S.pts[i].y);
+      if (S.assign[i] !== r.i) changed = true;
+      S.assign[i] = r.i;
+      inertia += r.d2;
+    }
+    S.inertia = inertia;
+    if (S.inertia0 == null) S.inertia0 = inertia;
+    S.phase = 'assigned'; S.assignChanged = changed; S.boundaryDirty = true;
+    // ไม่มีจุดไหนย้ายกลุ่มหลังเคยขยับแล้ว = ลู่เข้า (ตรวจแบบ synchronous)
+    if (!changed && S.iter > 0) { S.converged = true; S.running = false; }
+    updateUI();
+  }
+  function doUpdate() {
+    let maxMove = 0;
+    for (let i = 0; i < S.cents.length; i++) {
+      let sx = 0, sy = 0, n = 0;
+      for (let j = 0; j < S.pts.length; j++) if (S.assign[j] === i) { sx += S.pts[j].x; sy += S.pts[j].y; n++; }
+      const c = S.cents[i];
+      if (n > 0) {
+        const nx = sx / n, ny = sy / n;
+        maxMove = Math.max(maxMove, Math.hypot(nx - c.px, ny - c.py));
+        c.tx = nx; c.ty = ny;
+      } else { c.tx = c.px; c.ty = c.py; }
+    }
+    S.lastMove = maxMove; S.tween = true; S.phase = 'moving'; S.iter++;
+    S.cents.forEach(c => { c.trail.push({ x: c.tx, y: c.ty }); if (c.trail.length > 40) c.trail.shift(); });
+    updateUI();
+  }
+  function nextStep() {
+    if (S.pts.length === 0 || S.cents.length === 0 || S.converged) return;
+    if (S.tween) { S.cents.forEach(c => { c.px = c.tx; c.py = c.ty; }); S.tween = false; S.phase = 'moved'; } // snap tween ค้าง
+    if (S.phase === 'assigned') doUpdate();
+    else doAssign();
+    S.lastStep = perfNow;
+  }
+
+  /* -------- Voronoi -------- */
+  function renderBoundary() {
+    const step = 8;
+    bctx.clearRect(0, 0, W, H);
+    if (!S.voronoi || S.cents.length === 0) { S.boundaryDirty = false; return; }
+    for (let gx = RX0; gx < RX1; gx += step) {
+      for (let gy = RY0; gy < RY1; gy += step) {
+        const r = nearest(gx + step/2, gy + step/2);
+        const c = RGB[S.cents[r.i].ci % 6];
+        bctx.fillStyle = 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',0.10)';
+        bctx.fillRect(gx, gy, Math.min(step, RX1-gx), Math.min(step, RY1-gy));
+      }
+    }
+    S.boundaryDirty = false;
+  }
+
+  /* -------- แกน -------- */
+  function drawAxes() {
+    ctx.save();
+    ctx.lineWidth = 1;
+    for (let v = 0; v <= 10; v += 2) {
+      const gx = RX0 + v/10*(RX1-RX0), gy = RY1 - v/10*(RY1-RY0);
+      ctx.strokeStyle = 'rgba(90,100,120,.12)';
+      ctx.beginPath(); ctx.moveTo(gx, RY0); ctx.lineTo(gx, RY1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(RX0, gy); ctx.lineTo(RX1, gy); ctx.stroke();
+      ctx.fillStyle = '#5b6475';
+      ctx.font = '600 11px Poppins, Kanit, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillText(v, gx, RY1 + 7);
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(v, RX0 - 8, gy);
+    }
+    ctx.strokeStyle = 'rgba(90,100,120,.30)';
+    ctx.strokeRect(RX0, RY0, RX1-RX0, RY1-RY0);
+    ctx.fillStyle = '#5b6475';
+    ctx.font = '600 12px Kanit, Poppins, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('ฟีเจอร์ X', (RX0+RX1)/2, H - 2);
+    ctx.translate(13, (RY0+RY1)/2); ctx.rotate(-Math.PI/2); ctx.textBaseline = 'top';
+    ctx.fillText('ฟีเจอร์ Y', 0, 0);
+    ctx.restore();
+  }
+
+  /* -------- ลูปวาดหลัก -------- */
+  let t0 = 0, perfNow = 0;
+  function frame(ts) {
+    if (!t0) t0 = ts;
+    perfNow = ts;
+    const time = (ts - t0) / 1000;
+
+    if (S.tween) {
+      let maxd = 0;
+      S.cents.forEach(c => {
+        c.px += (c.tx - c.px) * 0.2; c.py += (c.ty - c.py) * 0.2;
+        maxd = Math.max(maxd, Math.hypot(c.tx - c.px, c.ty - c.py));
+      });
+      S.boundaryDirty = true;
+      if (maxd < 0.4) {
+        S.cents.forEach(c => { c.px = c.tx; c.py = c.ty; });
+        S.tween = false; S.phase = 'moved';
+        updateUI();
+      }
+    }
+
+    if (S.running && !S.tween && !S.converged && (ts - S.lastStep > 850)) nextStep();
+
+    if (S.boundaryDirty) renderBoundary();
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.drawImage(bcv, 0, 0, W, H);
+    drawAxes();
+
+    const showColor = (S.phase !== 'ready');
+
+    if (S.spokes && showColor) {
+      ctx.lineWidth = 1;
+      for (let i = 0; i < S.pts.length; i++) {
+        const a = S.assign[i]; if (a < 0 || !S.cents[a]) continue;
+        const p = S.pts[i], c = S.cents[a], col = RGB[c.ci % 6];
+        ctx.strokeStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0.22)';
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(c.px, c.py); ctx.stroke();
+      }
+    }
+
+    S.pts.forEach((p, i) => {
+      const a = S.assign[i];
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5.2, 0, Math.PI*2);
+      ctx.fillStyle = (showColor && a >= 0 && S.cents[a]) ? PALETTE[S.cents[a].ci % 6] : '#9aa3b8';
+      ctx.fill();
+      ctx.lineWidth = 1.2; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+    });
+
+    S.cents.forEach(c => {
+      if (c.trail.length < 2) return;
+      const col = RGB[c.ci % 6];
+      ctx.strokeStyle = 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0.35)';
+      ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(c.trail[0].x, c.trail[0].y);
+      for (let i=1;i<c.trail.length;i++) ctx.lineTo(c.trail[i].x, c.trail[i].y);
+      ctx.stroke(); ctx.setLineDash([]);
+    });
+
+    S.cents.forEach(c => {
+      const col = PALETTE[c.ci % 6];
+      const pr = 12 + Math.sin(time*3 + c.ci) * 1.5;
+      ctx.beginPath(); ctx.arc(c.px, c.py, pr + 6, 0, Math.PI*2);
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.25; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(c.px, c.py, pr, 0, Math.PI*2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.lineWidth = 3.5; ctx.strokeStyle = col; ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+      const s = 5.5;
+      ctx.beginPath();
+      ctx.moveTo(c.px - s, c.py - s); ctx.lineTo(c.px + s, c.py + s);
+      ctx.moveTo(c.px + s, c.py - s); ctx.lineTo(c.px - s, c.py + s);
+      ctx.stroke();
+    });
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* -------- UI -------- */
+  const elPhase = document.getElementById('kmPhase');
+  const elIter = document.getElementById('kmIter');
+  const elInertia = document.getElementById('kmInertia');
+  const elMeter = document.getElementById('kmMeter');
+  const stAssign = document.getElementById('stAssign');
+  const stUpdate = document.getElementById('stUpdate');
+  const playLbl = document.getElementById('playLbl');
+
+  function updateUI() {
+    let txt, dotc = '#9aa3b8';
+    stAssign.classList.remove('on'); stUpdate.classList.remove('on');
+    if (S.converged) { elPhase.className = 'km-badge big done'; txt = '<span class="dot" style="background:#fff"></span> นิ่งแล้ว! ลู่เข้าใน ' + S.iter + ' รอบ'; }
+    else {
+      elPhase.className = 'km-badge big';
+      if (S.phase === 'ready') { txt = 'พร้อมเริ่ม — กด ▶ หรือ ⏭'; }
+      else if (S.phase === 'assigned') { txt = '① Assign — จับจุดเข้ากลุ่มใกล้สุด'; dotc = '#2456e6'; stAssign.classList.add('on'); }
+      else { txt = '② Update — ขยับเซนทรอยด์ไปค่าเฉลี่ย'; dotc = '#8b5cf6'; stUpdate.classList.add('on'); }
+      txt = '<span class="dot" style="background:' + dotc + '"></span> ' + txt;
+    }
+    elPhase.innerHTML = txt;
+    elIter.textContent = 'รอบที่ ' + S.iter;
+    if (S.inertia == null) { elInertia.textContent = '—'; elMeter.style.width = '100%'; }
+    else {
+      elInertia.textContent = Math.round(S.inertia).toLocaleString();
+      const ratio = S.inertia0 ? Math.max(0.02, S.inertia / S.inertia0) : 1;
+      elMeter.style.width = (ratio * 100).toFixed(1) + '%';
+    }
+    playLbl.textContent = S.running ? 'หยุด' : (S.converged ? 'เล่นใหม่' : 'เล่นอัตโนมัติ');
+  }
+
+  /* -------- ปุ่ม/คอนโทรล -------- */
+  document.getElementById('btnPlay').addEventListener('click', () => {
+    if (S.converged) seedCents();
+    S.running = !S.running; S.lastStep = perfNow - 900;
+    updateUI();
+  });
+  document.getElementById('btnStep').addEventListener('click', () => { S.running = false; nextStep(); });
+  document.getElementById('btnReseed').addEventListener('click', () => { S.inertia0 = null; seedCents(); });
+  document.getElementById('btnNewData').addEventListener('click', () => { S.running = false; S.inertia0 = null; resetAll(true); });
+
+  const kVal = document.getElementById('kVal');
+  function setK(k) {
+    S.K = Math.max(2, Math.min(6, k)); kVal.textContent = S.K;
+    document.getElementById('kMinus').disabled = S.K <= 2;
+    document.getElementById('kPlus').disabled = S.K >= 6;
+    S.running = false; S.inertia0 = null; seedCents();
+  }
+  document.getElementById('kMinus').addEventListener('click', () => setK(S.K - 1));
+  document.getElementById('kPlus').addEventListener('click', () => setK(S.K + 1));
+
+  document.getElementById('dsSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...e.currentTarget.children].forEach(x => x.classList.remove('on')); b.classList.add('on');
+    S.dataset = b.dataset.ds; S.running = false; S.inertia0 = null; resetAll(true);
+  });
+  document.getElementById('initSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...e.currentTarget.children].forEach(x => x.classList.remove('on')); b.classList.add('on');
+    S.init = b.dataset.init; S.running = false; S.inertia0 = null; seedCents();
+  });
+  function tg(id, key, after) {
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => { S[key] = !S[key]; el.classList.toggle('on', S[key]); S.boundaryDirty = true; if (after) after(); });
+  }
+  tg('tgVoronoi', 'voronoi');
+  tg('tgSpokes', 'spokes');
+  const stage = document.getElementById('kmStage');
+  tg('tgAdd', 'addMode', () => stage.classList.toggle('addmode', S.addMode));
+
+  /* -------- เมาส์: วางจุด / ลากเซนทรอยด์ -------- */
+  function toLocal(e) {
+    const r = cv.getBoundingClientRect();
+    return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+  }
+  cv.addEventListener('pointerdown', e => {
+    const p = toLocal(e);
+    if (S.addMode) {
+      S.pts.push({ x: clampX(p.x), y: clampY(p.y) });
+      S.assign.push(-1); S.inertia0 = null; S.converged = false; S.boundaryDirty = true;
+      if (S.phase !== 'ready') doAssign();
+      return;
+    }
+    let bi = -1, bd = 16*16;
+    S.cents.forEach((c, i) => { const dx=p.x-c.px, dy=p.y-c.py, d=dx*dx+dy*dy; if (d<bd){ bd=d; bi=i; } });
+    if (bi >= 0) { S.drag = bi; try { cv.setPointerCapture(e.pointerId); } catch(_){} S.running = false; }
+  });
+  cv.addEventListener('pointermove', e => {
+    if (S.drag == null) return;
+    const p = toLocal(e), c = S.cents[S.drag];
+    c.px = c.tx = clampX(p.x); c.py = c.ty = clampY(p.y);
+    S.converged = false; S.boundaryDirty = true;
+    if (S.phase !== 'ready') doAssign();
+  });
+  cv.addEventListener('pointerup', () => { S.drag = null; });
+  cv.addEventListener('pointercancel', () => { S.drag = null; });
+
+  resetAll(true);
+})();
+</script>
+
+<script>
+/* ======================================================================
+   Elbow Method — รัน K-means จริง K=1..8 แล้ววาดกราฟ inertia ทีละจุด
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('elCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=700,H=340, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  let sd=99; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+  const gauss=()=> (rnd()+rnd()+rnd()+rnd()-2)*0.5;
+  /* ข้อมูล 3 ก้อน (หน่วยนามธรรม) */
+  const DATA=[];
+  [[2,2],[8,3],[5,8]].forEach(([cx,cy])=>{ for(let i=0;i<25;i++) DATA.push([cx+gauss()*1.6, cy+gauss()*1.6]); });
+
+  /* คืนสถานะเต็ม (inertia + เซนทรอยด์ + การจับกลุ่ม) · ล็อกเมล็ดต่อ K → ผลเท่าเดิมทุกครั้ง เทียบสองที่ตรงกัน */
+  function kmeansFull(K){
+    sd = 314159 + K*2711;
+    let best=null;
+    for(let r=0;r<3;r++){
+      /* k-means++ */
+      const cents=[DATA[Math.floor(rnd()*DATA.length)].slice()];
+      while(cents.length<K){
+        const d2=DATA.map(p=>Math.min(...cents.map(c=>(p[0]-c[0])**2+(p[1]-c[1])**2)));
+        const sum=d2.reduce((a,b)=>a+b,0); let t=rnd()*sum, pick=DATA[DATA.length-1];
+        for(let i=0;i<DATA.length;i++){ t-=d2[i]; if(t<=0){ pick=DATA[i]; break; } }
+        cents.push(pick.slice());
+      }
+      let asg=new Array(DATA.length).fill(0);
+      for(let it=0;it<30;it++){
+        let moved=false;
+        DATA.forEach((p,i)=>{ let bi=0,bd=Infinity;
+          cents.forEach((c,j)=>{ const d=(p[0]-c[0])**2+(p[1]-c[1])**2; if(d<bd){bd=d;bi=j;} });
+          if(asg[i]!==bi){ asg[i]=bi; moved=true; } });
+        cents.forEach((c,j)=>{ let sx=0,sy=0,n=0;
+          DATA.forEach((p,i)=>{ if(asg[i]===j){ sx+=p[0]; sy+=p[1]; n++; } });
+          if(n){ c[0]=sx/n; c[1]=sy/n; } });
+        if(!moved) break;
+      }
+      let inertia=0;
+      DATA.forEach((p,i)=>{ const c=cents[asg[i]]; inertia+=(p[0]-c[0])**2+(p[1]-c[1])**2; });
+      if(best==null||inertia<best.inertia) best={inertia, cents:cents.map(c=>c.slice()), asg:asg.slice()};
+    }
+    return best;
+  }
+  const kmeans=K=>kmeansFull(K).inertia;
+
+  /* ── ① วิชวลไลซ์ที่มาของ inertia: ข้อมูลจริง + ก้านระยะ ── */
+  (function(){
+    const cc=document.getElementById('elCalc'); if(!cc) return;
+    const cx=cc.getContext('2d'); const CW=460,CH=460;
+    cc.width=CW*dpr; cc.height=CH*dpr; cc.style.aspectRatio=CW+'/'+CH; cx.setTransform(dpr,0,0,dpr,0,0);
+    const COLS=['#12a150','#2456e6','#8b5cf6'];
+    const D={x0:-0.5,x1:10.5,y0:-0.8,y1:10.8};
+    const _pad=24, _rmax=Math.max(D.x1-D.x0,D.y1-D.y0), _s=(CW-2*_pad)/_rmax;   /* สเกลเท่ากัน จัดกึ่งกลาง */
+    const _ox=_pad+((CW-2*_pad)-(D.x1-D.x0)*_s)/2, _oy=_pad+((CH-2*_pad)-(D.y1-D.y0)*_s)/2;
+    const mX=x=> _ox+(x-D.x0)*_s;
+    const mY=y=> (CH-_oy)-(y-D.y0)*_s;
+    function drawCalc(K){
+      const st=kmeansFull(K);
+      cx.clearRect(0,0,CW,CH); cx.fillStyle='#f7f8fb'; cx.fillRect(0,0,CW,CH);
+      cx.textBaseline='alphabetic';
+      /* ก้าน = ระยะจากจุดถึงเซนทรอยด์ของกลุ่ม */
+      cx.lineWidth=1.2;
+      DATA.forEach((p,i)=>{ const c=st.cents[st.asg[i]];
+        cx.strokeStyle=COLS[st.asg[i]%3]; cx.globalAlpha=.30;
+        cx.beginPath(); cx.moveTo(mX(p[0]),mY(p[1])); cx.lineTo(mX(c[0]),mY(c[1])); cx.stroke(); });
+      cx.globalAlpha=1;
+      DATA.forEach((p,i)=>{ cx.beginPath(); cx.arc(mX(p[0]),mY(p[1]),3.4,0,Math.PI*2);
+        cx.fillStyle=COLS[st.asg[i]%3]; cx.fill(); });
+      /* จุดตัวอย่าง = ก้านยาวสุด (เห็นการยกกำลังสองชัด) */
+      let ex=-1,exd=-1;
+      DATA.forEach((p,i)=>{ const c=st.cents[st.asg[i]]; const d=(p[0]-c[0])**2+(p[1]-c[1])**2; if(d>exd){exd=d;ex=i;} });
+      /* เซนทรอยด์ */
+      st.cents.forEach((c,j)=>{ const X=mX(c[0]),Y=mY(c[1]);
+        cx.beginPath(); cx.arc(X,Y,10,0,Math.PI*2); cx.fillStyle='#fff'; cx.fill();
+        cx.lineWidth=3; cx.strokeStyle=COLS[j%3]; cx.stroke();
+        cx.fillStyle=COLS[j%3]; cx.font='700 13px Kanit, sans-serif'; cx.textAlign='center'; cx.textBaseline='middle'; cx.fillText('✕',X,Y+0.5);
+        cx.textBaseline='alphabetic'; cx.font='700 10px Poppins,Kanit,sans-serif'; cx.fillText('เซนทรอยด์',X,Y-14); });
+      /* ไฮไลต์จุดตัวอย่าง */
+      if(ex>=0){ const p=DATA[ex], c=st.cents[st.asg[ex]];
+        cx.strokeStyle='#e5484d'; cx.lineWidth=2.6;
+        cx.beginPath(); cx.moveTo(mX(p[0]),mY(p[1])); cx.lineTo(mX(c[0]),mY(c[1])); cx.stroke();
+        cx.beginPath(); cx.arc(mX(p[0]),mY(p[1]),5,0,Math.PI*2); cx.fillStyle='#e5484d'; cx.fill();
+        const mx=(mX(p[0])+mX(c[0]))/2, my=(mY(p[1])+mY(c[1]))/2;
+        cx.fillStyle='#fff'; cx.strokeStyle='#e5484d'; cx.lineWidth=1;
+        cx.font='700 11px Poppins, Kanit, sans-serif'; cx.textAlign='left'; cx.textBaseline='middle';
+        const label='ก้านนี้ d='+Math.sqrt(exd).toFixed(2)+' → d²='+exd.toFixed(2);
+        const tw=cx.measureText(label).width;
+        cx.fillRect(mx+6,my-9,tw+8,18); cx.strokeRect(mx+6,my-9,tw+8,18);
+        cx.fillStyle='#e5484d'; cx.fillText(label,mx+10,my+1); cx.textBaseline='alphabetic'; }
+      document.getElementById('elCalcMsg').innerHTML='K='+K+' · '+DATA.length+' จุด → บวก d² ทุกก้าน = <b>inertia '+Math.round(st.inertia)+'</b> (เลขนี้ไปโผล่ที่ K='+K+' บนกราฟ ③)';
+    }
+    document.querySelectorAll('.elk').forEach(b=>b.addEventListener('click',()=>{
+      document.querySelectorAll('.elk').forEach(x=>x.classList.remove('on')); b.classList.add('on'); drawCalc(+b.dataset.k); }));
+    drawCalc(3);
+  })();
+
+  let shown=[], elbowK=null, maxDropAll=0.5;
+  const L=54,R=16, GLT=20, GLB=184, BT=214, BB=302;   /* graph บน + bars ล่าง */
+  const lx=k=> L+(W-L-R)*(k-1)/7;
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.textBaseline='alphabetic';
+    if(!shown.length){
+      ctx.strokeStyle='rgba(127,127,127,.25)'; ctx.lineWidth=1; ctx.strokeRect(L,GLT,W-L-R,GLB-GLT);
+      ctx.fillStyle='#9aa3b8'; ctx.font='600 14px Kanit, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('กด ▶ เพื่อรัน แล้วกราฟจะวาดตัวเองตรงนี้', W/2, (GLT+GLB)/2);
+      ctx.fillStyle='#8a93a8'; ctx.font='600 11.5px Poppins, Kanit, sans-serif';
+      for(let k=1;k<=8;k++) ctx.fillText('K='+k, lx(k), H-6);
+      return;
+    }
+    const hi=Math.max(...shown.map(s=>s.v));
+    const ly=v=> GLT + (GLB-GLT)*(1 - v/hi)*0.9 + 8;
+    /* ── โซนคุ้ม / ไม่คุ้ม (เมื่อรู้ข้อศอกแล้ว) ── */
+    if(elbowK){
+      const ex=lx(elbowK);
+      ctx.fillStyle='rgba(18,161,80,.09)'; ctx.fillRect(L,GLT,ex-L,GLB-GLT);
+      ctx.fillStyle='rgba(148,163,184,.13)'; ctx.fillRect(ex,GLT,(W-R)-ex,GLB-GLT);
+      ctx.strokeStyle='rgba(18,161,80,.55)'; ctx.setLineDash([5,4]); ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(ex,GLT); ctx.lineTo(ex,BB); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font='700 11px Kanit, sans-serif'; ctx.textAlign='center';
+      ctx.fillStyle='#12a150'; ctx.fillText('◀ ช่วงคุ้ม: เพิ่มกลุ่มแล้วแน่นขึ้นเยอะ', (L+ex)/2, GLT+14);
+      ctx.fillStyle='#7a879b'; ctx.fillText('ช่วงไม่คุ้ม: แค่ซอยก้อนเดิม ▶', (ex+(W-R))/2, GLT+14);
+    }
+    ctx.strokeStyle='rgba(127,127,127,.25)'; ctx.lineWidth=1; ctx.strokeRect(L,GLT,W-L-R,GLB-GLT);
+    ctx.save(); ctx.translate(15,(GLT+GLB)/2); ctx.rotate(-Math.PI/2);
+    ctx.fillStyle='#8a93a8'; ctx.font='600 11px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('inertia (ยิ่งน้อยยิ่งแน่น)',0,0); ctx.restore();
+    /* ── เส้น + จุด ── */
+    ctx.strokeStyle='#12a150'; ctx.lineWidth=2.6; ctx.beginPath();
+    shown.forEach((s,i)=>{ const X=lx(s.k),Y=ly(s.v); i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
+    ctx.stroke();
+    shown.forEach(s=>{
+      const X=lx(s.k),Y=ly(s.v), isE=(s.k===elbowK);
+      if(isE){ ctx.beginPath(); ctx.arc(X,Y,12,0,Math.PI*2); ctx.strokeStyle='rgba(18,161,80,.5)'; ctx.lineWidth=3; ctx.stroke();
+        ctx.beginPath(); ctx.arc(X,Y,18,0,Math.PI*2); ctx.strokeStyle='rgba(18,161,80,.25)'; ctx.lineWidth=2; ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(X,Y,isE?6:4.5,0,Math.PI*2); ctx.fillStyle=isE?'#12a150':'#0ea371'; ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+      ctx.fillStyle='#5b6475'; ctx.font='600 10.5px Poppins, sans-serif'; ctx.textAlign='center';
+      ctx.fillText(Math.round(s.v), X, Y-13);
+    });
+    if(elbowK){ const s=shown.find(x=>x.k===elbowK);
+      if(s){ const X=lx(s.k),Y=ly(s.v); ctx.fillStyle='#12a150'; ctx.font='700 12.5px Kanit, sans-serif'; ctx.textAlign='left';
+        ctx.fillText('← ข้อศอก! เลือก K='+s.k, X+15, Y+2); } }
+    /* ── แถวแท่ง: ลดลงกี่ % เมื่อเพิ่มอีก 1 กลุ่ม ── */
+    ctx.fillStyle='#5b6475'; ctx.font='700 11px Kanit, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('ลดลงกี่ % เมื่อเพิ่มอีก 1 กลุ่ม  (แท่งเตี้ยลง = เริ่มไม่คุ้ม)', W/2, BT-4);
+    ctx.strokeStyle='rgba(127,127,127,.3)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(L,BB); ctx.lineTo(W-R,BB); ctx.stroke();
+    for(let i=1;i<shown.length;i++){
+      const drop=(shown[i-1].v-shown[i].v)/shown[i-1].v;
+      const X=lx(shown[i].k), bw=Math.min(46,(W-L-R)/7*0.6);
+      const h=Math.max(3,(BB-BT-16)*(drop/maxDropAll)), worth=drop>=0.22;
+      ctx.fillStyle=worth?'#12a150':'#c2c8d2'; ctx.fillRect(X-bw/2, BB-h, bw, h);
+      ctx.fillStyle=worth?'#0e7a4f':'#7a879b'; ctx.font='700 10.5px Poppins, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('−'+Math.round(drop*100)+'%', X, BB-h-4);
+      ctx.font='600 9.5px Kanit, sans-serif'; ctx.fillText(worth?'คุ้ม':'ไม่คุ้ม', X, BB+13);
+    }
+    ctx.fillStyle='#8a93a8'; ctx.font='600 11.5px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+    for(let k=1;k<=8;k++) ctx.fillText('K='+k, lx(k), H-4);
+  }
+  draw();
+
+  const btn=document.getElementById('elRun'), msg=document.getElementById('elMsg');
+  let timer=null;
+  btn.addEventListener('click', ()=>{
+    if(timer){ clearInterval(timer); timer=null; btn.textContent='▶ รัน K = 1 → 8'; return; }
+    /* คำนวณทั้งหมดก่อน (เร็วมาก) แล้วค่อยเผยทีละจุด */
+    const results=[]; for(let k=1;k<=8;k++) results.push({k, v:kmeans(k)});
+    /* หา elbow: จุดที่การลดลง "หมดความคุ้ม" (อัตราส่วนการลดต่ำกว่าเกณฑ์ครั้งแรก) */
+    elbowK=null;
+    for(let i=1;i<results.length;i++){
+      const drop=(results[i-1].v-results[i].v)/results[i-1].v;
+      if(drop<0.22){ elbowK=results[i-1].k; break; }
+    }
+    if(!elbowK) elbowK=3;
+    maxDropAll=Math.max(0.5, ...results.slice(1).map((r,i)=>(results[i].v-r.v)/results[i].v));
+    shown=[]; draw();
+    btn.textContent='⏸ หยุด'; let i=0;
+    msg.textContent='กำลังรัน K-means ทีละค่า K …';
+    timer=setInterval(()=>{
+      shown.push(results[i]); i++;
+      const last=shown[shown.length-1];
+      msg.textContent='K='+last.k+' → inertia '+Math.round(last.v)+(last.k>1?' (ลดลง '+Math.round((shown[shown.length-2].v-last.v)/shown[shown.length-2].v*100)+'%)':'');
+      draw();
+      if(i>=results.length){ clearInterval(timer); timer=null;
+        btn.textContent='↻ รันอีกครั้ง';
+        msg.innerHTML='เห็นไหม? K=1→'+elbowK+' ลดฮวบ แต่หลัง K='+elbowK+' ลดนิดเดียว → <b>เลือก K='+elbowK+'</b>'; }
+    }, 550);
+  });
+
+  /* ── กริดตัวอย่างการจับกลุ่ม K=1..8 (ใช้ DATA + kmeansFull เดิม เลขตรงกับกราฟ) ── */
+  (function(){
+    const grid=document.getElementById('kGrid'); if(!grid) return;
+    const PAL=['#2456e6','#e5484d','#12a150','#8b5cf6','#e8590c','#0891b2','#db2777','#a16207'];
+    const CW=132,CH=132;
+    const xs=DATA.map(p=>p[0]), ys=DATA.map(p=>p[1]);
+    const x0=Math.min(...xs)-0.6,x1=Math.max(...xs)+0.6,y0=Math.min(...ys)-0.6,y1=Math.max(...ys)+0.6;
+    const inr=[]; for(let k=1;k<=8;k++) inr.push(kmeansFull(k).inertia);
+    let elbow=3; for(let k=1;k<inr.length;k++){ if((inr[k-1]-inr[k])/inr[k-1]<0.22){ elbow=k; break; } }
+    for(let K=1;K<=8;K++){
+      const st=kmeansFull(K);
+      const cell=document.createElement('div'); cell.className='k-cell'+(K===elbow?' elbow':'');
+      const cv=document.createElement('canvas'); cv.width=CW*dpr; cv.height=CH*dpr; cv.style.aspectRatio=CW+'/'+CH;
+      const cx=cv.getContext('2d'); cx.setTransform(dpr,0,0,dpr,0,0);
+      cx.fillStyle='#f7f8fb'; cx.fillRect(0,0,CW,CH);
+      const rmax=Math.max(x1-x0,y1-y0), s=(CW-18)/rmax;   /* สเกลเท่ากัน จัดกึ่งกลาง */
+      const ox=9+((CW-18)-(x1-x0)*s)/2, oy=9+((CH-18)-(y1-y0)*s)/2;
+      const mx=x=>ox+(x-x0)*s, my=y=>(CH-oy)-(y-y0)*s;
+      DATA.forEach((p,i)=>{ cx.beginPath(); cx.arc(mx(p[0]),my(p[1]),3,0,Math.PI*2); cx.fillStyle=PAL[st.asg[i]%8]; cx.fill(); });
+      st.cents.forEach((c,j)=>{ const X=mx(c[0]),Y=my(c[1]); cx.strokeStyle=PAL[j%8]; cx.lineWidth=2.6; cx.lineCap='round';
+        cx.beginPath(); cx.moveTo(X-5,Y-5); cx.lineTo(X+5,Y+5); cx.moveTo(X+5,Y-5); cx.lineTo(X-5,Y+5); cx.stroke(); });
+      cell.appendChild(cv);
+      const lab=document.createElement('div'); lab.className='lab';
+      lab.innerHTML='K='+K+(K===elbow?' <span class="tag">← ข้อศอก</span>':'');
+      cell.appendChild(lab);
+      grid.appendChild(cell);
+    }
+  })();
+})();
+</script>
+
+<script>
+/* ======================================================================
+   บีบสีรูปภาพด้วย K-means (vector quantization) — เห็นภาพลงตัวทีละรอบ
+   ====================================================================== */
+(function(){
+  const src=document.getElementById('iqSrc'), out=document.getElementById('iqOut');
+  if(!src) return;
+  const W=360,H=240;
+  const sctx=src.getContext('2d'), octx=out.getContext('2d');
+
+  /* ---- วาดภาพต้นฉบับ (procedural — วิวพระอาทิตย์ตกทะเล) ---- */
+  function drawScene(g){
+    /* ท้องฟ้าไล่สี */
+    let sky=g.createLinearGradient(0,0,0,H*0.62);
+    sky.addColorStop(0,'#1e3a8a'); sky.addColorStop(0.45,'#7c3aed');
+    sky.addColorStop(0.75,'#f472b6'); sky.addColorStop(1,'#fbbf24');
+    g.fillStyle=sky; g.fillRect(0,0,W,H*0.62);
+    /* ดวงอาทิตย์ */
+    let sun=g.createRadialGradient(W*0.62,H*0.5,4, W*0.62,H*0.5,52);
+    sun.addColorStop(0,'#fffbeb'); sun.addColorStop(0.4,'#fde047'); sun.addColorStop(1,'rgba(251,191,36,0)');
+    g.fillStyle=sun; g.beginPath(); g.arc(W*0.62,H*0.5,52,0,Math.PI*2); g.fill();
+    g.fillStyle='#fef3c7'; g.beginPath(); g.arc(W*0.62,H*0.5,17,0,Math.PI*2); g.fill();
+    /* ภูเขาไกล/ใกล้ */
+    g.fillStyle='#4c1d95';
+    g.beginPath(); g.moveTo(0,H*0.62); g.lineTo(W*0.2,H*0.38); g.lineTo(W*0.42,H*0.62); g.closePath(); g.fill();
+    g.fillStyle='#312e81';
+    g.beginPath(); g.moveTo(W*0.28,H*0.62); g.lineTo(W*0.5,H*0.30); g.lineTo(W*0.78,H*0.62); g.closePath(); g.fill();
+    g.fillStyle='#1e1b4b';
+    g.beginPath(); g.moveTo(W*0.66,H*0.62); g.lineTo(W*0.88,H*0.42); g.lineTo(W*1.05,H*0.62); g.closePath(); g.fill();
+    /* ทะเล */
+    let sea=g.createLinearGradient(0,H*0.62,0,H);
+    sea.addColorStop(0,'#f59e0b'); sea.addColorStop(0.18,'#c026d3');
+    sea.addColorStop(0.5,'#4338ca'); sea.addColorStop(1,'#1e1b4b');
+    g.fillStyle=sea; g.fillRect(0,H*0.62,W,H*0.38);
+    /* แสงสะท้อน */
+    for(let i=0;i<14;i++){
+      const y=H*0.64+i*(H*0.34/14), w=46-i*2.4+Math.sin(i*2.7)*8;
+      g.fillStyle='rgba(253,224,71,'+(0.5-i*0.03)+')';
+      g.fillRect(W*0.62-w/2, y, w, 3);
+    }
+    /* นก */
+    g.strokeStyle='#1e1b4b'; g.lineWidth=2; g.lineCap='round';
+    [[0.2,0.2],[0.27,0.16],[0.33,0.22]].forEach(([fx,fy])=>{
+      const x=W*fx,y=H*fy;
+      g.beginPath(); g.moveTo(x-8,y); g.quadraticCurveTo(x-4,y-6,x,y);
+      g.quadraticCurveTo(x+4,y-6,x+8,y); g.stroke();
+    });
+  }
+  drawScene(sctx);
+  octx.fillStyle='#141925'; octx.fillRect(0,0,W,H);
+  octx.fillStyle='#8a93a8'; octx.font='600 15px Kanit, sans-serif'; octx.textAlign='center';
+  octx.fillText('กด ▶ เพื่อบีบสี', W/2, H/2);
+
+  const img=sctx.getImageData(0,0,W,H), px=img.data;
+  /* สุ่มตัวอย่างพิกเซล (ทุก 2px) สำหรับเทรน */
+  const samples=[];
+  for(let y=0;y<H;y+=2) for(let x=0;x<W;x+=2){
+    const i=(y*W+x)*4; samples.push([px[i],px[i+1],px[i+2]]);
+  }
+
+  let sd=7; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+  const kIn=document.getElementById('iqK'), kv=document.getElementById('iqKv');
+  kIn.addEventListener('input', ()=> kv.textContent=kIn.value);
+
+  const palEl=document.getElementById('iqPal'), statusEl=document.getElementById('iqStatus');
+  const tagOut=document.getElementById('iqTagOut');
+  let timer=null;
+  document.getElementById('iqRun').addEventListener('click', function(){
+    if(timer){ clearInterval(timer); timer=null; this.textContent='▶ บีบสีด้วย K-means'; return; }
+    const K=+kIn.value, btn=this;
+    tagOut.textContent='เหลือ '+K+' สี';
+    /* k-means++ ใน RGB */
+    const cents=[samples[Math.floor(rnd()*samples.length)].slice()];
+    while(cents.length<K){
+      let sum=0; const d2=samples.map(p=>{ let m=Infinity;
+        cents.forEach(c=>{ const d=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2; if(d<m)m=d; });
+        sum+=m; return m; });
+      let t=rnd()*sum, pick=samples[samples.length-1];
+      for(let i=0;i<samples.length;i++){ t-=d2[i]; if(t<=0){ pick=samples[i]; break; } }
+      cents.push(pick.slice());
+    }
+    const asg=new Array(samples.length).fill(0);
+    let iter=0; const MAXIT=10;
+    btn.textContent='⏸ หยุด';
+    function stepOnce(){
+      /* assign */
+      samples.forEach((p,i)=>{ let bi=0,bd=Infinity;
+        for(let j=0;j<K;j++){ const c=cents[j];
+          const d=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2;
+          if(d<bd){bd=d;bi=j;} }
+        asg[i]=bi; });
+      /* update */
+      const sum=Array.from({length:K},()=>[0,0,0,0]);
+      samples.forEach((p,i)=>{ const s=sum[asg[i]]; s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2]; s[3]++; });
+      let inertia=0;
+      sum.forEach((s,j)=>{ if(s[3]){ cents[j][0]=s[0]/s[3]; cents[j][1]=s[1]/s[3]; cents[j][2]=s[2]/s[3]; } });
+      samples.forEach((p,i)=>{ const c=cents[asg[i]];
+        inertia+=(p[0]-c[0])**2+(p[1]-c[1])**2+(p[2]-c[2])**2; });
+      /* วาดภาพ output: ทุกพิกเซล → เซนทรอยด์ใกล้สุด */
+      const od=octx.createImageData(W,H), o=od.data;
+      for(let i=0;i<px.length;i+=4){
+        let bi=0,bd=Infinity;
+        for(let j=0;j<K;j++){ const c=cents[j];
+          const d=(px[i]-c[0])**2+(px[i+1]-c[1])**2+(px[i+2]-c[2])**2;
+          if(d<bd){bd=d;bi=j;} }
+        const c=cents[bi]; o[i]=c[0]; o[i+1]=c[1]; o[i+2]=c[2]; o[i+3]=255;
+      }
+      octx.putImageData(od,0,0);
+      /* จานสี (กว้างตามสัดส่วน) */
+      const counts=new Array(K).fill(0); asg.forEach(a=>counts[a]++);
+      palEl.innerHTML='';
+      cents.map((c,j)=>({c,n:counts[j]})).sort((a,b)=>b.n-a.n).forEach(({c,n})=>{
+        const d=document.createElement('div'); d.className='iq-sw';
+        d.style.background='rgb('+Math.round(c[0])+','+Math.round(c[1])+','+Math.round(c[2])+')';
+        d.style.flexGrow=Math.max(0.25, n/samples.length*K);
+        d.title=Math.round(n/samples.length*100)+'% ของภาพ';
+        palEl.appendChild(d);
+      });
+      iter++;
+      statusEl.innerHTML='รอบที่ <b>'+iter+'</b>/'+MAXIT+' · inertia '+Math.round(inertia/1000)+'k';
+      if(iter>=MAXIT){ clearInterval(timer); timer=null;
+        btn.textContent='↻ บีบอีกครั้ง';
+        statusEl.innerHTML='<b>ลู่เข้าแล้ว!</b> ภาพนี้ใช้แค่ '+K+' สี'; }
+    }
+    stepOnce();
+    timer=setInterval(stepOnce, 350);
+  });
+})();
+</script>
+</body>
+</html>

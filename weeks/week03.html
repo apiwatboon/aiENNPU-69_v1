@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polynomial Regression การถดถอยพหุนาม | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  /* ทั้งหน้า: อังกฤษ/ตัวเลขใช้ Poppins · ไทยตกไปที่ Kanit · font-size-adjust ย่อ Poppins ให้ x-height เท่า Kanit (0.475) จะได้ดูสมขนาดกัน */
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* เอาแถบปุ่มออโต้ของ step-player ออก — ให้คลิกแต่ละขั้นเองทีละข้อ */
+  .step-controls { display: none !important; }
+
+  /* ตอนแรกให้เวทีเป็นกล่องเปล่า — ซ่อนข้อความชวนกด */
+  .step-stage > em { display: none; }
+
+  /* กล่องประเภท AI — แสดงเลย กดเพื่อไฮไลท์ */
+  .gloss-item {
+    position: relative; cursor: pointer; border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; margin-top: 12px;
+    display: flex; gap: 14px; align-items: flex-start;
+    transition: background .3s, border-color .3s, box-shadow .3s, transform .3s;
+    -webkit-tap-highlight-color: transparent; outline: none;
+    -webkit-user-select: none; user-select: none;
+  }
+  .gloss-main { flex: 1 1 auto; min-width: 0; }
+
+  /* ===== ไอคอน SVG แอนิเมชันของแต่ละประเภท ===== */
+  .ai-ico { flex: 0 0 auto; width: 58px; height: 58px; color: var(--c); overflow: visible; }
+  @media (max-width: 460px) { .ai-ico { width: 46px; height: 46px; } }
+  .gloss-item.gloss-active .ai-ico { transform: scale(1.08); transition: transform .3s; }
+
+  /* Predictive: เส้นกราฟค่อยๆ ลากตัว + จุดทำนายเด้ง */
+  .pred-line { stroke-dasharray: 130; stroke-dashoffset: 130; animation: predDraw 3s ease-in-out infinite; }
+  .pred-dot { transform-box: fill-box; transform-origin: center; animation: predDot 3s ease-in-out infinite; }
+  @keyframes predDraw { 0% { stroke-dashoffset: 130; } 55%, 100% { stroke-dashoffset: 0; } }
+  @keyframes predDot {
+    0%, 45% { transform: scale(0); opacity: 0; }
+    62%     { transform: scale(1.5); opacity: 1; }
+    80%, 100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Generative: ดาวประกายกะพริบสลับจังหวะ + หมุนช้าๆ */
+  .ico-gen { animation: genSpin 16s linear infinite; }
+  .spark { transform-box: fill-box; transform-origin: center; }
+  .s1 { animation: twinkle 2.4s ease-in-out infinite; }
+  .s2 { animation: twinkle 2.4s ease-in-out .8s infinite; }
+  .s3 { animation: twinkle 2.4s ease-in-out 1.5s infinite; }
+  @keyframes twinkle { 0%, 100% { transform: scale(.55); opacity: .4; } 50% { transform: scale(1.1); opacity: 1; } }
+  @keyframes genSpin { to { transform: rotate(360deg); } }
+
+  /* Agentic: ลูปหมุน + จุดโคจรรอบแกน + แกนกลางเต้น (สื่อ "วนทำงานเอง") */
+  .agt-ring  { transform-box: view-box; transform-origin: 32px 32px; animation: agtSpin 5s linear infinite; }
+  .agt-orbit { transform-box: view-box; transform-origin: 32px 32px; animation: agtSpin 2.6s linear infinite; }
+  .agt-core  { transform-box: fill-box; transform-origin: center; animation: agtCore 2s ease-in-out infinite; }
+  @keyframes agtSpin { to { transform: rotate(360deg); } }
+  @keyframes agtCore { 0%, 100% { transform: scale(.8); } 50% { transform: scale(1.12); } }
+  .gi-pred { --c: #3b82f6; }
+  .gi-gen  { --c: #22c55e; }
+  .gi-agt  { --c: #a855f7; }
+  .gloss-item:hover { background: rgba(127,127,127,.06); border-color: var(--c); }
+  .gloss-head { font-size: 1.02rem; }
+  .gloss-def {
+    border-top: 1px dashed var(--border);
+    margin-top: 8px; padding-top: 8px; line-height: 1.7;
+  }
+  .gloss-item.gloss-active {
+    border-color: var(--c);
+    background: rgba(127,127,127,.05);
+    transform: translateX(2px);
+    animation: glossPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes glossPulse {
+    0%, 100% { box-shadow: 0 0 0 1px var(--c); }
+    50%      { box-shadow: 0 0 0 2px var(--c), 0 0 16px 1px var(--c); }
+  }
+
+  /* ===== แผนภาพ AI ⊃ ML ⊃ DL แบบวงกลมซ้อนศูนย์กลาง + แอนิเมชัน ===== */
+  .aimld { display: flex; flex-wrap: wrap; align-items: center; gap: 22px; margin: 18px 0 14px; }
+  .rings {
+    position: relative; --rs: 1.4; flex: 0 0 auto; margin: 0 auto;
+    width: calc(320px * var(--rs)); height: calc(320px * var(--rs));
+  }
+  .rings-inner {
+    position: absolute; top: 0; left: 0; width: 320px; height: 320px;
+    transform: scale(var(--rs)); transform-origin: top left;
+  }
+  @media (max-width: 560px) { .rings { --rs: 1; } }
+  @media (max-width: 360px) { .rings { --rs: .88; } }
+
+  .ring {
+    position: absolute; top: 50%; left: 50%; border-radius: 50%; border: 2.5px solid;
+    transform: translate(-50%, -50%) scale(.2); opacity: 0;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .ring-ai { width: 320px; height: 320px; border-color: #a855f7; background: rgba(168,85,247,.07); }
+  .ring-ml { width: 224px; height: 224px; border-color: #3b82f6; background: rgba(59,130,246,.09); }
+  .ring-dl { width: 128px; height: 128px; border-color: #22c55e; background: rgba(34,197,94,.12); }
+
+  /* ริปเปิลกระเพื่อมตอนกดเลือกชั้น */
+  .ping {
+    position: absolute; inset: -2.5px; border-radius: 50%; border: 2.5px solid var(--glow);
+    opacity: 0; pointer-events: none;
+  }
+  .ring-focus { border-width: 4px; }
+  .ring-focus .ping { animation: ringPing 1.3s ease-out infinite; }
+  @keyframes ringPing {
+    0%   { transform: scale(1);    opacity: .75; }
+    100% { transform: scale(1.35); opacity: 0; }
+  }
+  /* ชั้นที่ไม่ได้เลือก หรี่ลงเล็กน้อยเพื่อเน้นชั้นที่เลือก (ใช้ filter เพราะ opacity ถูกแอนิเมชันตรึงไว้) */
+  .ring { transition: filter .3s; }
+  #aimld.has-focus .ring:not(.ring-focus) { filter: opacity(.4) saturate(.6); }
+  /* หัวข้อวง — คร่อมเส้นขอบบน และอยู่ชั้นบนสุดเหนือป้าย ไม่ให้ป้ายมาบัง */
+  .rtag {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    font-weight: 700; color: #fff; padding: 2px 14px; border-radius: 999px;
+    font-size: .82rem; letter-spacing: .5px; white-space: nowrap;
+    z-index: 12; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  }
+  .ring-ai .rtag { background: #a855f7; }
+  .ring-ml .rtag { background: #3b82f6; }
+  .ring-dl .rtag { background: #22c55e; }
+  .rcore {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+    text-align: center; font-weight: 700; font-size: .82rem; line-height: 1.15;
+    color: var(--accent); opacity: 0;
+  }
+
+  /* เข้าฉากเมื่อเลื่อนมาถึง (.in) — เด้งเข้าทีละวง */
+  #aimld.in .ring { animation: ringPop .8s cubic-bezier(.34,1.56,.64,1) forwards, ringGlow 3.6s ease-in-out 1s infinite; }
+  #aimld.in .ring-ai { animation-delay: .05s, 1.0s; }
+  #aimld.in .ring-ml { animation-delay: .25s, 1.2s; }
+  #aimld.in .ring-dl { animation-delay: .45s, 1.4s; }
+  #aimld.in .rcore { animation: ringPop .7s cubic-bezier(.34,1.56,.64,1) .7s forwards; }
+  @keyframes ringPop {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(.2); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  .ring-ai { --glow: rgba(168,85,247,.55); }
+  .ring-ml { --glow: rgba(59,130,246,.55); }
+  .ring-dl { --glow: rgba(34,197,94,.6); }
+  @keyframes ringGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+    50%      { box-shadow: 0 0 22px 2px var(--glow); }
+  }
+
+  /* เลกเจนด์สีไล่ตามชั้น — สไลด์เข้าทีหลัง */
+  .rlegend { flex: 0 1 188px; min-width: 150px; display: flex; flex-direction: column; gap: 10px; }
+  .lg {
+    opacity: 0; transform: translateX(14px); padding: 6px 9px; border-left: 4px solid;
+    border-radius: 8px; line-height: 1.5; font-size: .84rem; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+    transition: background .25s, box-shadow .25s;
+  }
+  .lg-ai { border-color: #a855f7; --c: #a855f7; }
+  .lg-ml { border-color: #3b82f6; --c: #3b82f6; }
+  .lg-dl { border-color: #22c55e; --c: #22c55e; }
+  .lg:hover { background: rgba(127,127,127,.06); }
+  .lg.lg-focus { background: rgba(127,127,127,.08); box-shadow: 0 0 0 1.5px var(--c); }
+  #aimld.in .lg { animation: lgIn .55s ease forwards; }
+  #aimld.in .lg-ai { animation-delay: .7s; }
+  #aimld.in .lg-ml { animation-delay: .9s; }
+  #aimld.in .lg-dl { animation-delay: 1.1s; }
+  @keyframes lgIn { to { opacity: 1; transform: none; } }
+
+  /* ป้ายลอยในวง — กดได้ทีละอัน */
+  .ichip {
+    position: absolute; transform: translate(-50%, -50%);
+    font-family: inherit; font-weight: 600; font-size: .68rem; line-height: 1; white-space: nowrap;
+    padding: 4px 9px; border-radius: 999px; cursor: pointer; z-index: 5;
+    color: var(--ink); background: var(--card);
+    border: 1.5px solid var(--cc);
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+    transition: transform .2s, box-shadow .25s, background .2s;
+  }
+  .c-ai { --cc: #a855f7; }
+  .c-ml { --cc: #3b82f6; }
+  .c-dl { --cc: #22c55e; }
+  .ichip:hover { transform: translate(-50%, -50%) scale(1.08); z-index: 7; }
+  .ichip.chip-on {
+    color: #fff; background: var(--cc); z-index: 9;
+    transform: translate(-50%, -50%) scale(1.14);
+    animation: chipPulse 2s ease-in-out infinite;
+  }
+  @keyframes chipPulse {
+    0%, 100% { box-shadow: 0 0 0 1.5px var(--cc), 0 0 6px 0 var(--cc); }
+    50%      { box-shadow: 0 0 0 2px var(--cc), 0 0 16px 2px var(--cc); }
+  }
+
+  .ss-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+  .ss-chip {
+    font-weight: 600; font-size: .86rem; padding: 4px 11px; border-radius: 999px;
+    background: rgba(127,127,127,.14); border: 1px solid rgba(127,127,127,.28);
+  }
+  .lg-ml .ss-chip { background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.4); }
+  .lg-dl .ss-chip { background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.4); }
+
+  /* ===== ไอคอน SVG หน้าหัวข้อ (แทน emoji) ===== */
+  .h-ico {
+    width: 1.15em; height: 1.15em; vertical-align: -.18em; margin-right: .4em;
+    flex: 0 0 auto;
+  }
+  .ico-target .bullseye { transform-box: fill-box; transform-origin: center; animation: hIcoPulse 2.2s ease-in-out infinite; }
+  @keyframes hIcoPulse { 0%, 100% { transform: scale(.6); opacity: .7; } 50% { transform: scale(1.15); opacity: 1; } }
+  .ico-nest circle { transform-box: fill-box; transform-origin: center; animation: hNest 3s ease-in-out infinite; }
+  .ico-nest circle:nth-child(2) { animation-delay: .35s; }
+  .ico-nest circle:nth-child(3) { animation-delay: .7s; }
+  @keyframes hNest { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+
+  /* ===== กล่อง Regression ===== */
+  .reg-box { color: #3b82f6; }
+  .reg-box h3, .reg-box h4, .reg-box p, .reg-box li { color: var(--ink); }
+  .reg-hero { display: flex; gap: 22px; align-items: center; flex-wrap: wrap; }
+  .reg-hero-svg { flex: 0 0 auto; width: 260px; max-width: 100%; height: auto; color: #3b82f6; }
+  .reg-text { flex: 1 1 260px; min-width: 240px; }
+
+  .reg-dot { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  #regbox.in .reg-dot { animation: regDotIn .5s cubic-bezier(.34,1.56,.64,1) forwards; }
+  @keyframes regDotIn { from { opacity: 0; transform: translateY(7px) scale(0); } to { opacity: 1; transform: none; } }
+  .reg-fit { stroke-dasharray: 200; stroke-dashoffset: 200; }
+  #regbox.in .reg-fit { animation: regDraw 1.1s ease .75s forwards; }
+  @keyframes regDraw { to { stroke-dashoffset: 0; } }
+  .reg-pred { opacity: 0; transform-box: fill-box; transform-origin: center; }
+  #regbox.in .reg-pred { animation: regPulse 1.8s ease 1.9s infinite; }
+  @keyframes regPulse { 0%, 100% { opacity: .5; transform: scale(.9); } 50% { opacity: 1; transform: scale(1.3); } }
+
+  .reg-sub {
+    margin: 20px 0 10px; font-size: 1.02rem; padding-left: 12px;
+    border-left: 4px solid #3b82f6;
+  }
+  .reg-types { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+  .reg-type {
+    border: 1.5px solid var(--border); border-radius: 12px; padding: 12px;
+    transition: transform .25s, box-shadow .25s, border-color .25s; color: #3b82f6;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+  }
+  .reg-type:hover { transform: translateY(-4px); box-shadow: 0 8px 22px rgba(0,0,0,.12); }
+  /* กดแล้วขึ้นกรอบเต้นวน — ทีละอัน. Linear/Polynomial = เขียว, Multiple/Logistic = ฟ้า */
+  .reg-type.reg-greenable.reg-on { border-color: #22c55e; animation: regGreenPulse 2.4s ease-in-out infinite; }
+  .reg-type.reg-on:not(.reg-greenable) { border-color: #3b82f6; animation: regBluePulse 2.4s ease-in-out infinite; }
+  @keyframes regGreenPulse {
+    0%, 100% { box-shadow: 0 0 0 1px #22c55e; }
+    50%      { box-shadow: 0 0 0 2px #22c55e, 0 0 16px 1px rgba(34,197,94,.5); }
+  }
+  @keyframes regBluePulse {
+    0%, 100% { box-shadow: 0 0 0 1px #3b82f6; }
+    50%      { box-shadow: 0 0 0 2px #3b82f6, 0 0 16px 1px rgba(59,130,246,.5); }
+  }
+  .reg-type svg { width: 100%; height: 62px; display: block; }
+  .reg-type h4 { margin: 8px 0 3px; font-size: .98rem; }
+  .reg-type p { margin: 0; font-size: .84rem; color: var(--muted); line-height: 1.45; }
+
+  /* เส้นภาพย่อยลากตัวเองวนซ้ำ */
+  .reg-mini-line { stroke-dasharray: 130; stroke-dashoffset: 130; animation: regMini 2.8s ease-in-out infinite; }
+  @keyframes regMini { 0% { stroke-dashoffset: 130; } 55%, 100% { stroke-dashoffset: 0; } }
+  .reg-node { transform-box: fill-box; transform-origin: center; animation: regPulse 2s ease-in-out infinite; }
+
+  .reg-uses { list-style: none; padding: 0; margin: 8px 0 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+  .reg-uses li { display: flex; gap: 9px; align-items: flex-start; line-height: 1.5; }
+  .reg-uses li svg { flex: 0 0 auto; width: 20px; height: 20px; color: #1d9b6c; margin-top: 2px; }
+
+  /* ===== กล่อง Linear Regression ===== */
+  .lr-ka { color: #ef4444; } .lr-kb { color: #3b82f6; }
+  .lr-eq {
+    text-align: center; font-size: 1.7rem; font-weight: 700; letter-spacing: 3px;
+    margin: 14px 0 12px; user-select: none;
+  }
+  .lr-eq .lr-y { color: var(--ink); } .lr-eq .lr-a { color: #ef4444; }
+  .lr-eq .lr-x { color: #22c55e; } .lr-eq .lr-b { color: #3b82f6; }
+  .lr-eq .lr-op { color: var(--muted); margin: 0 4px; }
+  .lr-legend { display: flex; flex-direction: column; gap: 6px; font-size: .92rem; }
+  .lr-key {
+    display: inline-block; min-width: 1.4em; text-align: center; font-weight: 700; color: #fff;
+    border-radius: 6px; padding: 0 6px;
+  }
+  .lr-key.lr-ka { background: #ef4444; color: #fff; }
+  .lr-key.lr-kb { background: #3b82f6; color: #fff; }
+
+  .lr-demo { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  .lr-svg {
+    flex: 0 0 auto; width: 320px; max-width: 100%; height: auto; color: var(--ink);
+    background: rgba(127,127,127,.05); border-radius: 12px;
+  }
+  .lr-ctrl { flex: 1 1 250px; min-width: 240px; display: flex; flex-direction: column; gap: 12px; }
+  .lr-row { display: flex; align-items: center; gap: 10px; font-size: .92rem; }
+  .lr-row > span { flex: 0 0 92px; }
+  .lr-row input[type=range] { flex: 1 1 auto; accent-color: #6366f1; cursor: pointer; }
+  .lr-sse { font-size: 1.05rem; }
+  .lr-sse strong { color: #6366f1; }
+  .lr-bar { height: 10px; border-radius: 999px; background: rgba(127,127,127,.18); overflow: hidden; }
+  .lr-bar > span {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+    transition: width .15s ease;
+  }
+  .lr-btn {
+    align-self: flex-start; font-family: inherit; font-weight: 600; font-size: .95rem;
+    color: #fff; background: #6366f1; border: none; border-radius: 9px;
+    padding: 9px 18px; cursor: pointer; transition: transform .15s, box-shadow .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lr-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99,102,241,.4); }
+  .lr-msg { font-size: .9rem; color: var(--muted); min-height: 1.2em; transition: color .2s; }
+  .lr-msg.ok { color: #1d9b6c; font-weight: 600; }
+
+  /* ===== กล่องตัวอย่างโจทย์ 10 จุด ===== */
+  .ex-plotwrap { text-align: center; margin: 8px 0 16px; }
+  .ex-svg {
+    width: 340px; max-width: 100%; height: auto; color: var(--ink);
+    background: rgba(127,127,127,.05); border-radius: 12px;
+    cursor: crosshair; touch-action: none;
+  }
+  .ex-dot { opacity: 0; transform-box: fill-box; transform-origin: center; cursor: pointer; transition: r .15s ease, fill .15s ease; }
+  .ex-dot:hover { r: 6px; }
+  .ex-dot.sel { r: 6.5px; fill: #6366f1; }
+  .ex-box.in .ex-dot { animation: regDotIn .45s cubic-bezier(.34,1.56,.64,1) forwards; }
+  .ex-line { stroke-dasharray: 260; stroke-dashoffset: 260; }
+  .ex-box.in .ex-line { animation: regDraw 1.1s ease .95s forwards; }
+
+  .work-steps { margin: 6px 0 0; padding-left: 22px; }
+  .work-steps > li { margin-bottom: 16px; line-height: 1.7; }
+  .work-steps > li::marker { font-weight: 700; color: #6366f1; }
+
+  .col-explain {
+    margin: 8px 0; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: rgba(99,102,241,.06);
+    font-size: .92rem; line-height: 1.65;
+  }
+  .col-explain ul { margin: 0; padding-left: 20px; }
+  .col-explain li { margin-bottom: 6px; }
+  .col-explain b { color: #6366f1; }
+
+  .tbl-scroll { overflow-x: auto; margin: 8px 0; -webkit-overflow-scrolling: touch; }
+  .calc-tbl { border-collapse: collapse; width: 100%; min-width: 440px; font-size: .9rem; }
+  .calc-tbl th, .calc-tbl td { border: 1px solid var(--border); padding: 5px 8px; text-align: center; }
+  .calc-tbl th { background: rgba(99,102,241,.12); font-weight: 700; }
+  .calc-tbl tr:nth-child(even) td { background: rgba(127,127,127,.04); }
+  .calc-tbl tr.sum td { background: rgba(99,102,241,.14); font-weight: 700; }
+
+  /* แตะหัวตาราง/พจน์ เพื่อไฮไลท์เชื่อมโยงข้ามขั้น */
+  .hl-term {
+    cursor: pointer; border-radius: 5px; padding: 0 3px; transition: background .2s;
+    -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none;
+  }
+  .hl-term:hover { background: rgba(234,179,8,.18); }
+  .calc-tbl th.hl-term { cursor: pointer; }
+  .hl-on { animation: hlPulse 1.6s ease-in-out infinite; }
+  @keyframes hlPulse {
+    0%, 100% { background: rgba(234,179,8,.22); box-shadow: 0 0 0 1px rgba(234,179,8,.55); }
+    50%      { background: rgba(234,179,8,.42); box-shadow: 0 0 0 2px #eab308; }
+  }
+  .calc-tbl .cell-on { animation: hlCell 1.6s ease-in-out infinite; }
+  @keyframes hlCell {
+    0%, 100% { background: rgba(234,179,8,.22); }
+    50%      { background: rgba(234,179,8,.45); }
+  }
+
+  .eq-final {
+    display: inline-block; margin: 8px 0 2px; padding: 8px 18px;
+    font-size: 1.4rem; font-weight: 700; letter-spacing: 1px;
+    border: 2px solid #6366f1; border-radius: 12px; background: rgba(99,102,241,.08);
+  }
+  .eq-final .lr-y { color: var(--ink); } .eq-final .lr-a { color: #ef4444; }
+  .eq-final .lr-x { color: #22c55e; } .eq-final .lr-b { color: #3b82f6; }
+  .ex-note {
+    margin-top: 8px; padding: 8px 12px; border-left: 4px solid #1d9b6c;
+    background: rgba(29,155,108,.08); border-radius: 8px; font-size: .92rem;
+  }
+
+  /* เมทริกซ์: วงเล็บด้านข้าง + ไม่มีเส้นตาราง (ใช้ได้ทั้งในการ์ดและเวที step-player) */
+  .matx { display: inline-block; position: relative; padding: 2px 13px; vertical-align: middle; }
+  .matx::before, .matx::after { content: ""; position: absolute; top: 2px; bottom: 2px; width: 7px; border: 2px solid currentColor; opacity: .5; }
+  .matx::before { left: 0; border-right: none; }
+  .matx::after { right: 0; border-left: none; }
+  .matx table { border: none !important; background: transparent !important; border-collapse: collapse; }
+  .matx td { border: none !important; padding: 1px 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .okc { color: #22c55e; font-weight: 700; }
+
+  /* วิดเจ็ต OLS ทั่วไป (ส่วนที่ 4 — ตัวอย่างเพิ่มเติม) */
+  .ow-box { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 10px 14px; margin: 12px 0; }
+  .ow-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; }
+  .ow-flex { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; overflow-x: auto; }
+  .ow-lbl { text-align: center; font-size: .8rem; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+  .ow-op { font-size: 1.3rem; font-weight: 700; color: var(--muted); }
+  .ow-res { cursor: pointer; }
+  .ow-on { animation: ptGlow 1.3s ease-in-out infinite; border-radius: 4px; }
+  .ow-row { color: #1d4ed8 !important; font-weight: 700; }
+  .ow-col { color: #be185d !important; font-weight: 700; }
+  .ow-y { color: #c2410c !important; font-weight: 800; }
+  .ow-cell { color: #15803d !important; font-weight: 800; }
+  .ow-calc { margin-top: 12px; text-align: center; padding: 9px 12px; border: 1px dashed var(--border); border-radius: 10px; font-size: .95rem; line-height: 1.7; }
+
+  /* ระบบสมการแบบโต้ตอบ (ส่วนที่ 3 · หัวข้อ 4) — คลิกจุดแล้วไฮไลต์พร้อมกัน */
+  #sysbox [data-pt] { cursor: pointer; transition: background .15s, color .15s; }
+  #sysbox .pt-on, #sysbox tr.pt-on td { color: #17181c; animation: ptGlow 1.3s ease-in-out infinite; }
+  @keyframes ptGlow { 0%, 100% { background: #fcd34d; } 50% { background: #ffe486; } }
+
+  /* วิดเจ็ตคูณเมทริกซ์ XᵀX (ข้อ 8) — กดเลขดูที่มา */
+  #pt8box .mm-lbl { text-align: center; font-size: .8rem; color: var(--muted); margin-bottom: 3px; font-weight: 600; }
+  #pt8box .mm-op { font-size: 1.3rem; font-weight: 700; color: var(--muted); }
+  #pt8box .mm-res { cursor: pointer; transition: background .15s; }
+  #pt8box .mm-on { animation: ptGlow 1.3s ease-in-out infinite; border-radius: 4px; }
+  #pt8box .mm-row { color: #1d4ed8 !important; font-weight: 700; }
+  #pt8box .mm-col { color: #be185d !important; font-weight: 700; }
+  #pt8box .mm-cell, #pt8box .mm-eqon { color: #15803d !important; font-weight: 800; }
+  #pt8box .mm-eq { padding: 0 3px; border-radius: 4px; }
+  #pt8box .mm-calc { margin-top: 12px; text-align: center; padding: 9px 12px; border: 1px dashed var(--border); border-radius: 10px; font-size: .95rem; line-height: 1.7; }
+  #pt8box .tp-c { cursor: pointer; transition: background .15s; }
+  #pt8box .tp-on { animation: ptGlow 1.3s ease-in-out infinite; border-radius: 4px; }
+  #pt8box .mm-box { border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 12px; padding: 10px 14px; margin: 12px 0; }
+  #pt8box .mm-title { font-weight: 700; font-size: 1rem; margin-bottom: 6px; }
+  #pt8box .yy-res { cursor: pointer; transition: background .15s; }
+  #pt8box .mm-y { color: #c2410c !important; font-weight: 800; }
+  table.sys-eq { border-collapse: collapse; margin: 6px 0; font-variant-numeric: tabular-nums; min-width: 340px; }
+  table.sys-eq th, table.sys-eq td { padding: 6px 14px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.sys-eq thead th { color: var(--muted); font-weight: 600; font-size: .88rem; }
+  table.sys-eq td:first-child, table.sys-eq th:first-child { text-align: left; font-weight: 600; }
+  table.sys-eq td.op { text-align: center; color: var(--muted); padding-left: 5px; padding-right: 5px; }
+  table.sys-eq tr:hover td { background: rgba(99,102,241,.10); }
+
+  /* แถบพื้นหลังแยกแต่ละส่วน (ส่วนที่ 1–7) */
+  .wsec { padding: 6px 20px 22px; margin: 24px 0; border-radius: 18px; border: 1px solid var(--border); }
+  .wsec > h2 { margin-top: 12px; }
+  .wsec:nth-of-type(even) { background: rgba(139,92,246,.06); }
+  .wsec:nth-of-type(odd) { background: rgba(255,255,255,.02); }
+  @media (max-width: 560px) { .wsec { padding: 4px 12px 16px; } }
+
+  /* กล่องทำนายแบบใส่ตัวเลขเอง */
+  .lr-predict {
+    margin: 8px 0; padding: 12px 14px; border: 1.5px solid #6366f1; border-radius: 12px;
+    background: rgba(99,102,241,.07);
+  }
+  .pred-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .pred-row label { display: flex; align-items: center; gap: 6px; }
+  .pred-x {
+    width: 84px; font-family: inherit; font-size: 1rem; text-align: center;
+    padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--ink);
+  }
+  .pred-x:focus { outline: none; border-color: #6366f1; }
+  .pred-go {
+    font-family: inherit; font-weight: 600; color: #fff; background: #6366f1;
+    border: none; border-radius: 8px; padding: 7px 16px; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; transition: transform .15s, box-shadow .2s;
+  }
+  .pred-go:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99,102,241,.4); }
+  .pred-calc { margin-top: 10px; font-size: .92rem; color: var(--muted); }
+  .pred-out { margin-top: 4px; font-size: 1.12rem; }
+  .pred-out .pred-y { color: #6366f1; }
+
+  /* ===== กล่อง Custom (ใส่ข้อมูลเอง) ===== */
+  .cu-inputs { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+  .cu-row { display: flex; align-items: center; gap: 5px; background: rgba(127,127,127,.06); border: 1px solid var(--border); border-radius: 9px; padding: 4px 7px; font-size: .9rem; }
+  .cu-row .cu-i { color: var(--muted); min-width: 1.5em; text-align: center; font-size: .82rem; }
+  .cu-row input { width: 58px; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--ink); font-family: inherit; text-align: center; }
+  .cu-row input:focus { outline: none; border-color: #6366f1; }
+  .cu-del { border: none; background: transparent; color: #ef4444; font-size: 1.15rem; line-height: 1; cursor: pointer; padding: 0 2px; -webkit-tap-highlight-color: transparent; }
+  .cu-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+  .cu-add { font-family: inherit; font-weight: 600; color: #fff; background: #6366f1; border: none; border-radius: 9px; padding: 8px 16px; cursor: pointer; transition: transform .15s, box-shadow .2s; -webkit-tap-highlight-color: transparent; }
+  .cu-add:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(99,102,241,.4); }
+  .cu-add:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .cu-clear { font-family: inherit; font-weight: 600; color: var(--ink); background: transparent; border: 1.5px solid var(--border); border-radius: 9px; padding: 7px 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .cu-clear:hover { border-color: #ef4444; color: #ef4444; }
+  .cu-count { color: var(--muted); font-size: .9rem; }
+  .cu-msg { padding: 14px; text-align: center; color: var(--muted); background: rgba(127,127,127,.05); border-radius: 10px; }
+
+  /* แถบ output ของเส้นเล็ง + ปุ่มล้างจุด */
+  .xh-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; max-width: 340px; margin: 6px auto 0; flex-wrap: wrap; }
+  .xh-readout { font-size: .88rem; color: #fff; background: #991b1b; padding: 5px 12px; border-radius: 8px; }
+  .xh-readout strong { color: #fff; }
+  .xh-readout .xh-vo { color: #ffe08a; }
+  .xh-readout .xh-arrow { opacity: .7; margin: 0 2px; }
+  .xh-clear { font-family: inherit; font-weight: 600; font-size: .85rem; color: #991b1b; background: transparent; border: 1.5px solid #991b1b; border-radius: 8px; padding: 4px 12px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .xh-clear:hover { background: rgba(153,27,27,.1); }
+
+  /* ไทม์ไลน์ AI สี่ยุค — กดเพื่อไฮไลท์ */
+  #eras li { position: relative; cursor: pointer; transition: background .55s ease, transform .55s ease; border-radius: 8px; padding: 8px 10px;
+    -webkit-tap-highlight-color: transparent; outline: none; user-select: none; -webkit-user-select: none; }
+  #eras li:focus, #eras li:focus-visible { outline: none; box-shadow: none; }
+  #eras li:hover { background: rgba(127,127,127,.08); }
+  /* กรอบเหลือง วาดด้วย ::after เพื่อให้เฟดเข้า/ออกได้นุ่มด้วย opacity */
+  #eras li::after {
+    content: ""; position: absolute; inset: 0; border-radius: 8px;
+    border: 2px solid #eab308; pointer-events: none;
+    opacity: 0; transition: opacity .55s ease;
+  }
+  #eras li.era-active {
+    background: rgba(234,179,8,.12);
+    transform: translateX(2px);
+  }
+  #eras li.era-active::after {
+    opacity: 1;
+    animation: eraGlow 4.5s cubic-bezier(.45,0,.55,1) infinite;
+    will-change: box-shadow, border-color;
+  }
+  @keyframes eraGlow {
+    0%, 100% {
+      border-color: rgba(234,179,8,.3);
+      box-shadow: 0 0 0 0 rgba(234,179,8,0);
+    }
+    25% {
+      border-color: rgba(234,179,8,.65);
+      box-shadow: 0 0 8px 1px rgba(234,179,8,.28);
+    }
+    50% {
+      border-color: rgba(234,179,8,1);
+      box-shadow: 0 0 14px 3px rgba(234,179,8,.5);
+    }
+    75% {
+      border-color: rgba(234,179,8,.65);
+      box-shadow: 0 0 8px 1px rgba(234,179,8,.28);
+    }
+  }
+</style>
+<style>
+  /* week03 ไม่ใช้แอนิเมชันเด้งจุด — แสดงจุดเลย */
+  .ex-dot { opacity: 1 !important; animation: none !important; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>Polynomial Regression (การถดถอยพหุนาม)</h1>
+    <p class="subtitle">เมื่อข้อมูลไม่เป็นเส้นตรง — เพิ่ม x², x³ แล้ว "ดัดเส้นให้โค้ง" เข้ากับข้อมูล (และเรียนรู้กับดัก overfitting)</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="h-ico ico-target" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle class="bullseye" cx="12" cy="12" r="1.8" fill="currentColor"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายได้ว่า <strong>Polynomial Regression</strong> คือ Linear Regression ที่ "เพิ่มฟีเจอร์ x², x³, …" และ <strong>degree (อันดับของพหุนาม)</strong> คืออะไร</li>
+      <li>ตั้ง <strong>normal equations</strong> จากตารางผลรวมกำลัง แล้วแก้หา a₀, a₁, …, aₙ เพื่อได้สมการเส้นโค้ง <strong>y = a₀ + a₁x + a₂x² + …</strong></li>
+      <li>อธิบาย <strong>underfit / overfit</strong> และเลือก degree ที่ "พอดี" กับข้อมูลได้</li>
+    </ol>
+  </div>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: จากเส้นตรงสู่เส้นโค้ง <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">บางทีข้อมูลจริง <strong>ไม่ได้เรียงเป็นเส้นตรง</strong> — เช่น ระยะเบรกที่เพิ่มแบบกำลังสองตามความเร็ว หรือทักษะที่ "อิ่มตัว" เมื่อซ้อมมากขึ้น ถ้าใช้เส้นตรงลากจะไม่เข้ากับข้อมูล วิธีแก้ที่เรียบง่ายอย่างน่าทึ่งคือ <strong>เพิ่มพจน์กำลังสูงขึ้น</strong>:</p>
+    <div class="eq-final" style="font-size:1.2rem"><span class="lr-y">y</span> = <span class="lr-b">a₀</span> + <span style="color:#3b82f6">a₁</span><span class="lr-x">x</span> + <span style="color:#a855f7">a₂</span><span class="lr-x">x²</span> + <span style="color:#ec4899">a₃</span><span class="lr-x">x³</span> + … + <span style="color:#ef4444">aₙ</span><span class="lr-x">xⁿ</span></div>
+    <p style="margin-bottom:0"><strong>กุญแจสำคัญ:</strong> ถึงจะมี x², x³ แต่มัน <em>ยังเป็น "เชิงเส้นในเชิงสัมประสิทธิ์"</em> — เราแค่มองว่า x, x², x³ เป็น "คอลัมน์ฟีเจอร์" ใหม่ แล้วทำ Least Squares เหมือน week02 · เลข <strong>degree (อันดับ n)</strong> คือกำลังสูงสุด — degree 1 = เส้นตรง, 2 = พาราโบลา, 3 = ตัว S, ยิ่งสูงยิ่งดัดโค้งได้อิสระ</p>
+  </div>
+
+  <!-- ═════════ มุมมอง 3 มิติ: ทำไมเพิ่ม x² แล้ว "เส้นตรง" กลายเป็น "เส้นโค้ง" ═════════ -->
+  <style>
+    .lift-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+      background: radial-gradient(120% 130% at 50% -10%, #1b2340 0%, #0d1226 55%, #070a18 100%);
+      touch-action:none; }
+    .lift-stage canvas { display:block; width:100%; height:auto; cursor:grab; }
+    .lift-stage canvas:active { cursor:grabbing; }
+    .lift-msg { position:absolute; left:12px; right:12px; bottom:12px; z-index:3; pointer-events:none;
+      background:rgba(10,14,30,.78); border:1px solid rgba(140,160,255,.25); backdrop-filter:blur(4px);
+      color:#e6eaff; border-radius:12px; padding:9px 14px; font-size:.95rem; line-height:1.55;
+      box-shadow:0 8px 24px -12px rgba(0,0,0,.8); transition:opacity .3s; }
+    .lift-msg b { color:#c4b5fd; }
+    .lift-scene { position:absolute; top:10px; left:10px; z-index:3; display:flex; gap:6px; }
+    .lift-scene .sc { width:30px; height:30px; border-radius:50%; border:1.5px solid rgba(160,175,255,.4);
+      background:rgba(20,26,52,.85); color:#aab4e8; font-weight:700; font-size:.9rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center; margin:0; padding:0; box-shadow:none;
+      font-family:inherit; transition:all .2s; pointer-events:auto; }
+    .lift-scene .sc.on { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; border-color:transparent;
+      transform:scale(1.12); box-shadow:0 0 14px rgba(124,58,237,.6); }
+    .lift-hint3d { position:absolute; top:12px; right:12px; z-index:3; color:#7f8ac4; font-size:.78rem;
+      background:rgba(20,26,52,.7); border-radius:999px; padding:4px 11px; pointer-events:none; }
+    .lift-ctl { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+    #liftPlay { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+  </style>
+  <div class="demo" id="lift">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24" style="width:1.15em;height:1.15em;vertical-align:-.2em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>
+      โอ้โหโมเมนต์: มองในสามมิติ — "เส้นโค้ง" ที่แท้คือ "ระนาบแบนๆ" ในมิติที่สูงกว่า</h3>
+    <p style="margin-top:0">ความลับที่ใหญ่ที่สุดของสัปดาห์นี้: การเพิ่มฟีเจอร์ x² ก็คือการ <strong>"ยก" ข้อมูลขึ้นสู่มิติใหม่</strong> —
+    ในโลก 2 มิติจุดพวกนี้ต้องใช้เส้นโค้ง แต่พอเพิ่มแกน <b style="color:#c4b5fd">z = x²</b> เข้าไป
+    <strong>ระนาบแบนๆ (เชิงเส้นแท้ๆ!) กลับฟิตพอดีเป๊ะ</strong> — กดเล่นทั้ง 4 ฉาก แล้ว<b>ลากหมุน</b>ดูเองได้เลย</p>
+
+    <div class="lift-stage" id="liftStage">
+      <div class="lift-scene" id="liftScenes">
+        <button class="sc on" data-sc="1">1</button><button class="sc" data-sc="2">2</button>
+        <button class="sc" data-sc="3">3</button><button class="sc" data-sc="4">4</button>
+      </div>
+      <div class="lift-hint3d">🖱️ ลากเพื่อหมุน</div>
+      <canvas id="liftCanvas" width="780" height="430"></canvas>
+      <div class="lift-msg" id="liftMsg"></div>
+    </div>
+    <div class="lift-ctl">
+      <button id="liftPlay">▶ เล่นทั้ง 4 ฉาก</button>
+      <span style="font-size:.85rem;color:var(--muted)">ฉาก 1 เส้นตรงแพ้ · ฉาก 2 ยกมิติ z=x² · ฉาก 3 ระนาบฟิตเป๊ะ · ฉาก 4 มองกลับ = พาราโบลา!</span>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const cv = document.getElementById('liftCanvas'); if(!cv) return;
+    const ctx = cv.getContext('2d');
+    const W=780, H=430;
+    const dpr = Math.min(2, window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    /* ---- ข้อมูล: y = 0.55x² + 0.3x + 1.2 + noise ---- */
+    let sd=13; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+    const P=[]; for(let i=0;i<=10;i++){ const x=-3+6*i/10; P.push({x, y:0.55*x*x+0.3*x+1.2+(rnd()-0.5)*1.15}); }
+
+    /* ---- ฟิต: เส้นตรง (ฉาก 1) และระนาบ/พาราโบลา (deg 2) ---- */
+    function solve(A,b){ const n=b.length;
+      for(let i=0;i<n;i++){ let p=i; for(let k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[p][i])) p=k;
+        [A[i],A[p]]=[A[p],A[i]]; [b[i],b[p]]=[b[p],b[i]];
+        for(let k=i+1;k<n;k++){ const f=A[k][i]/A[i][i]; for(let j=i;j<n;j++) A[k][j]-=f*A[i][j]; b[k]-=f*b[i]; } }
+      const x=new Array(n); for(let i=n-1;i>=0;i--){ let s=b[i]; for(let j=i+1;j<n;j++) s-=A[i][j]*x[j]; x[i]=s/A[i][i]; } return x; }
+    function polyfit(d){ const m=d+1, A=[], b=[];
+      for(let r=0;r<m;r++){ const row=[]; for(let c=0;c<m;c++){ let s=0; P.forEach(p=>s+=Math.pow(p.x,r+c)); row.push(s); }
+        A.push(row); let t=0; P.forEach(p=>t+=Math.pow(p.x,r)*p.y); b.push(t); } return solve(A,b); }
+    const LIN = polyfit(1);          // เส้นตรงที่ดีที่สุด (ยังแพ้)
+    const QUAD = polyfit(2);         // ระนาบ y = c0 + c1·x + c2·z (z = x²)
+
+    /* ---- สถานะฉาก + เป้าหมาย lerp ---- */
+    const SCENES = {
+      1:{t:0, yaw:0,     pitch:0,    plane:0, msg:'<b>ฉาก 1 — โลก 2 มิติ:</b> เส้นตรงที่ดีที่สุดยัง "แพ้" — เส้นประแดงคือความคลาดเคลื่อนที่เหลือ ข้อมูลนี้ต้องการเส้นโค้ง'},
+      2:{t:1, yaw:-0.66, pitch:0.35, plane:0, msg:'<b>ฉาก 2 — ยกมิติ!</b> เพิ่มแกนใหม่ <b>z = x²</b> ให้ทุกจุด — จุดถูกยกลอยขึ้นตามค่า x² ของตัวเอง กลายเป็นข้อมูล 3 มิติ (ลากหมุนดูได้)'},
+      3:{t:1, yaw:-0.66, pitch:0.35, plane:1, msg:'<b>ฉาก 3 — เวทมนตร์:</b> ในโลก 3 มิติ <b>ระนาบแบนสนิท</b> y = a₀ + a₁x + a₂z ฟิตทุกจุดพอดี — นี่คือ "เชิงเส้น" ของแท้ ไม่มีการดัดโค้งเลย!'},
+      4:{t:1, yaw:0,     pitch:0,    plane:1, msg:'<b>ฉาก 4 — มองกลับด้านหน้า:</b> ระนาบแบนใบเดิม พอฉายกลับ 2 มิติ กลายเป็น <b>พาราโบลา</b> — Polynomial Regression = Linear Regression ในมิติที่ถูกยกขึ้น'}
+    };
+    const S = { t:0, yaw:0, pitch:0, plane:0, scene:1, userSpin:false };
+    const T = { t:0, yaw:0, pitch:0, plane:0 };
+    const msgEl = document.getElementById('liftMsg');
+    function setScene(n){
+      S.scene=n; const s=SCENES[n]; T.t=s.t; T.plane=s.plane;
+      if(!S.userSpin || n===1 || n===4){ T.yaw=s.yaw; T.pitch=s.pitch; }
+      S.userSpin=false;
+      msgEl.innerHTML=s.msg;
+      document.querySelectorAll('#liftScenes .sc').forEach(b=>b.classList.toggle('on', +b.dataset.sc===n));
+    }
+    setScene(1);
+    document.getElementById('liftScenes').addEventListener('click', e=>{
+      const b=e.target.closest('.sc'); if(b){ stopAuto(); setScene(+b.dataset.sc); } });
+
+    /* เล่นอัตโนมัติทั้งเรื่อง */
+    let auto=null;
+    const playBtn=document.getElementById('liftPlay');
+    function stopAuto(){ if(auto){ clearInterval(auto); auto=null; playBtn.textContent='▶ เล่นทั้ง 4 ฉาก'; } }
+    playBtn.addEventListener('click', ()=>{
+      if(auto){ stopAuto(); return; }
+      setScene(1); let n=1;
+      playBtn.textContent='⏸ หยุด';
+      auto=setInterval(()=>{ n++; if(n>4){ stopAuto(); return; } setScene(n); }, 3000);
+    });
+
+    /* ลากหมุน */
+    let drag=null;
+    cv.addEventListener('pointerdown', e=>{ drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch};
+      try{cv.setPointerCapture(e.pointerId);}catch(_){} });
+    cv.addEventListener('pointermove', e=>{ if(!drag) return; S.userSpin=true;
+      T.yaw = S.yaw = drag.yaw + (e.clientX-drag.x)*0.008;
+      T.pitch = S.pitch = Math.max(-0.2,Math.min(1.1, drag.pitch + (e.clientY-drag.y)*0.006)); });
+    cv.addEventListener('pointerup', ()=>drag=null);
+    cv.addEventListener('pointercancel', ()=>drag=null);
+
+    /* ---- โปรเจกชัน 3D → 2D ---- */
+    function proj(x,y,z){
+      const X0=x, Y0=y-3.4, Z0=z-4.5*S.t;
+      const cy=Math.cos(S.yaw), sy=Math.sin(S.yaw);
+      const X1= X0*cy + Z0*sy, Z1= -X0*sy + Z0*cy;
+      const cp=Math.cos(S.pitch), sp=Math.sin(S.pitch);
+      const Y2= Y0*cp - Z1*sp, Z2= Y0*sp + Z1*cp;
+      const f = 470/(15 + Z2);
+      return { x: W/2 + X1*f*0.92, y: H*0.54 - Y2*f, z: Z2, f };
+    }
+    const planeY=(x,z)=> QUAD[0] + QUAD[1]*x + QUAD[2]*z;
+
+    /* ---- วาด ---- */
+    const BG = ctx.createLinearGradient(0,0,0,H);
+    BG.addColorStop(0,'#1c2444'); BG.addColorStop(0.55,'#0e1329'); BG.addColorStop(1,'#080b1a');
+    function frame(){
+      /* lerp สู่เป้า */
+      S.t     += (T.t     - S.t    )*0.06;
+      S.yaw   += (T.yaw   - S.yaw  )*0.07;
+      S.pitch += (T.pitch - S.pitch)*0.07;
+      S.plane += (T.plane - S.plane)*0.06;
+
+      ctx.fillStyle=BG; ctx.fillRect(0,0,W,H);
+      /* ดาวประดับ */
+      for(let i=0;i<26;i++){ const sx=(i*137.5)%W, sy=(i*89.7)%(H*0.5);
+        ctx.fillStyle='rgba(200,215,255,'+(0.10+(i%5)*0.05)+')';
+        ctx.fillRect(sx, sy, 1.6, 1.6); }
+      const t=S.t, is3d = t>0.02;
+
+      /* พื้นกริด (จางเข้าเมื่อเป็น 3D) */
+      if(is3d){
+        ctx.lineWidth=1;
+        const ga = 0.16*Math.min(1,t)* (0.25+0.75*Math.min(1,Math.abs(S.pitch)*3+Math.abs(S.yaw)));
+        for(let gx=-3;gx<=3;gx++){ const a=proj(gx,0,0), b=proj(gx,0,9*t);
+          ctx.strokeStyle='rgba(120,140,220,'+ga+')'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+        for(let gz=0;gz<=9;gz+=1.5){ const a=proj(-3,0,gz*t), b=proj(3,0,gz*t);
+          ctx.strokeStyle='rgba(120,140,220,'+ga+')'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+      }
+
+      /* แกน */
+      function axis(x1,y1,z1,x2,y2,z2,col,label,la){
+        const a=proj(x1,y1,z1), b=proj(x2,y2,z2);
+        ctx.strokeStyle=col; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        ctx.fillStyle=col.replace(/[\d.]+\)$/,'1)'); ctx.font='700 13px Poppins, Kanit, sans-serif';
+        ctx.globalAlpha=la; ctx.fillText(label, b.x+7, b.y+4); ctx.globalAlpha=1;
+      }
+      axis(-3.4,0,0, 3.7,0,0, 'rgba(148,163,216,.55)', 'x', 1);
+      axis(-3.4,0,0, -3.4,7.6,0, 'rgba(148,163,216,.55)', 'y', 1);
+      if(t>0.05) axis(-3.4,0,0, -3.4,0,9.6*t, 'rgba(196,181,253,.7)', 'z = x²', Math.min(1,t));
+
+      /* ระนาบ (โปร่งใส) — วาดเป็นตารางสี่เหลี่ยม เรียงหลัง→หน้า */
+      const pa=S.plane;
+      if(pa>0.02){
+        const quads=[];
+        const NX=7, NZ=7;
+        for(let i=0;i<NX;i++) for(let j=0;j<NZ;j++){
+          const xa=-3.2+6.4*i/NX, xb=-3.2+6.4*(i+1)/NX;
+          const za=(9.4*j/NZ)*t, zb=(9.4*(j+1)/NZ)*t;
+          quads.push({xa,xb,za,zb});
+        }
+        /* y ของระนาบใช้ z "เชิงข้อมูล" (คือค่า x² จริง) = zWorld/t เมื่อ t>0 */
+        const zData = zw => t>1e-4 ? zw/t : 0;
+        const Q = quads.map(q=>{
+          const p1=proj(q.xa, planeY(q.xa, zData(q.za)), q.za),
+                p2=proj(q.xb, planeY(q.xb, zData(q.za)), q.za),
+                p3=proj(q.xb, planeY(q.xb, zData(q.zb)), q.zb),
+                p4=proj(q.xa, planeY(q.xa, zData(q.zb)), q.zb);
+          return { pts:[p1,p2,p3,p4], depth:(p1.z+p2.z+p3.z+p4.z)/4 };
+        }).sort((a,b)=>b.depth-a.depth);
+        Q.forEach(q=>{
+          ctx.beginPath(); ctx.moveTo(q.pts[0].x,q.pts[0].y);
+          for(let k=1;k<4;k++) ctx.lineTo(q.pts[k].x,q.pts[k].y);
+          ctx.closePath();
+          ctx.fillStyle='rgba(139,92,246,'+(0.13*pa)+')'; ctx.fill();
+          ctx.strokeStyle='rgba(167,139,250,'+(0.4*pa)+')'; ctx.lineWidth=0.8; ctx.stroke();
+        });
+      }
+
+      /* เส้นโค้งบนระนาบ (โผล่พร้อมระนาบ) — ที่ฉาก 4 คือพาราโบลา */
+      if(pa>0.05){
+        ctx.beginPath();
+        for(let k=0;k<=60;k++){ const x=-3.1+6.2*k/60, z=x*x*t, p=proj(x, planeY(x,x*x), z);
+          k? ctx.lineTo(p.x,p.y) : ctx.moveTo(p.x,p.y); }
+        ctx.strokeStyle='rgba(196,181,253,'+(0.95*pa)+')'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+      }
+
+      /* ฉาก 1: เส้นตรงที่แพ้ + residual แดง */
+      const lineA = (1-Math.min(1,t*3)) * (1-pa);
+      if(lineA>0.03){
+        ctx.globalAlpha=lineA;
+        const a=proj(-3.2, LIN[0]+LIN[1]*-3.2, 0), b=proj(3.2, LIN[0]+LIN[1]*3.2, 0);
+        ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2.6; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+        ctx.setLineDash([4,4]); ctx.strokeStyle='#f87171'; ctx.lineWidth=1.6;
+        P.forEach(p=>{ const q1=proj(p.x,p.y,0), q2=proj(p.x, LIN[0]+LIN[1]*p.x, 0);
+          ctx.beginPath(); ctx.moveTo(q1.x,q1.y); ctx.lineTo(q2.x,q2.y); ctx.stroke(); });
+        ctx.setLineDash([]); ctx.globalAlpha=1;
+      }
+
+      /* เส้นยกจุด (ตอน t กำลังโต) — โชว์ "กำลังถูกยก" */
+      if(t>0.03 && t<0.97){
+        ctx.setLineDash([3,4]); ctx.strokeStyle='rgba(196,181,253,.5)'; ctx.lineWidth=1;
+        P.forEach(p=>{ const a=proj(p.x,p.y,0), b=proj(p.x,p.y,p.x*p.x*t);
+          ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); });
+        ctx.setLineDash([]);
+      }
+
+      /* จุดข้อมูล (เรียงลึก→ตื้น) */
+      P.map(p=>({p, pr:proj(p.x,p.y,p.x*p.x*t)}))
+       .sort((a,b)=>b.pr.z-a.pr.z)
+       .forEach(({pr})=>{
+          const r = Math.max(3, 6.2*pr.f/33);
+          ctx.beginPath(); ctx.arc(pr.x,pr.y,r+2.5,0,Math.PI*2); ctx.fillStyle='rgba(96,165,250,.25)'; ctx.fill();
+          ctx.beginPath(); ctx.arc(pr.x,pr.y,r,0,Math.PI*2);
+          ctx.fillStyle='#60a5fa'; ctx.fill();
+          ctx.lineWidth=1.4; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.stroke();
+       });
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  })();
+  </script>
+
+  </section>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: ดัด degree แล้วดู Overfitting เกิดต่อหน้า <span class="badge">ทดลองเล่น</span></h2>
+
+  <style>
+    .pg-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+      background:#f7f8fb; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5); touch-action:none; }
+    .pg-stage canvas { display:block; width:100%; height:auto; cursor:grab; }
+    .pg-stage.addmode canvas { cursor:copy; }
+    .pg-deg { position:absolute; top:10px; left:10px; z-index:3; pointer-events:none;
+      background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; border-radius:12px;
+      padding:7px 16px; font-weight:700; font-size:1.02rem; box-shadow:0 6px 18px -8px rgba(79,70,229,.7);
+      display:flex; align-items:baseline; gap:8px; }
+    .pg-deg small { font-weight:600; opacity:.85; font-size:.72em; }
+    .pg-verdict { position:absolute; top:10px; right:10px; z-index:3; pointer-events:none;
+      border-radius:999px; padding:6px 14px; font-weight:700; font-size:.88rem;
+      background:rgba(255,255,255,.92); border:1px solid #d5dae6; color:#1f2533;
+      box-shadow:0 4px 14px -8px rgba(15,23,42,.5); transition:all .3s; }
+    .pg-verdict.under { color:#b45309; border-color:#f59e0b; }
+    .pg-verdict.good  { color:#0e7f43; border-color:#12a150; }
+    .pg-verdict.over  { color:#b91c1c; border-color:#e5484d; animation:pgShake .5s; }
+    @keyframes pgShake { 25%{transform:translateX(-3px)} 50%{transform:translateX(3px)} 75%{transform:translateX(-2px)} }
+    .pg-grid { display:grid; grid-template-columns:1fr; gap:14px; margin-top:14px; }
+    @media(min-width:760px){ .pg-grid{ grid-template-columns: 1fr 330px; align-items:start; } }
+    .pg-ctl { display:flex; flex-direction:column; gap:11px; }
+    .pg-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .pg-row > label.cap { font-weight:600; min-width:88px; }
+    .pg-row input[type=range]{ flex:1 1 130px; accent-color:#7c3aed; min-width:110px; }
+    .pg-kv { font-weight:800; font-size:1.15rem; color:#7c3aed; background:rgba(124,58,237,.12);
+      border-radius:9px; padding:1px 13px; min-width:42px; text-align:center; }
+    .pg-seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); flex-wrap:wrap; }
+    .pg-seg button { font-family:inherit; font-size:.83rem; font-weight:600; border:none; background:transparent;
+      color:var(--ink); padding:6px 12px; cursor:pointer; margin:0; box-shadow:none; }
+    .pg-seg button.on { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+    .pg-tgl { font-family:inherit; font-size:.83rem; font-weight:600; cursor:pointer;
+      border:1px solid var(--border); background:var(--card); color:var(--muted);
+      border-radius:999px; padding:6px 13px; margin:0; box-shadow:none; display:inline-flex; align-items:center; gap:6px; }
+    .pg-tgl.on { border-color:#7c3aed; color:#7c3aed; background:rgba(124,58,237,.1); }
+    .pg-mse { display:flex; flex-direction:column; gap:7px; font-size:.88rem; }
+    .pg-mrow { display:flex; align-items:center; gap:8px; }
+    .pg-mrow .nm { min-width:86px; font-weight:600; display:flex; align-items:center; gap:6px; }
+    .pg-mrow .nm i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+    .pg-track { flex:1; height:13px; background:rgba(127,127,127,.13); border-radius:7px; overflow:hidden; }
+    .pg-track > b { display:block; height:100%; border-radius:7px; transition:width .4s cubic-bezier(.2,.8,.3,1); }
+    .pg-mrow .vv { min-width:56px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+    .pg-uchart { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 10px 6px; }
+    .pg-uchart h4 { margin:0 0 4px; font-size:.88rem; color:var(--ink); }
+    .pg-uchart canvas { display:block; width:100%; height:auto; }
+    #pgTour { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+    .pg-hint { font-size:.84rem; color:var(--muted); margin:0; }
+    .pg-hint b { color:#7c3aed; }
+  </style>
+
+  <div class="demo" id="pg">
+    <h3 style="margin-top:0">🎛️ Polynomial Playground — เห็นทั้ง "เส้นดัดสด" และ "กราฟรูปตัว U วาดตัวเอง"</h3>
+    <p style="margin-top:0">ข้อมูลถูกแบ่งเป็น <b style="color:#2456e6">● ชุดฝึก</b> (ใช้ฟิตเส้น) กับ <b style="color:#f59e0b">◆ ชุดทดสอบ</b> (เก็บไว้จับผิด!) —
+    ลาก <b style="color:#7c3aed">degree</b> จาก 1 → 9 แล้วดู 2 อย่างพร้อมกัน: เส้นบนกราฟเริ่ม "ดิ้น" เก็บทุกจุด และกราฟขวามือ <strong>MSE ทดสอบดีดกลับเป็นรูปตัว U</strong> — นาทีที่เข้าใจ overfitting ตลอดชีวิต · ลากจุดได้ กดทัวร์ให้เล่นเองก็ได้</p>
+
+    <div class="pg-grid">
+      <div>
+        <div class="pg-stage" id="pgStage">
+          <div class="pg-deg"><span>degree <span id="pgDegVal">2</span></span><small id="pgDegName">พาราโบลา</small></div>
+          <div class="pg-verdict good" id="pgVerdict">กำลังพอดี ✓</div>
+          <canvas id="pgCanvas" width="780" height="470"></canvas>
+        </div>
+        <div class="pg-mse" style="margin-top:10px">
+          <div class="pg-mrow"><span class="nm"><i style="background:#2456e6"></i>MSE ฝึก</span><span class="pg-track"><b id="pgBarTr" style="background:linear-gradient(90deg,#2456e6,#60a5fa)"></b></span><span class="vv" id="pgTr">–</span></div>
+          <div class="pg-mrow"><span class="nm"><i style="background:#f59e0b"></i>MSE ทดสอบ</span><span class="pg-track"><b id="pgBarTe" style="background:linear-gradient(90deg,#f59e0b,#ef4444)"></b></span><span class="vv" id="pgTe">–</span></div>
+        </div>
+      </div>
+
+      <div class="pg-ctl">
+        <div class="pg-row">
+          <label class="cap" for="pgDeg">degree</label>
+          <input type="range" id="pgDeg" min="1" max="9" step="1" value="2">
+          <span class="pg-kv" id="pgKv">2</span>
+        </div>
+        <div class="pg-row">
+          <label class="cap">ชุดข้อมูล</label>
+          <div class="pg-seg" id="pgDs">
+            <button data-ds="brake" class="on">ระยะเบรก</button>
+            <button data-ds="wave">คลื่น</button>
+            <button data-ds="sat">อิ่มตัว</button>
+          </div>
+        </div>
+        <div class="pg-row">
+          <button class="pg-tgl on" id="pgTglRes">เส้นคลาดเคลื่อน</button>
+          <button class="pg-tgl" id="pgTglAdd">วางจุดเอง</button>
+          <button id="pgNew" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🎲 สุ่มข้อมูลใหม่</button>
+        </div>
+        <div class="pg-row">
+          <button id="pgTour">▶ ทัวร์ degree 1 → 9</button>
+        </div>
+        <div class="pg-uchart">
+          <h4>📉 MSE เทียบ degree — จุดเด่นของสัปดาห์</h4>
+          <canvas id="pgU" width="330" height="185"></canvas>
+        </div>
+        <p class="pg-hint"><b>สังเกต:</b> เส้นน้ำเงิน (ฝึก) ลดลงตลอด แต่เส้นส้ม (ทดสอบ) ลดแล้ว<b>เด้งกลับ</b> — จุดต่ำสุดของตัว U คือ degree ที่ "พอดี"</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const cv=document.getElementById('pgCanvas'); if(!cv) return;
+    const ctx=cv.getContext('2d');
+    const W=780,H=470, dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+    const ucv=document.getElementById('pgU'), uctx=ucv.getContext('2d');
+    const UW=330, UH=185; ucv.width=UW*dpr; ucv.height=UH*dpr; ucv.style.aspectRatio=UW+'/'+UH; uctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const PAD={l:42,r:14,t:14,b:38}, X0=PAD.l, X1=W-PAD.r, Y0=PAD.t, Y1=H-PAD.b;
+    const px=x=>X0+x/10*(X1-X0), py=y=>Y1-y/10*(Y1-Y0);
+    const ux=p=> (p-X0)/(X1-X0)*10, uy=p=> (Y1-p)/(Y1-Y0)*10;
+
+    let sd=20260703; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+    const gauss=()=> (rnd()+rnd()+rnd()+rnd()-2)*0.5;
+
+    const S={ deg:2, ds:'brake', pts:[], res:true, add:false, drag:null, tour:null };
+
+    function makeData(){
+      const P=[], n=16;
+      for(let i=0;i<n;i++){
+        const x=0.4+9.2*i/(n-1)+gauss()*0.15;
+        let y;
+        if(S.ds==='brake') y=0.085*x*x+0.12*x+0.7+gauss()*0.65;
+        else if(S.ds==='wave') y=5+2.7*Math.sin(x*0.85)+gauss()*0.7;
+        else y=8.6*(1-Math.exp(-x/2.7))+0.4+gauss()*0.6;
+        P.push({x, y:Math.max(0.2,Math.min(9.8,y)), test: (i%3===1)});
+      }
+      S.pts=P;
+    }
+
+    /* ---- OLS บน x ปรับสเกล u=(x-5)/5 เพื่อความเสถียรที่ degree สูง ---- */
+    function solve(A,b){ const n=b.length;
+      for(let i=0;i<n;i++){ let p=i; for(let k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[p][i])) p=k;
+        [A[i],A[p]]=[A[p],A[i]]; [b[i],b[p]]=[b[p],b[i]];
+        if(Math.abs(A[i][i])<1e-11) return null;
+        for(let k=i+1;k<n;k++){ const f=A[k][i]/A[i][i]; for(let j=i;j<n;j++) A[k][j]-=f*A[i][j]; b[k]-=f*b[i]; } }
+      const x=new Array(n); for(let i=n-1;i>=0;i--){ let s=b[i]; for(let j=i+1;j<n;j++) s-=A[i][j]*x[j]; x[i]=s/A[i][i]; } return x; }
+    function fit(deg, train){
+      const m=deg+1, A=[], b=[];
+      for(let r=0;r<m;r++){ const row=[];
+        for(let c=0;c<m;c++){ let s=0; train.forEach(p=>{ const u=(p.x-5)/5; s+=Math.pow(u,r+c); }); row.push(s); }
+        A.push(row); let t=0; train.forEach(p=>{ const u=(p.x-5)/5; t+=Math.pow(u,r)*p.y; }); b.push(t); }
+      return solve(A,b);
+    }
+    const ev=(c,x)=>{ const u=(x-5)/5; let y=0,pw=1; for(let k=0;k<c.length;k++){ y+=c[k]*pw; pw*=u; } return y; };
+    const mse=(c,set)=> set.length? set.reduce((s,p)=>{ const r=p.y-ev(c,p.x); return s+r*r; },0)/set.length : 0;
+
+    /* ---- โค้งปัจจุบัน + เป้าหมาย (morph) ---- */
+    const NC=90; let curve=new Array(NC+1).fill(H/2), target=curve.slice(), sweep={tr:[],te:[]};
+    let coef=null;
+    function refit(){
+      const train=S.pts.filter(p=>!p.test), test=S.pts.filter(p=>p.test);
+      coef=fit(S.deg, train);
+      if(coef) for(let k=0;k<=NC;k++){ const x=10*k/NC; target[k]=py(Math.max(-3,Math.min(13,ev(coef,x)))); }
+      /* กวาดทุก degree เพื่อกราฟตัว U (คำนวณสดทั้งหมด — เร็วมาก) */
+      sweep.tr=[]; sweep.te=[];
+      for(let d=1;d<=9;d++){ const c=fit(d,train);
+        sweep.tr.push(c?mse(c,train):null); sweep.te.push(c?mse(c,test):null); }
+      updateHud(); drawU();
+    }
+
+    /* ---- HUD ---- */
+    const DEGNAME={1:'เส้นตรง',2:'พาราโบลา',3:'ตัว S',4:'กำลัง 4',5:'กำลัง 5',6:'กำลัง 6',7:'กำลัง 7',8:'กำลัง 8',9:'กำลัง 9'};
+    function updateHud(){
+      document.getElementById('pgDegVal').textContent=S.deg;
+      document.getElementById('pgKv').textContent=S.deg;
+      document.getElementById('pgDegName').textContent=DEGNAME[S.deg];
+      const tr=sweep.tr[S.deg-1], te=sweep.te[S.deg-1];
+      document.getElementById('pgTr').textContent = tr==null?'—':tr.toFixed(2);
+      document.getElementById('pgTe').textContent = te==null?'—':te.toFixed(2);
+      const cap=6;
+      document.getElementById('pgBarTr').style.width = tr==null?'0%':Math.min(100,tr/cap*100)+'%';
+      document.getElementById('pgBarTe').style.width = te==null?'0%':Math.min(100,te/cap*100)+'%';
+      /* คำตัดสิน: เทียบ te กับค่าต่ำสุดของ sweep */
+      const v=document.getElementById('pgVerdict');
+      const teMin=Math.min(...sweep.te.filter(x=>x!=null));
+      if(te==null){ v.textContent='คำนวณไม่ได้'; v.className='pg-verdict'; }
+      else if(S.deg<=1 && te>teMin*1.5){ v.textContent='Underfit — เส้นแข็งเกินไป'; v.className='pg-verdict under'; }
+      else if(te<=teMin*1.35){ v.textContent='กำลังพอดี ✓'; v.className='pg-verdict good'; }
+      else { v.textContent='Overfit! เส้นจำ noise — MSE ทดสอบพุ่ง'; v.className='pg-verdict over'; }
+    }
+
+    /* ---- กราฟตัว U ---- */
+    function drawU(){
+      uctx.clearRect(0,0,UW,UH);
+      const L=34,R=8,T=10,B=26;
+      const all=sweep.tr.concat(sweep.te).filter(x=>x!=null&&isFinite(x));
+      if(!all.length) return;
+      const lo=Math.min(...all), hi=Math.max(...all);
+      const ly=v=> T+(UH-T-B)*(1-(Math.log(v+0.05)-Math.log(lo+0.05))/(Math.log(hi+0.05)-Math.log(lo+0.05)||1));
+      const lx=d=> L+(UW-L-R)*(d-1)/8;
+      uctx.strokeStyle='rgba(127,127,127,.25)'; uctx.lineWidth=1;
+      uctx.strokeRect(L,T,UW-L-R,UH-T-B);
+      uctx.fillStyle='#8a93a8'; uctx.font='600 10px Poppins, Kanit, sans-serif'; uctx.textAlign='center';
+      for(let d=1;d<=9;d++) uctx.fillText(d, lx(d), UH-10);
+      uctx.fillText('degree →', UW/2, UH-0.5);
+      /* เส้นปัจจุบัน */
+      uctx.strokeStyle='rgba(124,58,237,.45)'; uctx.setLineDash([4,3]);
+      uctx.beginPath(); uctx.moveTo(lx(S.deg),T); uctx.lineTo(lx(S.deg),UH-B); uctx.stroke(); uctx.setLineDash([]);
+      function line(arr,col){
+        uctx.strokeStyle=col; uctx.lineWidth=2.4; uctx.beginPath(); let started=false;
+        arr.forEach((v,i)=>{ if(v==null||!isFinite(v))return; const X=lx(i+1),Y=ly(v);
+          started? uctx.lineTo(X,Y) : uctx.moveTo(X,Y); started=true; });
+        uctx.stroke();
+        arr.forEach((v,i)=>{ if(v==null||!isFinite(v))return;
+          uctx.beginPath(); uctx.arc(lx(i+1),ly(v), i+1===S.deg?4.5:2.6, 0,Math.PI*2);
+          uctx.fillStyle=col; uctx.fill();
+          if(i+1===S.deg){ uctx.lineWidth=2; uctx.strokeStyle='#fff'; uctx.stroke(); } });
+      }
+      line(sweep.tr,'#2456e6'); line(sweep.te,'#f59e0b');
+      uctx.fillStyle='#2456e6'; uctx.textAlign='left'; uctx.fillText('● ฝึก', L+4, T+11);
+      uctx.fillStyle='#f59e0b'; uctx.fillText('◆ ทดสอบ', L+40, T+11);
+    }
+
+    /* ---- วาดเวทีหลัก ---- */
+    let t0=0;
+    function frame(ts){
+      if(!t0)t0=ts; const time=(ts-t0)/1000;
+      for(let k=0;k<=NC;k++) curve[k]+=(target[k]-curve[k])*0.18;
+      ctx.clearRect(0,0,W,H);
+      /* แกน */
+      ctx.lineWidth=1;
+      for(let v=0;v<=10;v+=2){
+        ctx.strokeStyle='rgba(90,100,120,.13)';
+        ctx.beginPath(); ctx.moveTo(px(v),Y0); ctx.lineTo(px(v),Y1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X0,py(v)); ctx.lineTo(X1,py(v)); ctx.stroke();
+        ctx.fillStyle='#5b6475'; ctx.font='600 11px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(v,px(v),Y1+7);
+        ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(v,X0-8,py(v));
+      }
+      ctx.strokeStyle='rgba(90,100,120,.33)'; ctx.strokeRect(X0,Y0,X1-X0,Y1-Y0);
+      /* residual */
+      if(S.res && coef){
+        const a=0.45+0.25*Math.sin(time*3);
+        S.pts.forEach(p=>{
+          const yc=Math.max(Y0,Math.min(Y1,py(ev(coef,p.x))));
+          ctx.setLineDash([3,3]); ctx.lineWidth=1.4;
+          ctx.strokeStyle=p.test?'rgba(239,68,68,'+a+')':'rgba(36,86,230,'+(a*0.7)+')';
+          ctx.beginPath(); ctx.moveTo(px(p.x),py(p.y)); ctx.lineTo(px(p.x),yc); ctx.stroke(); ctx.setLineDash([]);
+        });
+      }
+      /* เส้นโค้ง */
+      ctx.beginPath();
+      for(let k=0;k<=NC;k++){ const X=X0+(X1-X0)*k/NC, Y=Math.max(Y0-6,Math.min(Y1+6,curve[k]));
+        k? ctx.lineTo(X,Y):ctx.moveTo(X,Y); }
+      ctx.strokeStyle='#7c3aed'; ctx.lineWidth=3.2; ctx.lineCap='round'; ctx.lineJoin='round';
+      ctx.shadowColor='rgba(124,58,237,.45)'; ctx.shadowBlur=8; ctx.stroke(); ctx.shadowBlur=0;
+      /* จุด: ฝึก=วงกลมน้ำเงิน · ทดสอบ=เพชรส้ม */
+      S.pts.forEach(p=>{
+        const X=px(p.x), Y=py(p.y);
+        if(p.test){ ctx.save(); ctx.translate(X,Y); ctx.rotate(Math.PI/4);
+          ctx.fillStyle='#f59e0b'; ctx.fillRect(-5,-5,10,10);
+          ctx.lineWidth=1.6; ctx.strokeStyle='#fff'; ctx.strokeRect(-5,-5,10,10); ctx.restore();
+        } else { ctx.beginPath(); ctx.arc(X,Y,5.6,0,Math.PI*2);
+          ctx.fillStyle='#2456e6'; ctx.fill(); ctx.lineWidth=1.6; ctx.strokeStyle='#fff'; ctx.stroke(); }
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    /* ---- คอนโทรล ---- */
+    const degIn=document.getElementById('pgDeg');
+    degIn.addEventListener('input', ()=>{ S.deg=+degIn.value; refit(); });
+    document.getElementById('pgDs').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      S.ds=b.dataset.ds; makeData(); refit();
+    });
+    document.getElementById('pgNew').addEventListener('click', ()=>{ makeData(); refit(); });
+    const tglRes=document.getElementById('pgTglRes');
+    tglRes.addEventListener('click', ()=>{ S.res=!S.res; tglRes.classList.toggle('on',S.res); });
+    const tglAdd=document.getElementById('pgTglAdd'), stage=document.getElementById('pgStage');
+    tglAdd.addEventListener('click', ()=>{ S.add=!S.add; tglAdd.classList.toggle('on',S.add); stage.classList.toggle('addmode',S.add); });
+
+    /* ทัวร์ (setInterval — เดินได้แม้ rAF ถูกหน่วง) */
+    const tourBtn=document.getElementById('pgTour');
+    tourBtn.addEventListener('click', ()=>{
+      if(S.tour){ clearInterval(S.tour); S.tour=null; tourBtn.textContent='▶ ทัวร์ degree 1 → 9'; return; }
+      S.deg=1; degIn.value=1; refit();
+      tourBtn.textContent='⏸ หยุดทัวร์';
+      S.tour=setInterval(()=>{
+        if(S.deg>=9){ clearInterval(S.tour); S.tour=null; tourBtn.textContent='▶ ทัวร์ degree 1 → 9'; return; }
+        S.deg++; degIn.value=S.deg; refit();
+      }, 1000);
+    });
+
+    /* ลาก/เพิ่มจุด */
+    const loc=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; };
+    cv.addEventListener('pointerdown', e=>{
+      const p=loc(e);
+      if(S.add){ S.pts.push({x:Math.max(0.1,Math.min(9.9,ux(p.x))), y:Math.max(0.1,Math.min(9.9,uy(p.y))), test:rnd()<0.3}); refit(); return; }
+      let bi=-1,bd=15*15;
+      S.pts.forEach((q,i)=>{ const dx=px(q.x)-p.x, dy=py(q.y)-p.y, d=dx*dx+dy*dy; if(d<bd){bd=d;bi=i;} });
+      if(bi>=0){ S.drag=bi; try{cv.setPointerCapture(e.pointerId);}catch(_){} }
+    });
+    cv.addEventListener('pointermove', e=>{
+      if(S.drag==null) return; const p=loc(e), q=S.pts[S.drag];
+      q.x=Math.max(0.1,Math.min(9.9,ux(p.x))); q.y=Math.max(0.1,Math.min(9.9,uy(p.y)));
+      refit();
+    });
+    cv.addEventListener('pointerup', ()=>S.drag=null);
+    cv.addEventListener('pointercancel', ()=>S.drag=null);
+
+    makeData(); refit();
+  })();
+  </script>
+
+  </section>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — Polynomial Regression: จากโจทย์สู่สูตร (OLS) <span class="badge">ทีละขั้น</span></h2>
+
+  <!-- ★ โจทย์ตัวอย่าง มาก่อน ★ -->
+  <div class="card">
+    <div class="ex-note" style="border-left-color:#6366f1;background:rgba(99,102,241,.08)"><strong>🎯 โจทย์ตัวอย่าง (เริ่มจากตรงนี้):</strong> มีข้อมูล (x, y) มา 5 จุด · มองด้วยตาก็เห็นว่า "โค้ง" แต่ <strong>เรายังไม่รู้สมการ</strong> — จงหาสมการพหุนามที่อธิบายข้อมูลชุดนี้</div>
+    <div class="tbl-scroll">
+      <table class="calc-tbl" style="max-width:340px">
+        <tr><th>x</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+        <tr><th>y</th><td>2</td><td>5</td><td>10</td><td>17</td><td>26</td></tr>
+      </table>
+    </div>
+    <div style="text-align:center;margin:14px 0 6px">
+      <svg viewBox="0 0 320 240" style="width:100%;max-width:360px;height:auto" role="img" aria-label="กราฟจุดข้อมูล 5 จุด">
+        <line x1="40" y1="140" x2="305" y2="140" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".22"/>
+        <line x1="40" y1="75" x2="305" y2="75" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" opacity=".22"/>
+        <line x1="40" y1="18" x2="40" y2="205" stroke="currentColor" stroke-width="1.5" opacity=".55"/>
+        <line x1="40" y1="205" x2="305" y2="205" stroke="currentColor" stroke-width="1.5" opacity=".55"/>
+        <text x="34" y="209" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">0</text>
+        <text x="34" y="144" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">10</text>
+        <text x="34" y="79" text-anchor="end" font-size="11" fill="currentColor" opacity=".65">20</text>
+        <text x="85" y="221" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">1</text>
+        <text x="130" y="221" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">2</text>
+        <text x="175" y="221" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">3</text>
+        <text x="220" y="221" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">4</text>
+        <text x="265" y="221" text-anchor="middle" font-size="11" fill="currentColor" opacity=".65">5</text>
+        <text x="298" y="223" font-size="12" fill="currentColor" opacity=".8" font-style="italic">x</text>
+        <text x="28" y="16" font-size="12" fill="currentColor" opacity=".8" font-style="italic">y</text>
+        <circle cx="85" cy="192" r="5" fill="#6366f1"/>
+        <circle cx="130" cy="172.5" r="5" fill="#6366f1"/>
+        <circle cx="175" cy="140" r="5" fill="#6366f1"/>
+        <circle cx="220" cy="94.5" r="5" fill="#6366f1"/>
+        <circle cx="265" cy="36" r="5" fill="#6366f1"/>
+        <text x="85" y="183" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">2</text>
+        <text x="130" y="163" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">5</text>
+        <text x="175" y="131" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">10</text>
+        <text x="220" y="85" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">17</text>
+        <text x="265" y="27" text-anchor="middle" font-size="10" fill="currentColor" opacity=".7">26</text>
+      </svg>
+    </div>
+    <p style="margin-bottom:0">สิ่งที่ต้องหา = <strong>ค่าสัมประสิทธิ์</strong> ที่ทำให้เส้นโค้งลากผ่าน 5 จุดนี้ใกล้ที่สุด · ด้านล่างเดินตั้งแต่ตั้งสมการ → เมทริกซ์ → สูตร <strong>OLS</strong> จนได้คำตอบ</p>
+    <p style="margin:8px 0 0;color:var(--muted);font-size:.92rem"><strong>OLS = Ordinary Least Squares (วิธีกำลังสองน้อยสุด)</strong> — วิธีมาตรฐานในการหาค่าสัมประสิทธิ์ โดยเลือกค่าที่ทำให้ <strong>ผลรวมความคลาดเคลื่อนกำลังสอง (Σ error²) น้อยที่สุด</strong> · มีสูตรปิด β = (XᵀX)⁻¹Xᵀy</p>
+  </div>
+
+  <h3 class="reg-sub">1. หลักการพื้นฐาน — Linear vs Polynomial</h3>
+  <div class="card">
+    <p style="margin-top:0">ถ้าเป็น <strong>Linear Regression</strong> สมการเป็นเส้นตรงเส้นเดียว:</p>
+    <div class="eq-final">y = β₀ + β₁x</div>
+    <p>แต่ถ้าความสัมพันธ์เป็น <strong>เส้นโค้ง</strong> เราใช้ <strong>พหุนาม (Polynomial)</strong> โดยเพิ่มกำลังของ x:</p>
+    <div style="text-align:center;line-height:2.2;font-weight:600">
+      ดีกรี 2 (Quadratic): &nbsp; y = β₀ + β₁x + β₂x²<br>
+      ดีกรี 3 (Cubic): &nbsp; y = β₀ + β₁x + β₂x² + β₃x³
+    </div>
+    <p style="margin-bottom:0"><strong>β₀</strong> = ค่าคงที่ (intercept) · <strong>β₁, β₂, β₃, …</strong> = สัมประสิทธิ์ (coefficients) · <strong>สิ่งที่เราต้องหาคือ β ทุกตัว</strong></p>
+  </div>
+
+  <h3 class="reg-sub">2–3. ตั้งรูปสมการกับโจทย์</h3>
+  <div class="card">
+    <p style="margin-top:0">มองข้อมูลแล้วเป็นเส้นโค้ง → เลือก <strong>Polynomial degree = 2</strong> · ตั้งรูปสมการ (ใช้ a, b, c แทน β₀, β₁, β₂ ให้อ่านง่าย):</p>
+    <div class="eq-final">y = a + bx + cx²</div>
+    <p style="margin-bottom:0">ตอนนี้ <strong>ยังไม่รู้</strong>ว่า a เท่าไร, b เท่าไร, c เท่าไร — ต้องหาจากข้อมูล</p>
+  </div>
+
+  <h3 class="reg-sub">4. สร้างระบบสมการ — แทนข้อมูลทีละจุด</h3>
+  <div class="card" id="sysbox">
+    <p style="margin-top:0">เอาแต่ละจุด (x, y) จากตารางแทนลงในสมการ y = a + bx + cx²</p>
+
+    <div class="tbl-scroll">
+      <table class="calc-tbl" style="max-width:360px">
+        <tr><th>x</th><td data-pt="0">1</td><td data-pt="1">2</td><td data-pt="2">3</td><td data-pt="3">4</td><td data-pt="4">5</td></tr>
+        <tr><th>y</th><td data-pt="0">2</td><td data-pt="1">5</td><td data-pt="2">10</td><td data-pt="3">17</td><td data-pt="4">26</td></tr>
+      </table>
+    </div>
+
+    <div class="tbl-scroll">
+      <table class="sys-eq">
+        <thead><tr><th>จุด (x, y)</th><th>y</th><th></th><th>ค่าคงที่</th><th></th><th>พจน์ b (·x)</th><th></th><th>พจน์ c (·x²)</th></tr></thead>
+        <tbody>
+          <tr data-pt="0"><td>(1, 2)</td><td>2</td><td>=</td><td>a</td><td class="op">+</td><td>1·b</td><td class="op">+</td><td>1·c</td></tr>
+          <tr data-pt="1"><td>(2, 5)</td><td>5</td><td>=</td><td>a</td><td class="op">+</td><td>2·b</td><td class="op">+</td><td>4·c</td></tr>
+          <tr data-pt="2"><td>(3, 10)</td><td>10</td><td>=</td><td>a</td><td class="op">+</td><td>3·b</td><td class="op">+</td><td>9·c</td></tr>
+          <tr data-pt="3"><td>(4, 17)</td><td>17</td><td>=</td><td>a</td><td class="op">+</td><td>4·b</td><td class="op">+</td><td>16·c</td></tr>
+          <tr data-pt="4"><td>(5, 26)</td><td>26</td><td>=</td><td>a</td><td class="op">+</td><td>5·b</td><td class="op">+</td><td>25·c</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-bottom:0;color:var(--muted);font-size:.92rem">สังเกต: คอลัมน์ <strong>a</strong> ตรงกันทุกแถว (ค่าคงที่) · <strong>b</strong> คูณด้วย x · <strong>c</strong> คูณด้วย x² · มีข้อมูล N จุด ก็จะได้ N สมการ</p>
+  </div>
+
+  <script>
+  (function(){
+    var box = document.getElementById('sysbox'); if(!box) return;
+    var sel = null, els = [].slice.call(box.querySelectorAll('[data-pt]'));
+    function apply(){
+      els.forEach(function(el){ el.classList.toggle('pt-on', el.getAttribute('data-pt') === String(sel)); });
+    }
+    els.forEach(function(el){
+      el.addEventListener('click', function(){
+        var p = el.getAttribute('data-pt');
+        sel = (String(sel) === p) ? null : p;   // คลิกซ้ำ = ยกเลิก
+        apply();
+      });
+    });
+  })();
+  </script>
+
+  <h3 class="reg-sub">5. เขียนในรูปเมทริกซ์: Xβ = y</h3>
+  <div class="card">
+    <p style="margin-top:0">เอา <strong>5 สมการจากข้อ 4</strong> มารวบเป็นเมทริกซ์เดียว — <strong>สัมประสิทธิ์ของ a, b, c ในแต่ละสมการ = หนึ่งแถวของ X</strong> · ตัว a, b, c ที่ต้องหาถูกดึงไปไว้ในเวกเตอร์ β กลาง · ค่า y ทางขวาเป็นเวกเตอร์ y:</p>
+    <div style="text-align:center;white-space:nowrap;overflow-x:auto;padding:6px 0">
+      <span class="matx"><table><tr><td>1</td><td>1</td><td>1</td></tr><tr><td>1</td><td>2</td><td>4</td></tr><tr><td>1</td><td>3</td><td>9</td></tr><tr><td>1</td><td>4</td><td>16</td></tr><tr><td>1</td><td>5</td><td>25</td></tr></table></span>
+      <span class="matx"><table><tr><td>a</td></tr><tr><td>b</td></tr><tr><td>c</td></tr></table></span>
+      &nbsp;=&nbsp;
+      <span class="matx"><table><tr><td>2</td></tr><tr><td>5</td></tr><tr><td>10</td></tr><tr><td>17</td></tr><tr><td>26</td></tr></table></span>
+    </div>
+    <div class="eq-final">X β = y</div>
+    <p style="margin-bottom:0"><strong>X</strong> = design matrix (Vandermonde) · <strong>β</strong> = coefficients [a, b, c] · <strong>y</strong> = ค่าที่สังเกตจริง · <span style="color:var(--muted)">เช่น สมการ <strong>5 = a + 2b + 4c</strong> (ข้อ 4) → แถว <strong>[1, 2, 4]</strong> ใน X และเลข <strong>5</strong> ใน y</span></p>
+  </div>
+
+  <h3 class="reg-sub">6. ข้อมูลมากกว่าจำนวนตัวแปร → ใช้ Least Squares <span style="color:#a855f7;font-size:.8rem;font-weight:600">· ทฤษฎี</span></h3>
+  <div class="card" style="border-left:4px solid #a855f7;background:rgba(168,85,247,.07)">
+    <p style="margin-top:0"><strong>Least Squares (วิธีกำลังสองน้อยสุด) คืออะไร?</strong> — วิธีเลือกค่าสัมประสิทธิ์ที่ทำให้เส้น "เข้าใกล้ข้อมูลมากที่สุด" โดยวัดความใกล้จาก <strong>ผลรวมของ (ความคลาดเคลื่อน)²</strong></p>
+    <p>เหตุที่ต้องมีวิธีนี้: ในโลกจริงมักมีข้อมูลเยอะ (เช่น 100 จุด) แต่หาแค่ 3 ตัว (a, b, c) → <strong>ไม่มีเส้นไหนผ่านทุกจุดพอดี</strong> จึงขอ "เส้นที่ดีที่สุด" แทน</p>
+    <p><strong>error ของแต่ละจุด</strong> = ค่าจริง − ค่าที่เส้นทาย: e<sub>i</sub> = y<sub>i</sub> − ŷ<sub>i</sub> · แล้วนิยาม "ความไม่เข้ากัน" ของเส้นด้วยผลรวมกำลังสอง:</p>
+    <div class="eq-final">SSE = Σ (y<sub>i</sub> − ŷ<sub>i</sub>)² &nbsp;→&nbsp; ยิ่งน้อยยิ่งดี</div>
+    <p><strong>Least Squares</strong> = เลือก a, b, c ที่ทำให้ SSE นี้ <strong>น้อยที่สุด</strong> (least = น้อยสุด · squares = กำลังสองของ error)</p>
+    <p style="margin-bottom:4px"><strong>ทำไมต้องยกกำลังสอง?</strong></p>
+    <ul style="margin:0;padding-left:20px;line-height:1.8">
+      <li>กัน error บวก/ลบ <strong>หักล้างกัน</strong> (ไม่งั้นเส้นแย่ ๆ อาจได้ผลรวมเป็น 0)</li>
+      <li><strong>ลงโทษจุดที่พลาดมาก</strong> เป็นพิเศษ (พลาด 2 เท่า → โทษ 4 เท่า)</li>
+      <li>คณิตศาสตร์สวย: หาอนุพันธ์ให้ = 0 ได้ <strong>คำตอบเดียวแบบสูตรปิด</strong> (คือข้อ 7)</li>
+    </ul>
+    <p style="margin:10px 0 0;color:var(--muted);font-size:.92rem"><strong>มุมเรขาคณิต:</strong> Least Squares คือการ "ฉายเงา (project)" เวกเตอร์ y ลงบนปริภูมิที่เส้นโมเดลไปถึงได้ — จุดที่ใกล้ที่สุดคือจุดที่ error <strong>ตั้งฉาก</strong> กับปริภูมินั้นพอดี ซึ่งนำไปสู่ normal equations XᵀX·β = Xᵀy โดยตรง</p>
+  </div>
+
+  <h3 class="reg-sub">7. สูตรหาสัมประสิทธิ์ (Closed-form Solution) <span style="color:#a855f7;font-size:.8rem;font-weight:600">· ทฤษฎี</span></h3>
+  <div class="card" style="border-left:4px solid #a855f7;background:rgba(168,85,247,.07)">
+    <p style="margin-top:0"><strong>สูตรนี้มาจากไหน? เชื่อมกับข้อ 6 ยังไง</strong> — ข้อ 6 อยากได้ β ที่ทำให้ SSE น้อยสุด · เขียน SSE เป็นเวกเตอร์ (เพราะ ŷ = Xβ): <strong>SSE = ‖y − Xβ‖²</strong></p>
+    <p>หา "จุดต่ำสุด" = ตรงที่อนุพันธ์เทียบ β เป็นศูนย์ แล้วจัดรูป:</p>
+    <div class="eq-final" style="display:block;text-align:left;line-height:2.1">
+      ① &nbsp;∂SSE/∂β = −2Xᵀ(y − Xβ) = 0<br>
+      ② &nbsp;→ XᵀXβ = Xᵀy &nbsp;<span style="color:var(--muted)">(normal equations)</span><br>
+      ③ &nbsp;→ β = (XᵀX)⁻¹Xᵀy &nbsp;<span style="color:var(--muted)">(คูณ (XᵀX)⁻¹ ทั้งสองข้าง)</span>
+    </div>
+    <p>จึงได้ <strong>คำตอบแบบปิด</strong> (แก้ได้ตรง ๆ ไม่ต้องเดา):</p>
+    <div class="eq-final" style="font-size:1.35rem">β = (XᵀX)⁻¹ Xᵀy</div>
+    <div class="ex-note" style="border-left-color:#a855f7;background:rgba(168,85,247,.10)"><strong>💡 คิดง่าย ๆ:</strong> (XᵀX)⁻¹ คือ <strong>"เวอร์ชันเมทริกซ์ของการหารด้วย XᵀX"</strong> — สูตรนี้ก็คือ <strong>"Xᵀy หารด้วย XᵀX"</strong> นั่นเอง · ถ้ามีตัวแปรเดียว (y = βx) มันคือ <strong>β = Σxy / Σx²</strong> หารกันตรง ๆ เลย! · พอมีหลายสัมประสิทธิ์ ตัวเลขกลายเป็นเมทริกซ์ที่หารตรง ๆ ไม่ได้ จึงใช้ <strong>อินเวอร์ส (⁻¹)</strong> แทน (และต้องอยู่ <strong>ซ้าย</strong> เพราะเมทริกซ์คูณสลับที่ไม่ได้)</div>
+    <p style="margin-bottom:0">ขั้นตอนใช้งาน: สร้าง X → คำนวณ <strong>XᵀX</strong> → หาผกผัน (inverse) → คูณกับ <strong>Xᵀy</strong> → ได้ a, b, c (ลงมือจริงในข้อ 8)</p>
+  </div>
+
+  <h3 class="reg-sub">8. คำตอบของโจทย์ — ลงมือคำนวณจริง</h3>
+  <div class="card" id="pt8box">
+    <p style="margin-top:0"><strong>ขั้น 1 —</strong> คำนวณ <strong>XᵀX</strong> และ <strong>Xᵀy</strong> จากข้อมูล · XᵀX มาจากเอา <strong>Xᵀ คูณ X</strong> — ทุกช่องกลายเป็น <strong>"ผลรวมกำลังของ x"</strong> โดยช่องแถว i คอลัมน์ j = Σx<sup>i+j</sup></p>
+    <p style="margin:8px 0 4px"><strong>Xᵀ</strong> อ่านว่า "X ทรานสโพส (transpose)" = <strong>พลิกเมทริกซ์ สลับแถว ↔ คอลัมน์</strong> · <strong>คอลัมน์ของ X (สีเดียวกัน) → ย้ายไปเป็นแถวของ Xᵀ</strong> · 🖱️ กดเลขช่องไหนก็ได้ เพื่อไฮไลต์ทั้งคอลัมน์/แถวนั้น:</p>
+    <div id="tpose" style="text-align:center;white-space:nowrap;overflow-x:auto;padding:4px 0"></div>
+    <p style="margin:4px 0 0;color:var(--muted);font-size:.88rem;text-align:center">สีเดียวกัน = คอลัมน์ของ X ที่กลายเป็นแถวของ Xᵀ · <span style="color:#2563eb;font-weight:700">■ ค่า 1</span> · <span style="color:#db2777;font-weight:700">■ x</span> · <span style="color:#16a34a;font-weight:700">■ x²</span></p>
+    <p style="margin:6px 0 4px;color:var(--muted);font-size:.92rem">แล้ว Xᵀ (3×5) คูณ X (5×3) = XᵀX (3×3) — แต่ละช่องคือผลรวมของผลคูณ = ผลรวมกำลังของ x</p>
+    <p style="margin:8px 0 2px">คำนวณผลรวมที่ต้องใช้ก่อน (x = 1,2,3,4,5 · y = 2,5,10,17,26):</p>
+    <div style="line-height:2;padding-left:6px;font-size:.95rem">
+      n = 5 &nbsp;·&nbsp; Σx = 1+2+3+4+5 = <strong>15</strong> &nbsp;·&nbsp; Σx² = 1+4+9+16+25 = <strong>55</strong><br>
+      Σx³ = 1+8+27+64+125 = <strong>225</strong> &nbsp;·&nbsp; Σx⁴ = 1+16+81+256+625 = <strong>979</strong><br>
+      Σy = <strong>60</strong> &nbsp;·&nbsp; Σxy = 2+10+30+68+130 = <strong>240</strong> &nbsp;·&nbsp; Σx²y = 2+20+90+272+650 = <strong>1034</strong>
+    </div>
+    <div class="mm-box" style="border-left-color:#6366f1">
+      <div class="mm-title">① XᵀX = Xᵀ × X</div>
+      <p style="margin:2px 0 6px">🖱️ <strong>กดเลขในเมทริกซ์ XᵀX</strong> — มันมาจาก <strong>แถวของ Xᵀ × คอลัมน์ของ X</strong> ช่องไหน และตรงกับเลขไหนในสมการ (XᵀX สมมาตร เลขจึงซ้ำเป็นคู่) · สี: <span style="color:#3b82f6;font-weight:700">แถว Xᵀ</span> × <span style="color:#ec4899;font-weight:700">คอลัมน์ X</span> = <span style="color:#22c55e;font-weight:700">ผลลัพธ์</span></p>
+      <div id="mmul"></div>
+    </div>
+    <div class="mm-box" style="border-left-color:#f97316">
+      <div class="mm-title">② Xᵀy = Xᵀ × y</div>
+      <p style="margin:2px 0 6px">🖱️ <strong>กดเลขในเวกเตอร์ Xᵀy</strong> — มันมาจาก <strong>แถวของ Xᵀ × เวกเตอร์ y</strong> · สี: <span style="color:#3b82f6;font-weight:700">แถว Xᵀ</span> × <span style="color:#f97316;font-weight:700">y</span> = <span style="color:#22c55e;font-weight:700">ผลลัพธ์</span></p>
+      <div id="myty"></div>
+    </div>
+    <p><strong>ขั้น 2 —</strong> ได้ระบบสมการ (normal equations) <strong>XᵀX·β = Xᵀy</strong>:</p>
+    <div class="eq-final" style="display:block;text-align:left;line-height:2.1">
+      &nbsp;&nbsp;<span class="mm-eq" data-ei="0" data-ej="0">5</span>a + <span class="mm-eq" data-ei="0" data-ej="1">15</span>b + &nbsp;<span class="mm-eq" data-ei="0" data-ej="2">55</span>c = &nbsp;&nbsp;60<br>
+      <span class="mm-eq" data-ei="1" data-ej="0">15</span>a + <span class="mm-eq" data-ei="1" data-ej="1">55</span>b + <span class="mm-eq" data-ei="1" data-ej="2">225</span>c = &nbsp;240<br>
+      <span class="mm-eq" data-ei="2" data-ej="0">55</span>a + <span class="mm-eq" data-ei="2" data-ej="1">225</span>b + <span class="mm-eq" data-ei="2" data-ej="2">979</span>c = 1034
+    </div>
+    <p><strong>ขั้น 3 —</strong> แก้ 3 สมการจากขั้น 2 [เรียก (1) (2) (3) ตามลำดับ] · ทำมือด้วย <strong>การกำจัดตัวแปรทีละตัว</strong> (การหาอินเวอร์ส 3×3 ด้วยมือยุ่งกว่า — ปล่อยให้คอมพิวเตอร์ทำ):</p>
+    <div style="line-height:2.05;padding-left:6px">
+      • <strong>กำจัด a</strong> (ทำให้ a หายไป โดยลบด้วยตัวคูณของสมการ (1)):<br>
+      &nbsp;&nbsp;(2) − 3×(1) → 10b + 60c = 60 &nbsp;→&nbsp; <strong>b + 6c = 6</strong> &nbsp;… (2′)<br>
+      &nbsp;&nbsp;(3) − 11×(1) → 60b + 374c = 374 &nbsp;… (3′)<br>
+      • <strong>กำจัด b:</strong> &nbsp;(3′) − 60×(2′) → 14c = 14 &nbsp;→&nbsp; <strong class="okc">c = 1</strong><br>
+      • <strong>แทนกลับ:</strong> &nbsp;(2′): b + 6(1) = 6 → <strong class="okc">b = 0</strong> &nbsp;·&nbsp; (1): 5a + 15(0) + 55(1) = 60 → 5a = 5 → <strong class="okc">a = 1</strong>
+    </div>
+    <div style="text-align:center;font-size:1.1rem;margin:10px 0">ได้&nbsp; <strong class="okc">a = 1</strong> &nbsp;·&nbsp; <strong class="okc">b = 0</strong> &nbsp;·&nbsp; <strong class="okc">c = 1</strong></div>
+    <p>ตรวจแทนกลับในสมการ: 5(1) + 15(0) + 55(1) = <strong>60</strong> ✓ · 15 + 0 + 225 = <strong>240</strong> ✓ · 55 + 0 + 979 = <strong>1034</strong> ✓ — เข้าครบทั้ง 3 สมการ</p>
+
+    <div class="ex-note" style="border-left-color:#a855f7;background:rgba(168,85,247,.08)">
+      <strong>🔧 แก้ระบบได้หลายวิธี — ไม่ใช่วิธีเดียว</strong> (ทุกวิธีให้คำตอบเดียวกัน ต่างกันที่ความเร็ว/ความเสถียร/ขนาดข้อมูล):
+      <ul style="margin:6px 0 0;padding-left:20px;line-height:1.8">
+        <li><strong>แก้ระบบตรง ๆ:</strong> กำจัดตัวแปร (ที่โชว์) · เมทริกซ์อินเวอร์ส β=(XᵀX)⁻¹Xᵀy · Cramer's rule · LU / <strong>Cholesky</strong> (เร็ว เพราะ XᵀX สมมาตรบวกแน่นอน)</li>
+        <li><strong>ไม่ต้องสร้าง XᵀX (เสถียรกว่า — ที่ numpy ใช้จริง):</strong> <strong>QR</strong> decomposition · <strong>SVD</strong></li>
+        <li><strong>วิธีวนซ้ำ สำหรับข้อมูลมหาศาล:</strong> <strong>Gradient Descent</strong> — เดินลงเนินให้ SSE เล็กลงทีละก้าว · <em>นี่คือวิธีที่ neural network / deep learning ใช้เทรนโมเดล!</em></li>
+      </ul>
+    </div>
+    <div class="ex-note" style="border-left-color:#6366f1;background:rgba(99,102,241,.08)">
+      <strong>อีกวิธี — คูณด้วยอินเวอร์สโดยตรง</strong> β = (XᵀX)⁻¹·Xᵀy · หา (XᵀX)⁻¹ = (1/det)·adjugate
+      <div style="margin:6px 0 2px;padding-left:4px;font-size:.93rem;line-height:1.9">
+        <strong>det = 700 มาจากไหน?</strong> กระจายตามแถวแรกของ XᵀX = [5, 15, 55]:<br>
+        det = 5·(55·979 − 225²) − 15·(15·979 − 225·55) + 55·(15·225 − 55²)<br>
+        &nbsp;&nbsp;&nbsp;= 5·(3220) − 15·(2310) + 55·(350) = 16100 − 34650 + 19250 = <strong>700</strong>
+      </div>
+      แล้วสร้าง (XᵀX)⁻¹ = (1/700)·adjugate:
+      <div style="text-align:center;white-space:nowrap;overflow-x:auto;padding:6px 0">
+        <b>(XᵀX)⁻¹ = (1/700)</b>
+        <span class="matx"><table><tr><td>3220</td><td>−2310</td><td>350</td></tr><tr><td>−2310</td><td>1870</td><td>−300</td></tr><tr><td>350</td><td>−300</td><td>50</td></tr></table></span>
+        <b>·</b>
+        <span class="matx"><table><tr><td>60</td></tr><tr><td>240</td></tr><tr><td>1034</td></tr></table></span>
+      </div>
+      <div style="line-height:2.05;padding-left:4px;font-size:.95rem">
+        a = (3220·60 − 2310·240 + 350·1034) ÷ 700 = 700 ÷ 700 = <strong class="okc">1</strong><br>
+        b = (−2310·60 + 1870·240 − 300·1034) ÷ 700 = 0 ÷ 700 = <strong class="okc">0</strong><br>
+        c = (350·60 − 300·240 + 50·1034) ÷ 700 = 700 ÷ 700 = <strong class="okc">1</strong>
+      </div>
+      <span style="color:var(--muted);font-size:.9rem">ได้ a=1, b=0, c=1 เท่ากับวิธีกำจัดตัวแปรเป๊ะ · แต่การหา (XᵀX)⁻¹ 3×3 ด้วยมือ (det + adjugate) ยุ่งกว่า จึงนิยมกำจัดตัวแปร/ให้คอมพิวเตอร์ทำ</span>
+    </div>
+
+    <div class="eq-final" style="font-size:1.3rem">y = 1 + x²</div>
+    <p style="margin-bottom:0">แทนกลับกับข้อมูล: x = 3 → 1 + 3² = <strong>10</strong> ✓ · x = 5 → 1 + 5² = <strong>26</strong> ✓ — ข้อมูลชุดนี้วางบนพาราโบลาพอดี (error = 0) · ถ้ามี noise ดูข้อ 9</p>
+  </div>
+
+  <script>
+  (function(){
+    var box = document.getElementById('pt8box'); if(!box) return;
+    var host = document.getElementById('mmul'); if(!host) return;
+    var XT = [[1,1,1,1,1],[1,2,3,4,5],[1,4,9,16,25]];   // Xᵀ 3×5
+    var X  = [[1,1,1],[1,2,4],[1,3,9],[1,4,16],[1,5,25]]; // X 5×3
+    var XTX = [[5,15,55],[15,55,225],[55,225,979]];       // XᵀX 3×3
+    function tbl(rows, attr){
+      var h = '<span class="matx"><table>';
+      for(var r=0;r<rows.length;r++){ h+='<tr>'; for(var c=0;c<rows[r].length;c++){ h+='<td '+attr(r,c)+'>'+rows[r][c]+'</td>'; } h+='</tr>'; }
+      return h + '</table></span>';
+    }
+    host.innerHTML =
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;overflow-x:auto">' +
+        '<div><div class="mm-lbl">Xᵀ (3×5)</div>' + tbl(XT, function(r,c){ return 'data-xt="'+r+'"'; }) + '</div>' +
+        '<div class="mm-op">×</div>' +
+        '<div><div class="mm-lbl">X (5×3)</div>' + tbl(X, function(r,c){ return 'data-x="'+c+'"'; }) + '</div>' +
+        '<div class="mm-op">=</div>' +
+        '<div><div class="mm-lbl">XᵀX (3×3)</div>' + tbl(XTX, function(r,c){ return 'class="mm-res" data-i="'+r+'" data-j="'+c+'"'; }) + '</div>' +
+      '</div>' +
+      '<div id="mm-calc" class="mm-calc">👆 กดเลขในเมทริกซ์ <b>XᵀX</b> เพื่อดูว่ามันมาจากแถว/คอลัมน์ไหน (และตรงกับเลขไหนในสมการ)</div>';
+    var calc = host.querySelector('#mm-calc'), cur = null;
+    var IDLE = '👆 กดเลขในเมทริกซ์ <b>XᵀX</b> เพื่อดูว่ามันมาจากแถว/คอลัมน์ไหน (และตรงกับเลขไหนในสมการ)';
+    function clr(){ box.querySelectorAll('.mm-on').forEach(function(e){ e.classList.remove('mm-on','mm-row','mm-col','mm-cell','mm-eqon'); }); }
+    function show(i,j){
+      var key = i+','+j;
+      if(cur === key){ clr(); cur = null; calc.innerHTML = IDLE; return; }
+      clr(); cur = key;
+      host.querySelectorAll('[data-xt="'+i+'"]').forEach(function(e){ e.classList.add('mm-on','mm-row'); });
+      host.querySelectorAll('[data-x="'+j+'"]').forEach(function(e){ e.classList.add('mm-on','mm-col'); });
+      host.querySelector('[data-i="'+i+'"][data-j="'+j+'"]').classList.add('mm-on','mm-cell');
+      box.querySelectorAll('.mm-eq[data-ei="'+i+'"][data-ej="'+j+'"], .mm-eq[data-ei="'+j+'"][data-ej="'+i+'"]').forEach(function(e){ e.classList.add('mm-on','mm-eqon'); });
+      var prod = XT[i].map(function(v,k){ return '<span style="color:#3b82f6;font-weight:700">'+v+'</span>·<span style="color:#ec4899;font-weight:700">'+X[k][j]+'</span>'; }).join(' + ');
+      calc.innerHTML = '<b style="color:#3b82f6">แถว '+(i+1)+' ของ Xᵀ</b> × <b style="color:#ec4899">คอลัมน์ '+(j+1)+' ของ X</b>:<br>' + prod + ' = <b style="color:#22c55e">'+XTX[i][j]+'</b>' +
+        (i!==j ? ' <span style="color:var(--muted)">· สมมาตร → โผล่ทั้งช่อง ('+(i+1)+','+(j+1)+') และ ('+(j+1)+','+(i+1)+')</span>' : '');
+    }
+    host.querySelectorAll('.mm-res').forEach(function(cell){
+      cell.addEventListener('click', function(){ show(+cell.dataset.i, +cell.dataset.j); });
+    });
+
+    // ===== วิดเจ็ต Xᵀy = Xᵀ × y (กดผลลัพธ์ดูที่มา) =====
+    var yt = document.getElementById('myty');
+    if(yt){
+      var Y = [[2],[5],[10],[17],[26]];      // y 5×1
+      var XTy = [[60],[240],[1034]];          // Xᵀy 3×1
+      yt.innerHTML =
+        '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;overflow-x:auto">' +
+          '<div><div class="mm-lbl">Xᵀ (3×5)</div>' + tbl(XT, function(r,c){ return 'data-yt="'+r+'"'; }) + '</div>' +
+          '<div class="mm-op">×</div>' +
+          '<div><div class="mm-lbl">y (5×1)</div>' + tbl(Y, function(r,c){ return 'class="yv"'; }) + '</div>' +
+          '<div class="mm-op">=</div>' +
+          '<div><div class="mm-lbl">Xᵀy (3×1)</div>' + tbl(XTy, function(r,c){ return 'class="yy-res" data-i="'+r+'"'; }) + '</div>' +
+        '</div>' +
+        '<div id="yy-calc" class="mm-calc">👆 กดเลขในเวกเตอร์ <b>Xᵀy</b> เพื่อดูว่ามาจากแถวไหน × y</div>';
+      var ycalc = yt.querySelector('#yy-calc'), ycur = null;
+      var YIDLE = ycalc.innerHTML;
+      function yclr(){ yt.querySelectorAll('.mm-on').forEach(function(e){ e.classList.remove('mm-on','mm-row','mm-y','mm-cell'); }); }
+      function yshow(i){
+        if(ycur === i){ yclr(); ycur = null; ycalc.innerHTML = YIDLE; return; }
+        yclr(); ycur = i;
+        yt.querySelectorAll('[data-yt="'+i+'"]').forEach(function(e){ e.classList.add('mm-on','mm-row'); });
+        yt.querySelectorAll('.yv').forEach(function(e){ e.classList.add('mm-on','mm-y'); });
+        yt.querySelector('.yy-res[data-i="'+i+'"]').classList.add('mm-on','mm-cell');
+        var prod = XT[i].map(function(v,k){ return '<span style="color:#3b82f6;font-weight:700">'+v+'</span>·<span style="color:#f97316;font-weight:700">'+Y[k][0]+'</span>'; }).join(' + ');
+        ycalc.innerHTML = '<b style="color:#3b82f6">แถว '+(i+1)+' ของ Xᵀ</b> × <b style="color:#f97316">y</b>:<br>' + prod + ' = <b style="color:#22c55e">'+XTy[i][0]+'</b>';
+      }
+      yt.querySelectorAll('.yy-res').forEach(function(cell){
+        cell.addEventListener('click', function(){ yshow(+cell.dataset.i); });
+      });
+    }
+
+    // ===== transpose แบบกดได้: คอลัมน์ของ X → แถวของ Xᵀ (แยกสีตามกลุ่ม) =====
+    var tp = document.getElementById('tpose');
+    if(tp){
+      var GC = ['#2563eb','#db2777','#16a34a']; // สีประจำคอลัมน์: 1(ค่า1), 2(x), 3(x²)
+      function tpTbl(rows, groupFn){
+        var h = '<span class="matx"><table>';
+        for(var r=0;r<rows.length;r++){ h+='<tr>'; for(var c=0;c<rows[r].length;c++){ var g=groupFn(r,c); h+='<td class="tp-c" data-g="'+g+'" style="color:'+GC[g]+';font-weight:700">'+rows[r][c]+'</td>'; } h+='</tr>'; }
+        return h + '</table></span>';
+      }
+      tp.innerHTML =
+        '<b>X =</b> ' + tpTbl(X, function(r,c){ return c; }) +      // X: กลุ่ม = คอลัมน์
+        ' &nbsp;<b>→</b>&nbsp; <b>Xᵀ =</b> ' + tpTbl(XT, function(a,b){ return a; }); // Xᵀ: กลุ่ม = แถว
+      var tcur = null;
+      function tclr(){ tp.querySelectorAll('.tp-on').forEach(function(e){ e.classList.remove('tp-on'); }); }
+      tp.querySelectorAll('.tp-c').forEach(function(cell){
+        cell.addEventListener('click', function(){
+          var g = cell.dataset.g;
+          if(tcur === g){ tclr(); tcur = null; return; }
+          tclr(); tcur = g;
+          tp.querySelectorAll('.tp-c[data-g="'+g+'"]').forEach(function(e){ e.classList.add('tp-on'); });
+        });
+      });
+    }
+  })();
+  </script>
+
+  <h3 class="reg-sub">9. ถ้าข้อมูลมี noise</h3>
+  <div class="card">
+    <p style="margin-top:0">ข้อมูลจริงมักมีความคลาดเคลื่อน (noise) เช่น:</p>
+    <div class="tbl-scroll">
+      <table class="calc-tbl" style="max-width:360px">
+        <tr><th>x</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td></tr>
+        <tr><th>y</th><td>2.2</td><td>4.9</td><td>10.3</td><td>16.8</td><td>26.5</td></tr>
+      </table>
+    </div>
+    <p style="margin-bottom:0">คราวนี้ <strong>ไม่มีสมการไหนผ่านทุกจุด</strong> · Least Squares จะหาสมการที่ <strong>ผ่านใกล้ทุกจุดที่สุด</strong> (ทำให้ Σ Error² ต่ำสุด) — ได้ค่า a, b, c ที่ใกล้เคียง 1, 0, 1</p>
+  </div>
+
+  <h3 class="reg-sub">10. ทำไมเรียก Polynomial Regression ทั้งที่ยังใช้ Linear Regression?</h3>
+  <div class="card">
+    <p style="margin-top:0">จุดที่หลายคนสับสน: สมการมี x², x³ ดูเหมือนไม่เป็นเส้นตรง — แต่จริง ๆ ยังเป็น <strong>Linear Regression ในแง่ของพารามิเตอร์</strong> (linear in parameters)</p>
+    <div class="eq-final">y = β₀ + β₁x + β₂x² + β₃x³</div>
+    <p style="margin-bottom:0">ถึงตัวแปร x จะถูกยกกำลัง แต่ <strong>พารามิเตอร์ β₀, β₁, β₂, β₃ ไม่ได้คูณกันเองหรือยกกำลัง</strong> — มันยังปรากฏแบบเชิงเส้น จึงใช้วิธี <strong>Least Squares เดียวกับ Linear Regression</strong> เพื่อหาค่าสัมประสิทธิ์ได้เลย</p>
+  </div>
+
+  <div class="card" style="border-left:4px solid #22c55e">
+    <p style="margin-top:0"><strong>สรุป — Polynomial Regression มีแนวคิดดังนี้</strong></p>
+    <ol class="work-steps" style="margin:0">
+      <li>เลือกดีกรีของพหุนาม (เช่น 2, 3 หรือ 4)</li>
+      <li>สร้างตัวแปรใหม่ (polynomial features): x², x³, …</li>
+      <li>สร้าง Design Matrix X จากข้อมูล</li>
+      <li>ใช้ Least Squares (β = (XᵀX)⁻¹Xᵀy) หาค่าสัมประสิทธิ์</li>
+      <li>นำสัมประสิทธิ์ที่ได้มาสร้างสมการพหุนามไว้พยากรณ์ค่าใหม่</li>
+    </ol>
+    <p style="margin-bottom:0">กล่าวอีกนัยหนึ่ง: <strong>Polynomial Regression = แปลงข้อมูลให้เป็น polynomial features แล้วใช้ Linear Regression</strong> เพื่อหาสัมประสิทธิ์ที่ทำให้ความคลาดเคลื่อนรวมมีค่าน้อยที่สุด</p>
+  </div>
+
+  <!-- ═════════ ห้องแล็บ OLS: วางจุดเอง → ดูตัวเลขคำนวณจริงทุกขั้น ═════════ -->
+  <style>
+    .lab-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+    @media(min-width:860px){ .lab-grid{ grid-template-columns: 480px 1fr; align-items:start; } }
+    .lab-stage { position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);
+      background:#f7f8fb; touch-action:none; }
+    .lab-stage canvas { display:block; width:100%; height:auto; cursor:copy; }
+    .lab-tip { font-size:.82rem; color:var(--muted); margin:8px 0 0; }
+    .lab-tip b { color:#7c3aed; }
+    .lab-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+    .lab-btns .seg2 { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+    .lab-btns .seg2 button { font-family:inherit; font-size:.84rem; font-weight:600; border:none; background:transparent;
+      color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; }
+    .lab-btns .seg2 button.on { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+    #olsNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+    /* กล่องขั้นตอน */
+    .ols-steps { display:flex; flex-direction:column; gap:10px; max-height:640px; overflow-y:auto; padding-right:4px; }
+    .ols-st { border:1.5px solid var(--border); border-radius:12px; padding:11px 14px; background:var(--card);
+      opacity:.34; transition:opacity .35s, border-color .35s, box-shadow .35s; }
+    .ols-st.show { opacity:1; }
+    .ols-st.cur { border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.15); }
+    .ols-st h5 { margin:0 0 7px; font-size:.93rem; color:var(--ink); display:flex; align-items:center; gap:8px; }
+    .ols-st h5 .no { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px;
+      border-radius:50%; background:rgba(124,58,237,.13); color:#7c3aed; font-weight:700; font-size:.82rem; }
+    .ols-st.cur h5 .no { background:#7c3aed; color:#fff; }
+    .ols-body { font-size:.88rem; line-height:1.85; overflow-x:auto; }
+    .ols-body .frm { color:var(--muted); font-size:.83rem; }
+    /* เมทริกซ์แบบ HTML */
+    .olm { display:inline-block; vertical-align:middle; margin:2px 3px; }
+    .olm > .olm-b { display:inline-block; border-left:2px solid currentColor; border-right:2px solid currentColor;
+      border-radius:7px; padding:1px 7px; }
+    .olm table { border-collapse:collapse; }
+    .olm td { padding:1px 8px; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .olm td.hl { color:#7c3aed; font-weight:700; }
+    .ols-body table.pts { border-collapse:collapse; margin:2px 0; }
+    .ols-body table.pts th, .ols-body table.pts td { border:1px solid var(--border); padding:2px 10px;
+      text-align:center; font-variant-numeric:tabular-nums; }
+    .ols-body table.pts th { background:rgba(124,58,237,.09); color:#7c3aed; }
+    .ols-eq { background:rgba(124,58,237,.07); border-radius:9px; padding:6px 12px; margin:4px 0;
+      font-variant-numeric:tabular-nums; overflow-x:auto; white-space:nowrap; }
+    .ols-note { color:#b45309; font-size:.84rem; }
+    .ols-final { background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(79,70,229,.08));
+      border-radius:10px; padding:8px 14px; font-weight:700; font-size:1.02rem; text-align:center; }
+  </style>
+
+  <div class="demo" id="olsLab">
+    <h3 style="margin-top:0">🧪 ห้องแล็บ OLS — วางจุดเองไม่กี่จุด แล้วดู "ตัวเลขจริง" ไหลผ่านทุกขั้นของสูตร</h3>
+    <p style="margin-top:0"><b style="color:#7c3aed">คลิกวางจุดบนกราฟ</b> (เริ่ม 3–4 จุดพอ พิกัดล็อกที่ .5 ให้เลขสวย) เลือก degree
+    แล้วกด <b>▶ คำนวณทีละขั้น</b> — เครื่องจะกางให้ดูครบ: สร้างเมทริกซ์ X → คูณ XᵀX → Xᵀy → ตั้งระบบสมการ → กำจัดแบบเกาส์ → แทนค่าย้อนกลับ → ได้สมการเส้นโค้ง
+    ทุกตัวเลขมาจากจุดของคุณเอง <em>ขยับจุดแล้วเลขเปลี่ยนตามทันที</em></p>
+
+    <div class="lab-grid">
+      <div>
+        <div class="lab-stage"><canvas id="olsCv" width="480" height="330"></canvas></div>
+        <p class="lab-tip"><b>คลิก</b> = เพิ่มจุด (สูงสุด 6) · <b>ลาก</b> = ย้ายจุด · <b>ดับเบิลคลิก</b> = ลบจุด</p>
+        <div class="lab-btns">
+          <span style="font-weight:600">degree</span>
+          <div class="seg2" id="olsDegSeg"><button data-d="1" class="on">1 เส้นตรง</button><button data-d="2">2 พาราโบลา</button></div>
+          <button id="olsPreset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ตัวอย่าง 4 จุด</button>
+          <button id="olsClear" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ล้าง</button>
+        </div>
+        <div class="lab-btns">
+          <button id="olsNext">▶ คำนวณทีละขั้น</button>
+          <button id="olsAll">แสดงทั้งหมด</button>
+        </div>
+      </div>
+      <div class="ols-steps" id="olsSteps"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const cv=document.getElementById('olsCv'); if(!cv) return;
+    const ctx=cv.getContext('2d');
+    const W=480,H=330, dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+    const PAD={l:34,r:12,t:12,b:30}, X0=PAD.l,X1=W-PAD.r,Y0=PAD.t,Y1=H-PAD.b;
+    const px=x=>X0+x/10*(X1-X0), py=y=>Y1-y/10*(Y1-Y0);
+    const ux=p=>(p-X0)/(X1-X0)*10, uy=p=>(Y1-p)/(Y1-Y0)*10;
+    const snap=v=>Math.max(0,Math.min(10,Math.round(v*2)/2));
+
+    const S={ pts:[{x:1,y:4},{x:3,y:1.5},{x:6,y:2.5},{x:8,y:7}], deg:1, reveal:0, steps:[], coef:null, drag:null };
+
+    /* ---- เลขสวย ---- */
+    const nf=v=>{ if(!isFinite(v)) return '—'; const r=Math.round(v*1000)/1000;
+      return (Math.abs(r-Math.round(r))<1e-9? String(Math.round(r)) : String(+r.toFixed(Math.abs(r)<10?3:2))); };
+    const nf2=v=>isFinite(v)? (+v.toFixed(2)).toString() : '—';
+    const SUP='⁰¹²³⁴⁵⁶⁷⁸⁹';
+    const sup=k=>(''+k).replace(/[0-9]/g,d=>SUP[+d]);
+
+    /* ---- เมทริกซ์ HTML ---- */
+    const mat=rows=>'<span class="olm"><span class="olm-b"><table>'+
+      rows.map(r=>'<tr>'+r.map(c=>'<td>'+c+'</td>').join('')+'</tr>').join('')+'</table></span></span>';
+
+    /* ---- สร้างเนื้อหาทุกขั้น (คำนวณสด synchronous) ---- */
+    function build(){
+      const P=S.pts, n=P.length, d=S.deg, m=d+1, st=[];
+      S.coef=null;
+      /* ขั้น 1 — ข้อมูล */
+      let t1='<table class="pts"><tr><th></th>'+P.map((_,i)=>'<th>P'+(i+1)+'</th>').join('')+'</tr>'
+        +'<tr><th>x</th>'+P.map(p=>'<td>'+nf(p.x)+'</td>').join('')+'</tr>'
+        +'<tr><th>y</th>'+P.map(p=>'<td>'+nf(p.y)+'</td>').join('')+'</tr></table>';
+      if(n<m) t1+='<div class="ols-note">⚠ degree '+d+' ต้องมีอย่างน้อย '+m+' จุด — เพิ่มจุดอีก '+(m-n)+' จุด</div>';
+      else if(n===m) t1+='<div class="ols-note">มี '+n+' จุดพอดีกับตัวแปร '+m+' ตัว → เส้นจะวิ่งผ่านทุกจุดเป๊ะ (ยังไม่ใช่ "least squares" จริง ลองเพิ่มอีกจุด!)</div>';
+      st.push({t:'จดข้อมูล — จุดที่คุณวาง ('+n+' จุด)', b:t1});
+      if(n<m){ S.steps=st; return; }
+
+      /* ขั้น 2 — X, y */
+      const pw=(x,k)=>Math.pow(x,k);
+      const Xr=P.map(p=>Array.from({length:m},(_,k)=>pw(p.x,k)));
+      let t2='<span class="frm">แถวที่ i ของ X คือ [ 1, xᵢ'+(d>1?', xᵢ²':'')+' ] — ฟีเจอร์ของจุดนั้น:</span><br>'
+        +'X = '+mat(Xr.map(r=>r.map(nf)))+' &nbsp; y = '+mat(P.map(p=>[nf(p.y)]));
+      st.push({t:'สร้างเมทริกซ์ X และเวกเตอร์ y', b:t2});
+
+      /* ขั้น 3 — XᵀX */
+      const Ssum=[]; for(let k=0;k<=2*d;k++){ let s=0; P.forEach(p=>s+=pw(p.x,k)); Ssum.push(s); }
+      const sumStr=k=> k===0? ('n = '+n) : ('Σx'+(k>1?sup(k):'')+' = '+P.map(p=>nf(pw(p.x,k))).join(' + ')+' = <b>'+nf(Ssum[k])+'</b>');
+      let t3='<span class="frm">ช่อง (แถว r, คอลัมน์ c) ของ XᵀX = Σ xᵢ^(r+c) — ต้องใช้ผลรวมพวกนี้:</span><br>';
+      for(let k=0;k<=2*d;k++) t3+=sumStr(k)+'<br>';
+      const XtX=[]; for(let r=0;r<m;r++){ const row=[]; for(let c=0;c<m;c++) row.push(Ssum[r+c]); XtX.push(row); }
+      t3+='XᵀX = '+mat(XtX.map(r=>r.map(nf)));
+      st.push({t:'คูณ XᵀX (เมทริกซ์ '+m+'×'+m+')', b:t3});
+
+      /* ขั้น 4 — Xᵀy */
+      const Tv=[]; for(let k=0;k<m;k++){ let s=0; P.forEach(p=>s+=pw(p.x,k)*p.y); Tv.push(s); }
+      let t4='';
+      for(let k=0;k<m;k++){
+        const terms=P.map(p=> k===0? nf(p.y) : nf(pw(p.x,k))+'·'+nf(p.y)).join(' + ');
+        t4+=(k===0?'Σy':'Σx'+(k>1?sup(k):'')+'y')+' = '+terms+' = <b>'+nf(Tv[k])+'</b><br>';
+      }
+      t4+='Xᵀy = '+mat(Tv.map(v=>[nf(v)]));
+      st.push({t:'คูณ Xᵀy (เวกเตอร์ '+m+' ช่อง)', b:t4});
+
+      /* ขั้น 5 — normal equations */
+      const vn=['a₀','a₁','a₂'];
+      let t5='<span class="frm">ระบบสมการปกติ (XᵀX)·a = Xᵀy — แทนตัวเลขลงไป:</span>';
+      for(let r=0;r<m;r++){
+        t5+='<div class="ols-eq">'+XtX[r].map((v,c)=>nf(v)+'·'+vn[c]).join(' + ')+' = '+nf(Tv[r])+'</div>';
+      }
+      st.push({t:'ตั้งระบบสมการปกติ (Normal Equations)', b:t5});
+
+      /* ขั้น 6 — กำจัดแบบเกาส์ (บันทึกทุกจังหวะ) */
+      const A=XtX.map(r=>r.slice()), b=Tv.slice();
+      const aug=()=>mat(A.map((r,i)=>r.map(nf).concat(['<span style="color:var(--muted)">|</span>', nf(b[i])])));
+      let t6='<span class="frm">เขียนเป็นเมทริกซ์เสริม [A | b] แล้วกำจัดให้เป็นสามเหลี่ยม:</span><br>เริ่ม: '+aug()+'<br>';
+      for(let k=0;k<m-1;k++){
+        for(let i=k+1;i<m;i++){
+          const f=A[i][k]/A[k][k];
+          t6+='R'+(i+1)+' ← R'+(i+1)+' − ('+nf(A[i][k])+'/'+nf(A[k][k])+')·R'+(k+1)+' &nbsp;=&nbsp; R'+(i+1)+' − <b>'+nf2(f)+'</b>·R'+(k+1)+'<br>';
+          for(let j=k;j<m;j++) A[i][j]-=f*A[k][j];
+          b[i]-=f*b[k];
+          t6+='→ '+aug()+'<br>';
+        }
+      }
+      st.push({t:'กำจัดแบบเกาส์ (Gaussian Elimination)', b:t6});
+
+      /* ขั้น 7 — back substitution */
+      const a=new Array(m);
+      let t7='<span class="frm">แก้จากแถวล่างขึ้นบน:</span><br>';
+      for(let i=m-1;i>=0;i--){
+        let s=b[i], terms='';
+        for(let j=i+1;j<m;j++){ s-=A[i][j]*a[j]; terms+=' − '+nf2(A[i][j])+'·'+nf2(a[j]); }
+        a[i]=s/A[i][i];
+        t7+=vn[i]+' = ('+nf2(b[i])+terms+') / '+nf2(A[i][i])+' = <b style="color:#7c3aed">'+nf2(a[i])+'</b><br>';
+      }
+      st.push({t:'แทนค่าย้อนกลับ (Back-substitution)', b:t7});
+      S.coef=a;
+
+      /* ขั้น 8 — สมการ + SSE */
+      const ev=x=>{ let y=0,p2=1; for(let k=0;k<m;k++){ y+=a[k]*p2; p2*=x; } return y; };
+      let eq='ŷ = '+nf2(a[0]); for(let k=1;k<m;k++) eq+=' '+(a[k]<0?'−':'+')+' '+nf2(Math.abs(a[k]))+(k===1?'x':'x'+sup(k));
+      let t8='<div class="ols-final">'+eq+'</div>';
+      t8+='<span class="frm">ตรวจงาน: เส้นทายแต่ละจุดพลาดเท่าไหร่ (residual = y − ŷ):</span>';
+      t8+='<table class="pts"><tr><th>จุด</th><th>y จริง</th><th>ŷ ทาย</th><th>พลาด</th><th>พลาด²</th></tr>';
+      let sse=0;
+      P.forEach((p,i)=>{ const yh=ev(p.x), r=p.y-yh; sse+=r*r;
+        t8+='<tr><td>P'+(i+1)+'</td><td>'+nf(p.y)+'</td><td>'+nf2(yh)+'</td><td>'+nf2(r)+'</td><td>'+nf2(r*r)+'</td></tr>'; });
+      t8+='</table>SSE = <b>'+nf2(sse)+'</b> — Least Squares รับประกันว่านี่คือค่าต่ำสุดที่เป็นไปได้ของ degree '+d;
+      st.push({t:'สมการที่ได้ + ตรวจความคลาดเคลื่อน', b:t8});
+      S.steps=st;
+    }
+
+    /* ---- แสดงขั้น ---- */
+    const stepsEl=document.getElementById('olsSteps');
+    function renderSteps(){
+      stepsEl.innerHTML='';
+      S.steps.forEach((s,i)=>{
+        const div=document.createElement('div');
+        div.className='ols-st'+(i<S.reveal?' show':'')+(i===S.reveal-1?' cur':'');
+        div.innerHTML='<h5><span class="no">'+(i+1)+'</span>'+s.t+'</h5>'
+          +(i<S.reveal? '<div class="ols-body">'+s.b+'</div>' : '');
+        stepsEl.appendChild(div);
+      });
+      const cur=stepsEl.querySelector('.ols-st.cur');
+      if(cur) cur.scrollIntoView({block:'nearest'});
+      document.getElementById('olsNext').textContent =
+        S.reveal>=S.steps.length? '✓ ครบทุกขั้นแล้ว' : '▶ ขั้นที่ '+(S.reveal+1)+' / '+S.steps.length;
+    }
+    function refresh(keep){ build(); if(!keep) S.reveal=Math.min(S.reveal, S.steps.length); renderSteps(); }
+
+    document.getElementById('olsNext').addEventListener('click', ()=>{
+      if(S.reveal<S.steps.length){ S.reveal++; renderSteps(); draw(); } });
+    document.getElementById('olsAll').addEventListener('click', ()=>{ S.reveal=S.steps.length; renderSteps(); draw(); });
+    document.getElementById('olsPreset').addEventListener('click', ()=>{
+      S.pts=[{x:1,y:4},{x:3,y:1.5},{x:6,y:2.5},{x:8,y:7}]; S.reveal=0; refresh(); draw(); });
+    document.getElementById('olsClear').addEventListener('click', ()=>{ S.pts=[]; S.reveal=0; refresh(); draw(); });
+    document.getElementById('olsDegSeg').addEventListener('click', e=>{
+      const b2=e.target.closest('button'); if(!b2) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b2.classList.add('on');
+      S.deg=+b2.dataset.d; S.reveal=Math.min(S.reveal,1); refresh(); draw();
+    });
+
+    /* ---- แคนวาส ---- */
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.lineWidth=1;
+      for(let v=0;v<=10;v+=2){
+        ctx.strokeStyle='rgba(90,100,120,.13)';
+        ctx.beginPath(); ctx.moveTo(px(v),Y0); ctx.lineTo(px(v),Y1); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X0,py(v)); ctx.lineTo(X1,py(v)); ctx.stroke();
+        ctx.fillStyle='#5b6475'; ctx.font='600 10px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(v,px(v),Y1+6);
+        ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(v,X0-6,py(v));
+      }
+      ctx.strokeStyle='rgba(90,100,120,.33)'; ctx.strokeRect(X0,Y0,X1-X0,Y1-Y0);
+      /* เส้นโค้ง (เมื่อเผยถึงขั้นสุดท้าย) */
+      if(S.coef && S.reveal>=S.steps.length && S.steps.length>2){
+        const a=S.coef, ev=x=>{ let y=0,p2=1; for(let k=0;k<a.length;k++){ y+=a[k]*p2; p2*=x; } return y; };
+        /* residual */
+        ctx.setLineDash([3,3]); ctx.strokeStyle='rgba(239,68,68,.6)'; ctx.lineWidth=1.4;
+        S.pts.forEach(p=>{ const yc=Math.max(0,Math.min(10,ev(p.x)));
+          ctx.beginPath(); ctx.moveTo(px(p.x),py(p.y)); ctx.lineTo(px(p.x),py(yc)); ctx.stroke(); });
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        for(let k=0;k<=80;k++){ const x=10*k/80, y=Math.max(-1,Math.min(11,ev(x)));
+          k? ctx.lineTo(px(x),py(y)) : ctx.moveTo(px(x),py(y)); }
+        ctx.strokeStyle='#7c3aed'; ctx.lineWidth=2.8; ctx.lineCap='round'; ctx.stroke();
+      }
+      /* จุด + ป้ายชื่อ + พิกัด */
+      S.pts.forEach((p,i)=>{
+        ctx.beginPath(); ctx.arc(px(p.x),py(p.y),6.2,0,Math.PI*2);
+        ctx.fillStyle='#2456e6'; ctx.fill(); ctx.lineWidth=1.6; ctx.strokeStyle='#fff'; ctx.stroke();
+        ctx.fillStyle='#1f2533'; ctx.font='700 10.5px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText('P'+(i+1)+' ('+nf(p.x)+', '+nf(p.y)+')', px(p.x), py(p.y)-9);
+      });
+      if(!S.pts.length){
+        ctx.fillStyle='#9aa3b8'; ctx.font='600 14px Kanit, sans-serif'; ctx.textAlign='center';
+        ctx.fillText('คลิกที่นี่เพื่อวางจุด', W/2, H/2);
+      }
+    }
+
+    const loc=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; };
+    let moved=false;
+    cv.addEventListener('pointerdown', e=>{
+      const p=loc(e); moved=false;
+      let bi=-1,bd=14*14;
+      S.pts.forEach((q,i)=>{ const dx=px(q.x)-p.x, dy=py(q.y)-p.y, d2=dx*dx+dy*dy; if(d2<bd){bd=d2;bi=i;} });
+      if(bi>=0){ S.drag=bi; try{cv.setPointerCapture(e.pointerId);}catch(_){} }
+      else if(S.pts.length<6){ S.pts.push({x:snap(ux(p.x)), y:snap(uy(p.y))}); refresh(); draw(); }
+    });
+    cv.addEventListener('pointermove', e=>{
+      if(S.drag==null) return; moved=true;
+      const p=loc(e), q=S.pts[S.drag];
+      q.x=snap(ux(p.x)); q.y=snap(uy(p.y));
+      refresh(true); draw();
+    });
+    cv.addEventListener('pointerup', ()=>{ S.drag=null; });
+    cv.addEventListener('dblclick', e=>{
+      const p=loc(e); let bi=-1,bd=14*14;
+      S.pts.forEach((q,i)=>{ const dx=px(q.x)-p.x, dy=py(q.y)-p.y, d2=dx*dx+dy*dy; if(d2<bd){bd=d2;bi=i;} });
+      if(bi>=0){ S.pts.splice(bi,1); refresh(); draw(); }
+    });
+
+    refresh(); draw();
+  })();
+  </script>
+
+  </section>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ตัวอย่างเพิ่มเติม (วิธีเดียวกับส่วนที่ 3) <span class="badge green">ลงมือ</span></h2>
+
+  <h3 class="reg-sub">1. Degree 2 — ข้อมูลเพิ่มเป็น 7 จุด</h3>
+  <div class="card">
+    <div class="ex-note" style="border-left-color:#6366f1;background:rgba(99,102,241,.08)"><strong>โจทย์:</strong> ข้อมูล 7 จุด (มากกว่าส่วนที่ 3) · เลือก <strong>degree 2</strong> → หา a, b, c ด้วย OLS (β = (XᵀX)⁻¹Xᵀy) · 🖱️ กดเลขในผลลัพธ์เพื่อดูที่มาแบบเดียวกับส่วนที่ 3</div>
+    <div id="d2mount"></div>
+  </div>
+
+  <h3 class="reg-sub">2. Degree 3 — เส้นโค้งซับซ้อนขึ้น (เมทริกซ์ 4×4)</h3>
+  <div class="card">
+    <div class="ex-note" style="border-left-color:#a855f7;background:rgba(168,85,247,.08)"><strong>โจทย์:</strong> ข้อมูลที่โค้งแบบพหุนามอันดับ 3 · เลือก <strong>degree 3</strong> → หา a, b, c, d · XᵀX กลายเป็น 4×4 แต่วิธีเหมือนเดิมทุกอย่าง</div>
+    <div id="d3mount"></div>
+  </div>
+  </section>
+
+  <script>
+  (function(){
+    var NAMES = ['a','b','c','d','e','f'];
+    var SUP = {0:'',1:'',2:'²',3:'³',4:'⁴',5:'⁵'};
+    function xpow(j){ return j===0 ? '1' : (j===1 ? 'x' : 'x'+SUP[j]); }
+    function fmt(v){ v = Math.round(v*1000)/1000; return Object.is(v,-0) ? 0 : v; }
+    function mtx(rows, attr){
+      var h = '<span class="matx"><table>';
+      for(var r=0;r<rows.length;r++){ h+='<tr>'; for(var c=0;c<rows[r].length;c++){ h+='<td '+(attr?attr(r,c):'')+'>'+rows[r][c]+'</td>'; } h+='</tr>'; }
+      return h + '</table></span>';
+    }
+    function renderOLS(mountId, xs, ys, d){
+      var mount = document.getElementById(mountId); if(!mount) return;
+      var m = xs.length, k = d+1, i, j, t;
+      var X = xs.map(function(x){ var r=[]; for(var jj=0;jj<k;jj++) r.push(Math.pow(x,jj)); return r; });
+      var XT = []; for(i=0;i<k;i++) XT.push(xs.map(function(x){ return Math.pow(x,i); }));
+      var XTX = []; for(i=0;i<k;i++){ var row=[]; for(j=0;j<k;j++){ var s=0; for(t=0;t<m;t++) s+=X[t][i]*X[t][j]; row.push(s);} XTX.push(row);}
+      var XTy = []; for(i=0;i<k;i++){ var s2=0; for(t=0;t<m;t++) s2+=X[t][i]*ys[t]; XTy.push(s2);}
+      // solve XTX·beta = XTy
+      var A = XTX.map(function(r){ return r.slice(); }), bb = XTy.slice();
+      for(var col=0;col<k;col++){ var p=col; for(var r=col+1;r<k;r++) if(Math.abs(A[r][col])>Math.abs(A[p][col])) p=r; var ta=A[col];A[col]=A[p];A[p]=ta; var tb=bb[col];bb[col]=bb[p];bb[p]=tb; for(var r2=col+1;r2<k;r2++){ var f=A[r2][col]/A[col][col]; for(var c2=col;c2<k;c2++) A[r2][c2]-=f*A[col][c2]; bb[r2]-=f*bb[col]; } }
+      var beta = new Array(k); for(i=k-1;i>=0;i--){ var s3=bb[i]; for(j=i+1;j<k;j++) s3-=A[i][j]*beta[j]; beta[i]=s3/A[i][i]; }
+      beta = beta.map(fmt);
+
+      var html = '';
+      html += '<div class="tbl-scroll"><table class="calc-tbl" style="max-width:520px"><tr><th>x</th>'+xs.map(function(x){return '<td>'+x+'</td>';}).join('')+'</tr><tr><th>y</th>'+ys.map(function(y){return '<td>'+y+'</td>';}).join('')+'</tr></table></div>';
+      // widget 1: XTX
+      html += '<div class="ow-box" style="border-left-color:#6366f1"><div class="ow-title">① XᵀX = Xᵀ × X</div>'+
+        '<p style="margin:2px 0 6px">🖱️ กดเลขใน <strong>XᵀX</strong> · <span style="color:#3b82f6;font-weight:700">แถว Xᵀ</span> × <span style="color:#ec4899;font-weight:700">คอลัมน์ X</span> = <span style="color:#22c55e;font-weight:700">ผลลัพธ์</span></p>'+
+        '<div class="ow-w1"><div class="ow-flex">'+
+          '<div><div class="ow-lbl">Xᵀ ('+k+'×'+m+')</div>'+mtx(XT,function(r,c){return 'data-xt="'+r+'"';})+'</div>'+
+          '<div class="ow-op">×</div>'+
+          '<div><div class="ow-lbl">X ('+m+'×'+k+')</div>'+mtx(X,function(r,c){return 'data-xc="'+c+'"';})+'</div>'+
+          '<div class="ow-op">=</div>'+
+          '<div><div class="ow-lbl">XᵀX ('+k+'×'+k+')</div>'+mtx(XTX,function(r,c){return 'class="ow-res" data-i="'+r+'" data-j="'+c+'"';})+'</div>'+
+        '</div><div class="ow-calc ow-c1">👆 กดเลขในเมทริกซ์ XᵀX</div></div></div>';
+      // widget 2: XTy
+      html += '<div class="ow-box" style="border-left-color:#f97316"><div class="ow-title">② Xᵀy = Xᵀ × y</div>'+
+        '<p style="margin:2px 0 6px">🖱️ กดเลขใน <strong>Xᵀy</strong> · <span style="color:#3b82f6;font-weight:700">แถว Xᵀ</span> × <span style="color:#f97316;font-weight:700">y</span> = <span style="color:#22c55e;font-weight:700">ผลลัพธ์</span></p>'+
+        '<div class="ow-w2"><div class="ow-flex">'+
+          '<div><div class="ow-lbl">Xᵀ ('+k+'×'+m+')</div>'+mtx(XT,function(r,c){return 'data-yt="'+r+'"';})+'</div>'+
+          '<div class="ow-op">×</div>'+
+          '<div><div class="ow-lbl">y ('+m+'×1)</div>'+mtx(ys.map(function(y){return [y];}),function(r,c){return 'class="ow-yv"';})+'</div>'+
+          '<div class="ow-op">=</div>'+
+          '<div><div class="ow-lbl">Xᵀy ('+k+'×1)</div>'+mtx(XTy.map(function(v){return [v];}),function(r,c){return 'class="ow-res" data-i="'+r+'"';})+'</div>'+
+        '</div><div class="ow-calc ow-c2">👆 กดเลขในเวกเตอร์ Xᵀy</div></div></div>';
+      // normal equations
+      var eqs=''; for(i=0;i<k;i++){ var parts=[]; for(j=0;j<k;j++) parts.push(XTX[i][j]+NAMES[j]); eqs += parts.join(' + ')+' = '+XTy[i]+'<br>'; }
+      html += '<p style="margin:10px 0 4px"><strong>Normal equations (XᵀX·β = Xᵀy):</strong></p><div class="eq-final" style="display:block;text-align:left;line-height:1.9;font-size:.96rem">'+eqs+'</div>';
+      // solution
+      html += '<p style="margin:8px 0 4px"><strong>แก้ระบบได้:</strong> '+beta.map(function(v,ii){return '<span class="okc">'+NAMES[ii]+' = '+v+'</span>';}).join(' · ')+'</p>';
+      var terms=[]; for(j=0;j<k;j++){ if(beta[j]===0 && j!==0) continue; terms.push((terms.length?' + ':'')+beta[j]+(j===0?'':' '+xpow(j))); }
+      html += '<div class="eq-final" style="font-size:1.25rem">y = '+terms.join('')+'</div>';
+
+      mount.innerHTML = html;
+
+      // interactivity — widget 1
+      var w1=mount.querySelector('.ow-w1'), c1=mount.querySelector('.ow-c1'), cur1=null;
+      function clr1(){ w1.querySelectorAll('.ow-on').forEach(function(e){ e.classList.remove('ow-on','ow-row','ow-col','ow-cell'); }); }
+      w1.querySelectorAll('.ow-res').forEach(function(cell){
+        cell.addEventListener('click', function(){
+          var ii=+cell.dataset.i, jj=+cell.dataset.j, key=ii+','+jj;
+          if(cur1===key){ clr1(); cur1=null; c1.innerHTML='👆 กดเลขในเมทริกซ์ XᵀX'; return; }
+          clr1(); cur1=key;
+          w1.querySelectorAll('[data-xt="'+ii+'"]').forEach(function(e){ e.classList.add('ow-on','ow-row'); });
+          w1.querySelectorAll('[data-xc="'+jj+'"]').forEach(function(e){ e.classList.add('ow-on','ow-col'); });
+          cell.classList.add('ow-on','ow-cell');
+          var prod=XT[ii].map(function(v,t2){ return '<span style="color:#3b82f6;font-weight:700">'+v+'</span>·<span style="color:#ec4899;font-weight:700">'+X[t2][jj]+'</span>'; }).join(' + ');
+          c1.innerHTML='<b style="color:#3b82f6">แถว '+(ii+1)+' ของ Xᵀ</b> × <b style="color:#ec4899">คอลัมน์ '+(jj+1)+' ของ X</b>:<br>'+prod+' = <b style="color:#22c55e">'+XTX[ii][jj]+'</b>';
+        });
+      });
+      // interactivity — widget 2
+      var w2=mount.querySelector('.ow-w2'), c2=mount.querySelector('.ow-c2'), cur2=null;
+      function clr2(){ w2.querySelectorAll('.ow-on').forEach(function(e){ e.classList.remove('ow-on','ow-row','ow-y','ow-cell'); }); }
+      w2.querySelectorAll('.ow-res').forEach(function(cell){
+        cell.addEventListener('click', function(){
+          var ii=+cell.dataset.i;
+          if(cur2===ii){ clr2(); cur2=null; c2.innerHTML='👆 กดเลขในเวกเตอร์ Xᵀy'; return; }
+          clr2(); cur2=ii;
+          w2.querySelectorAll('[data-yt="'+ii+'"]').forEach(function(e){ e.classList.add('ow-on','ow-row'); });
+          w2.querySelectorAll('.ow-yv').forEach(function(e){ e.classList.add('ow-on','ow-y'); });
+          cell.classList.add('ow-on','ow-cell');
+          var prod=XT[ii].map(function(v,t2){ return '<span style="color:#3b82f6;font-weight:700">'+v+'</span>·<span style="color:#f97316;font-weight:700">'+ys[t2]+'</span>'; }).join(' + ');
+          c2.innerHTML='<b style="color:#3b82f6">แถว '+(ii+1)+' ของ Xᵀ</b> × <b style="color:#f97316">y</b>:<br>'+prod+' = <b style="color:#22c55e">'+XTy[ii]+'</b>';
+        });
+      });
+    }
+    renderOLS('d2mount', [0,1,2,3,4,5,6], [1,4,9,16,25,36,49], 2);
+    renderOLS('d3mount', [0,1,2,3,4,5], [1,5,17,43,89,161], 3);
+  })();
+  </script>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — กับดัก Overfitting <span class="badge amber">ระวัง</span></h2>
+
+  <div class="card" id="overfitbox">
+    <p style="margin-top:0">degree ยิ่งสูง SSE บนข้อมูลฝึกยิ่งลด — แต่นั่นไม่ได้แปลว่า "เก่งขึ้น"! ลองเลื่อน degree แล้วดู <strong style="color:#3b82f6">จุดฝึก (น้ำเงิน)</strong> กับ <strong style="color:#f97316">จุดทดสอบ (ส้ม)</strong> ที่โมเดล <em>ไม่เคยเห็น</em> — สังเกตว่า error สองชุดไปคนละทาง</p>
+    <div class="lr-demo">
+      <div class="ex-plotwrap" style="margin:0">
+        <svg class="ex-svg" id="of-svg" viewBox="0 0 300 208" aria-hidden="true"></svg>
+        <div class="xh-bar"><span class="xh-readout">ลากบนกราฟเพื่ออ่านค่าบนเส้น · แตะจุดเพื่อดู (x, y)</span><button type="button" class="xh-clear">ล้างจุด</button></div>
+      </div>
+      <div class="lr-ctrl">
+        <label class="lr-row"><span>degree = <b id="of-degval" style="color:#a855f7">2</b></span><input id="of-deg" type="range" min="1" max="7" step="1" value="2"></label>
+        <div class="lr-sse">SSE ฝึก = <strong id="of-train" style="color:#3b82f6">–</strong></div>
+        <div class="lr-sse">SSE ทดสอบ = <strong id="of-test" style="color:#f97316">–</strong></div>
+        <div id="of-msg" class="lr-msg"></div>
+      </div>
+    </div>
+    <p style="margin-bottom:0; color:var(--muted); font-size:.92rem"><strong>บทเรียน:</strong> เป้าหมายไม่ใช่ "ลากผ่านทุกจุดฝึก" แต่คือ <strong>ทำนายข้อมูลใหม่ให้แม่น</strong> — degree ที่ดีที่สุดคือจุดที่ <strong style="color:#f97316">SSE ทดสอบต่ำสุด</strong> (ในชุดนี้คือ degree 2–3) ไม่ใช่ degree สูงสุด นี่คือเหตุผลที่ ML ต้องแยก "ชุดฝึก/ชุดทดสอบ" เสมอ</p>
+  </div>
+
+  <script>
+    (function () {
+      var box = document.getElementById('overfitbox'); if (!box) return;
+      var svg = document.getElementById('of-svg');
+      var degIn = document.getElementById('of-deg'), degOut = document.getElementById('of-degval');
+      var trO = document.getElementById('of-train'), teO = document.getElementById('of-test'), msg = document.getElementById('of-msg');
+      var train = [[1,3.0],[2,2.5],[3,4.2],[4,4.6],[5,4.4],[6,6.6],[7,6.9],[8,8.6]];
+      var test  = [[1.5,2.7],[2.5,3.4],[4.5,4.7],[5.5,5.4],[6.5,6.9],[7.5,7.9]];
+      function nf(v,d){ return (v<0?'−':'')+Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:0}); }
+      function solve(A,b){ var n=b.length,i,j,k; for(i=0;i<n;i++){ var p=i; for(k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[p][i]))p=k; var t=A[i];A[i]=A[p];A[p]=t; var tb=b[i];b[i]=b[p];b[p]=tb; if(Math.abs(A[i][i])<1e-12)return null; for(k=i+1;k<n;k++){var f=A[k][i]/A[i][i]; for(j=i;j<n;j++)A[k][j]-=f*A[i][j]; b[k]-=f*b[i];} } var x=new Array(n); for(i=n-1;i>=0;i--){var s=b[i]; for(j=i+1;j<n;j++)s-=A[i][j]*x[j]; x[i]=s/A[i][i];} return x; }
+      function fit(d){ var n=train.length,i,j,k,S=[],T=[]; for(k=0;k<=2*d;k++){var s=0;for(i=0;i<n;i++)s+=Math.pow(train[i][0],k);S.push(s);} for(k=0;k<=d;k++){var s2=0;for(i=0;i<n;i++)s2+=Math.pow(train[i][0],k)*train[i][1];T.push(s2);} var A=[],b=[]; for(i=0;i<=d;i++){var row=[];for(j=0;j<=d;j++)row.push(S[i+j]);A.push(row);b.push(T[i]);} return solve(A,b); }
+      function ev(c,x){ var y=0; for(var k=0;k<c.length;k++) y+=c[k]*Math.pow(x,k); return y; }
+      function sse(c,data){ var s=0; data.forEach(function(p){ var r=p[1]-ev(c,p[0]); s+=r*r; }); return s; }
+      function render(){
+        var d=+degIn.value; degOut.textContent=d;
+        var c=fit(d);
+        var all=train.concat(test);
+        var xs=all.map(function(p){return p[0];}), ys=all.map(function(p){return p[1];});
+        var xlo=Math.min.apply(null,xs), xhi=Math.max.apply(null,xs), ylo=Math.min.apply(null,ys), yhi=Math.max.apply(null,ys);
+        var X0=46,X1=288,YB=176,YT=18, pad=(yhi-ylo)*0.18, yloE=ylo-pad, yspan=(yhi-ylo)+2*pad;
+        var px=function(x){return X0+(x-xlo)/(xhi-xlo)*(X1-X0);};
+        var py=function(y){return YB-(y-yloE)/yspan*(YB-YT);};
+        var over=d>=6;
+        svg._poly={X0:X0,X1:X1,YB:YB,YT:YT,xlo:xlo,xhi:xhi,yloE:yloE,yspan:yspan,coef:c,fx:1,fy:1};
+        var cc='<line x1="46" y1="14" x2="46" y2="176" stroke="currentColor" stroke-width="1.5" opacity=".3"/><line x1="46" y1="176" x2="292" y2="176" stroke="currentColor" stroke-width="1.5" opacity=".3"/>';
+        if(c){ var path='',N=120,k; for(k=0;k<=N;k++){ var xx=xlo+(xhi-xlo)*k/N; var yy=ev(c,xx); yy=Math.max(yloE,Math.min(yloE+yspan,yy)); path+=(k?' L':'M')+px(xx).toFixed(1)+' '+py(yy).toFixed(1); } cc+='<path d="'+path+'" fill="none" stroke="'+(over?'#ef4444':'#a855f7')+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'; }
+        train.forEach(function(p){ cc+='<circle class="ex-dot" data-x="'+p[0]+'" data-y="'+p[1]+'" cx="'+px(p[0]).toFixed(1)+'" cy="'+py(p[1]).toFixed(1)+'" r="3.6" fill="#3b82f6"/>'; });
+        test.forEach(function(p){ cc+='<circle class="ex-dot" data-x="'+p[0]+'" data-y="'+p[1]+'" cx="'+px(p[0]).toFixed(1)+'" cy="'+py(p[1]).toFixed(1)+'" r="3.8" fill="none" stroke="#f97316" stroke-width="2"/>'; });
+        svg.innerHTML=cc;
+        var tr=c?sse(c,train):0, te=c?sse(c,test):0;
+        trO.textContent=nf(tr,2); teO.textContent=nf(te,2);
+        msg.textContent = d<=1 ? 'degree ต่ำ — ทั้งสอง error ค่อนข้างสูง (underfit)' : (over ? 'overfit! SSE ฝึกเกือบ 0 แต่ SSE ทดสอบพุ่งสูง — โมเดล "จำ" ไม่ได้ "เข้าใจ"' : 'จุดพอดี — SSE ทดสอบต่ำ โมเดลทำนายข้อมูลใหม่ได้ดี');
+        msg.className='lr-msg'+(over?'':' ok');
+      }
+      degIn.addEventListener('input',render); render();
+    })();
+  </script>
+
+  </section>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — ตัวอย่างจริง: ความเร็ว → ระยะเบรก <span class="badge green">ลงมือ</span></h2>
+
+  <div class="card" id="brakebox">
+    <p style="margin-top:0"><strong>โจทย์:</strong> ระยะเบรกของรถเพิ่มตามความเร็วแบบ <strong>กำลังสอง</strong> (ฟิสิกส์: d ∝ v²) — เก็บข้อมูลจริง 6 ครั้ง เราจะ fit ด้วย <strong>degree 2</strong> เพื่อทำนายระยะเบรกที่ความเร็วใดก็ได้</p>
+    <div class="tbl-scroll">
+      <table class="calc-tbl" style="max-width:520px">
+        <tr><th>ความเร็ว x (km/h)</th><td>20</td><td>40</td><td>60</td><td>80</td><td>100</td><td>120</td></tr>
+        <tr><th>ระยะเบรก y (m)</th><td>4</td><td>13</td><td>28</td><td>47</td><td>74</td><td>104</td></tr>
+      </table>
+    </div>
+    <div class="lr-demo">
+      <div class="ex-plotwrap" style="margin:0">
+        <svg class="ex-svg" id="brake-svg" viewBox="0 0 300 208" aria-hidden="true"></svg>
+        <div class="xh-bar"><span class="xh-readout">ลากบนกราฟเพื่ออ่านค่าบนเส้น · แตะจุดเพื่อดู (x, y)</span><button type="button" class="xh-clear">ล้างจุด</button></div>
+      </div>
+      <div class="lr-ctrl">
+        <div class="pred-calc" id="brake-eq" style="line-height:1.8"></div>
+        <div class="lr-predict" style="margin-top:4px">
+          <div class="pred-row"><label>ความเร็ว <input type="number" class="pred-x" id="brake-x" value="110" min="0" step="5"> km/h</label><button type="button" class="pred-go" id="brake-go">ทำนาย</button></div>
+          <div class="pred-out">ระยะเบรก ≈ <strong class="pred-y" id="brake-y">–</strong> เมตร</div>
+        </div>
+      </div>
+    </div>
+    <p style="margin-bottom:0; color:var(--muted); font-size:.92rem">สังเกตว่าสัมประสิทธิ์ของ <strong>x²</strong> ใหญ่ที่สุด สมการจึง "โค้งขึ้น" — ตรงกับความจริงที่ว่า ขับเร็วขึ้น 2 เท่า ระยะเบรกเพิ่มราว 4 เท่า (เหตุผลที่ความเร็วสูงอันตรายกว่าที่คิด)</p>
+  </div>
+
+  </section>
+
+  <section class="wsec">
+  <h2>ส่วนที่ 7 — สร้างเอง: ใส่ข้อมูล + เลือก degree <span class="badge">Custom</span></h2>
+
+  <div class="card" id="polycustom">
+    <p style="margin-top:0">ใส่ข้อมูล <strong>(x, y)</strong> ของคุณเอง (กด + ได้สูงสุด 20 จุด, อย่างน้อย 3 จุด) แล้วเลื่อน <strong>degree</strong> — เส้นโค้ง สมการ และ SSE จะคำนวณให้สด</p>
+    <div class="cu-inputs" id="pc-inputs"></div>
+    <div class="cu-controls">
+      <button type="button" class="cu-add" id="pc-add">+ เพิ่มจุด</button>
+      <button type="button" class="cu-clear" id="pc-clear">ล้างทั้งหมด</button>
+      <span class="cu-count" id="pc-count">0 จุด</span>
+    </div>
+    <div class="lr-demo">
+      <div class="ex-plotwrap" style="margin:0"><svg class="ex-svg" id="pc-svg" viewBox="0 0 300 208" aria-hidden="true"></svg>
+        <div class="xh-bar"><span class="xh-readout">ลากบนกราฟเพื่ออ่านค่าบนเส้น · แตะจุดเพื่อดู (x, y)</span><button type="button" class="xh-clear">ล้างจุด</button></div></div>
+      <div class="lr-ctrl">
+        <label class="lr-row"><span>degree = <b id="pc-degval" style="color:#a855f7">2</b></span><input id="pc-deg" type="range" min="1" max="5" step="1" value="2"></label>
+        <div class="lr-sse">SSE = <strong id="pc-sse">–</strong></div>
+        <div class="pred-calc" id="pc-eq" style="line-height:1.8"></div>
+        <div id="pc-msg" class="lr-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var SUP='⁰¹²³⁴⁵⁶⁷⁸⁹';
+      function sup(k){ return (''+k).replace(/[0-9]/g,function(d){return SUP[+d];}); }
+      function nf(v,d){ return (v<0?'−':'')+Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:0}); }
+      function solve(A,b){ var n=b.length,i,j,k; for(i=0;i<n;i++){ var p=i; for(k=i+1;k<n;k++) if(Math.abs(A[k][i])>Math.abs(A[p][i]))p=k; var t=A[i];A[i]=A[p];A[p]=t; var tb=b[i];b[i]=b[p];b[p]=tb; if(Math.abs(A[i][i])<1e-12)return null; for(k=i+1;k<n;k++){var f=A[k][i]/A[i][i]; for(j=i;j<n;j++)A[k][j]-=f*A[i][j]; b[k]-=f*b[i];} } var x=new Array(n); for(i=n-1;i>=0;i--){var s=b[i]; for(j=i+1;j<n;j++)s-=A[i][j]*x[j]; x[i]=s/A[i][i];} return x; }
+      function fit(pts,d){ var n=pts.length,i,j,k,S=[],T=[]; for(k=0;k<=2*d;k++){var s=0;for(i=0;i<n;i++)s+=Math.pow(pts[i][0],k);S.push(s);} for(k=0;k<=d;k++){var s2=0;for(i=0;i<n;i++)s2+=Math.pow(pts[i][0],k)*pts[i][1];T.push(s2);} var A=[],b=[]; for(i=0;i<=d;i++){var row=[];for(j=0;j<=d;j++)row.push(S[i+j]);A.push(row);b.push(T[i]);} return solve(A,b); }
+      function ev(c,x){ var y=0; for(var k=0;k<c.length;k++) y+=c[k]*Math.pow(x,k); return y; }
+      function eqHTML(c){ var terms=[]; for(var i=0;i<c.length;i++){ var pw=i===0?'':(i===1?'x':'x'+sup(i)); terms.push((i===0?'':' + ')+nf(c[i],c[i]!==0&&Math.abs(c[i])<0.1?4:2)+(pw?' '+pw:'')); } return '<strong>y = </strong>'+terms.join(''); }
+      function drawCurve(svg, pts, c, opts){
+        opts=opts||{};
+        var all=pts.concat(opts.extra||[]);
+        var xs=all.map(function(p){return p[0];}), ys=all.map(function(p){return p[1];});
+        var xlo=Math.min.apply(null,xs), xhi=Math.max.apply(null,xs), ylo=Math.min.apply(null,ys), yhi=Math.max.apply(null,ys);
+        if(xhi===xlo){xlo-=1;xhi+=1;} if(yhi===ylo){ylo-=1;yhi+=1;}
+        var X0=46,X1=288,YB=176,YT=18, pad=(yhi-ylo)*0.15, yloE=ylo-pad, yspan=(yhi-ylo)+2*pad;
+        var px=function(x){return X0+(x-xlo)/(xhi-xlo)*(X1-X0);};
+        var py=function(y){return YB-(y-yloE)/yspan*(YB-YT);};
+        svg._poly={X0:X0,X1:X1,YB:YB,YT:YT,xlo:xlo,xhi:xhi,yloE:yloE,yspan:yspan,coef:c,fx:opts.fx||0,fy:(opts.fy==null?1:opts.fy)};
+        var cc='<line x1="46" y1="14" x2="46" y2="176" stroke="currentColor" stroke-width="1.5" opacity=".3"/><line x1="46" y1="176" x2="292" y2="176" stroke="currentColor" stroke-width="1.5" opacity=".3"/>';
+        if(c){ var path='',N=110,k; for(k=0;k<=N;k++){ var xx=xlo+(xhi-xlo)*k/N; var yy=ev(c,xx); yy=Math.max(yloE,Math.min(yloE+yspan,yy)); path+=(k?' L':'M')+px(xx).toFixed(1)+' '+py(yy).toFixed(1); } cc+='<path d="'+path+'" fill="none" stroke="'+(opts.over?'#ef4444':'#a855f7')+'" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>'; }
+        (opts.extra||[]).forEach(function(p){ cc+='<circle class="ex-dot" data-x="'+p[0]+'" data-y="'+p[1]+'" cx="'+px(p[0]).toFixed(1)+'" cy="'+py(p[1]).toFixed(1)+'" r="3.8" fill="none" stroke="#f97316" stroke-width="2"/>'; });
+        pts.forEach(function(p){ cc+='<circle class="ex-dot" data-x="'+p[0]+'" data-y="'+p[1]+'" cx="'+px(p[0]).toFixed(1)+'" cy="'+py(p[1]).toFixed(1)+'" r="3.6" fill="#3b82f6"/>'; });
+        svg.innerHTML=cc;
+      }
+
+      // ===== ส่วนที่ 6: ระยะเบรก (degree 2 fixed) =====
+      (function(){
+        var svg=document.getElementById('brake-svg'); if(!svg) return;
+        var data=[[20,4],[40,13],[60,28],[80,47],[100,74],[120,104]];
+        var c=fit(data,2);
+        drawCurve(svg, data, c);
+        document.getElementById('brake-eq').innerHTML=eqHTML(c);
+        var xIn=document.getElementById('brake-x'), yOut=document.getElementById('brake-y');
+        function pred(){ var x=parseFloat(xIn.value); yOut.textContent=isFinite(x)?nf(Math.max(0,ev(c,x)),1):'–'; }
+        xIn.addEventListener('input',pred); document.getElementById('brake-go').addEventListener('click',pred); pred();
+      })();
+
+      // ===== ส่วนที่ 7: custom polynomial =====
+      (function(){
+        var box=document.getElementById('polycustom'); if(!box) return;
+        var inputs=document.getElementById('pc-inputs'), svg=document.getElementById('pc-svg');
+        var addBtn=document.getElementById('pc-add'), countEl=document.getElementById('pc-count');
+        var degIn=document.getElementById('pc-deg'), degOut=document.getElementById('pc-degval');
+        var sseOut=document.getElementById('pc-sse'), eqOut=document.getElementById('pc-eq'), msg=document.getElementById('pc-msg');
+        var MAX=20;
+        function rows(){ return inputs.querySelectorAll('.cu-row'); }
+        function renumber(){ var rs=rows(); rs.forEach(function(r,i){ r.querySelector('.cu-i').textContent=i+1; }); countEl.textContent=rs.length+' จุด (อย่างน้อย 3)'; addBtn.disabled=rs.length>=MAX; inputs.querySelectorAll('.cu-del').forEach(function(b){ b.style.visibility=rs.length<=3?'hidden':'visible'; }); }
+        function addRow(x,y){ if(rows().length>=MAX)return; var d=document.createElement('div'); d.className='cu-row'; d.innerHTML='<span class="cu-i"></span>x<input type="number" class="cu-x" step="any" value="'+(x==null?'':x)+'">y<input type="number" class="cu-y" step="any" value="'+(y==null?'':y)+'"><button type="button" class="cu-del" title="ลบ">×</button>'; inputs.appendChild(d); renumber(); }
+        function readData(){ var p=[]; rows().forEach(function(r){ var x=parseFloat(r.querySelector('.cu-x').value), y=parseFloat(r.querySelector('.cu-y').value); if(isFinite(x)&&isFinite(y))p.push([x,y]); }); return p; }
+        function render(){
+          var pts=readData(); renumber();
+          var maxd=Math.min(5, Math.max(1, pts.length-1)); degIn.max=maxd;
+          var d=Math.min(+degIn.value, maxd); degIn.value=d; degOut.textContent=d;
+          if(pts.length<3){ svg.innerHTML=''; eqOut.textContent=''; sseOut.textContent='—'; msg.textContent='ใส่อย่างน้อย 3 จุด แล้วผมจะ fit เส้นโค้งให้'; msg.className='lr-msg'; return; }
+          var c=fit(pts,d), over=(d>=pts.length-1 && d>=4);
+          drawCurve(svg, pts, c, {over:over});
+          if(c){ var sse=0; pts.forEach(function(p){var r=p[1]-ev(c,p[0]);sse+=r*r;}); sseOut.textContent=nf(sse,2); eqOut.innerHTML=eqHTML(c); }
+          else { sseOut.textContent='—'; eqOut.textContent='แก้ระบบไม่ได้'; }
+          msg.textContent = d>=pts.length-1 ? 'degree เกือบเท่าจำนวนจุด — เส้นลากผ่านทุกจุด ระวัง overfit' : 'เส้นโค้ง degree '+d+' fit กับข้อมูล';
+          msg.className='lr-msg'+(d>=pts.length-1?'':' ok');
+        }
+        inputs.addEventListener('input', render);
+        inputs.addEventListener('click', function(e){ if(e.target.classList.contains('cu-del')){ if(rows().length<=3)return; var r=e.target.closest('.cu-row'); if(r)r.remove(); render(); } });
+        addBtn.addEventListener('click', function(){ addRow(null,null); render(); });
+        degIn.addEventListener('input', render);
+        document.getElementById('pc-clear').addEventListener('click', function(){ inputs.innerHTML=''; [[1,2],[2,1.6],[3,3]].forEach(function(p){addRow(p[0],p[1]);}); render(); });
+        [[1,2],[2,1.6],[3,3.2],[4,6],[5,7.2],[6,5.6]].forEach(function(p){ addRow(p[0],p[1]); });
+        render();
+      })();
+    })();
+  </script>
+
+  <script>
+    // crosshair: ลากบนกราฟ → จุดแดงลู่บนเส้นโค้ง (ŷ จากสมการ) + บอกเหนือ/ใต้เส้น · แตะจุด → โชว์ (x, y)
+    (function () {
+      var NS = 'http://www.w3.org/2000/svg';
+      function ev(c,x){ var y=0; for(var k=0;k<c.length;k++) y+=c[k]*Math.pow(x,k); return y; }
+      function fmt(v,d){ return (v<0?'−':'')+Math.abs(v).toLocaleString('en-US',{maximumFractionDigits:d,minimumFractionDigits:0}); }
+      function attachPoly(svg){
+        var active=false, wrap=svg.parentNode;
+        var readout=wrap.querySelector('.xh-readout'), clearBtn=wrap.querySelector('.xh-clear');
+        var ph=readout?readout.textContent:'';
+        function ensure(){
+          var xh=svg.querySelector('.xh');
+          if(!xh){
+            xh=document.createElementNS(NS,'g'); xh.setAttribute('class','xh'); xh.style.pointerEvents='none';
+            xh.innerHTML='<line class="xh-v" stroke="#991b1b" stroke-width="1.2" stroke-dasharray="4 3" opacity=".8"/>'
+              +'<line class="xh-h" stroke="#991b1b" stroke-width="1.2" stroke-dasharray="4 3" opacity=".8"/>'
+              +'<circle class="xh-dot" r="4.5" fill="#991b1b"/>'
+              +'<rect class="xh-bg" rx="5" fill="#3b82f6" opacity="0"/>'
+              +'<text class="xh-tx" fill="#fff" font-size="10" font-weight="700" text-anchor="middle" opacity="0"></text>';
+            svg.appendChild(xh);
+          }
+          return xh;
+        }
+        function showCurve(e){
+          var m=svg._poly; if(!m||!m.coef){ return; }
+          var rect=svg.getBoundingClientRect();
+          var sx=(e.clientX-rect.left)/rect.width*300, sy=(e.clientY-rect.top)/rect.height*208;
+          var dx=m.xlo+(sx-m.X0)/(m.X1-m.X0)*(m.xhi-m.xlo);
+          dx=Math.max(m.xlo, Math.min(m.xhi, dx));
+          var yhat=ev(m.coef,dx);
+          var dyMouse=m.yloE+(m.YB-sy)/(m.YB-m.YT)*m.yspan;
+          var cx=m.X0+(dx-m.xlo)/(m.xhi-m.xlo)*(m.X1-m.X0);
+          var cy=m.YB-(yhat-m.yloE)/m.yspan*(m.YB-m.YT);
+          cy=Math.max(m.YT, Math.min(m.YB, cy));
+          var xh=ensure();
+          var V=xh.querySelector('.xh-v'); V.setAttribute('x1',cx);V.setAttribute('y1',m.YB);V.setAttribute('x2',cx);V.setAttribute('y2',cy);V.setAttribute('opacity','.8');
+          var H=xh.querySelector('.xh-h'); H.setAttribute('x1',m.X0);H.setAttribute('y1',cy);H.setAttribute('x2',cx);H.setAttribute('y2',cy);H.setAttribute('opacity','.8');
+          var D=xh.querySelector('.xh-dot'); D.setAttribute('cx',cx);D.setAttribute('cy',cy);D.setAttribute('fill','#991b1b');
+          xh.querySelector('.xh-bg').setAttribute('opacity','0'); xh.querySelector('.xh-tx').setAttribute('opacity','0');
+          xh.style.display='';
+          var above = dyMouse > yhat + m.yspan*0.012;
+          var below = dyMouse < yhat - m.yspan*0.012;
+          var pos = above?'<span style="color:#f97316">▲ เมาส์อยู่เหนือเส้น</span>':(below?'<span style="color:#3b82f6">▼ เมาส์อยู่ใต้เส้น</span>':'<span style="color:#22c55e">● อยู่บนเส้นพอดี</span>');
+          if(readout) readout.innerHTML='x = <strong class="xh-vx">'+fmt(dx,m.fx)+'</strong> · บนเส้น y = <strong class="xh-vo">'+fmt(yhat,m.fy)+'</strong> · '+pos;
+          if(clearBtn) clearBtn.style.display='';
+        }
+        function showDot(dot){
+          var x=dot.getAttribute('data-x'), y=dot.getAttribute('data-y');
+          var cx=+dot.getAttribute('cx'), cy=+dot.getAttribute('cy');
+          var xh=ensure();
+          xh.querySelector('.xh-v').setAttribute('opacity','0'); xh.querySelector('.xh-h').setAttribute('opacity','0');
+          var D=xh.querySelector('.xh-dot'); D.setAttribute('cx',cx); D.setAttribute('cy',cy); D.setAttribute('fill','#3b82f6');
+          var label='('+x+', '+y+')', w=label.length*5.8+12;
+          var lx=Math.max(w/2+2, Math.min(300-w/2-2, cx));
+          var ly=cy-14; if(ly<12) ly=cy+20;
+          var B=xh.querySelector('.xh-bg'); B.setAttribute('x',lx-w/2); B.setAttribute('y',ly-9); B.setAttribute('width',w); B.setAttribute('height',16); B.setAttribute('opacity','1');
+          var T=xh.querySelector('.xh-tx'); T.setAttribute('x',lx); T.setAttribute('y',ly+2.5); T.textContent=label; T.setAttribute('opacity','1');
+          xh.style.display='';
+          if(readout) readout.innerHTML='จุดข้อมูล: <strong class="xh-vx">('+x+', '+y+')</strong>';
+          if(clearBtn) clearBtn.style.display='';
+        }
+        svg.addEventListener('pointerdown', function(e){
+          if(e.target.classList && e.target.classList.contains('ex-dot')){ showDot(e.target); return; }
+          active=true; try{svg.setPointerCapture(e.pointerId);}catch(_){ } showCurve(e);
+        });
+        svg.addEventListener('pointermove', function(e){ if(active) showCurve(e); });
+        ['pointerup','pointercancel'].forEach(function(ev2){ svg.addEventListener(ev2, function(){ active=false; }); });
+        function clearXH(){ active=false; var xh=svg.querySelector('.xh'); if(xh) xh.remove(); if(readout) readout.innerHTML=ph; if(clearBtn) clearBtn.style.display='none'; }
+        if(clearBtn){ clearBtn.style.display='none'; clearBtn.addEventListener('click', clearXH); }
+      }
+      ['poly-svg','of-svg','brake-svg','pc-svg'].forEach(function(id){ var s=document.getElementById(id); if(s) attachPoly(s); });
+    })();
+  </script>
+
+  </section>
+
+  <div class="week-nav">
+    <a href="week02.html">← Linear Regression</a>
+    <a href="week04.html">KNN →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+</body>
+</html>

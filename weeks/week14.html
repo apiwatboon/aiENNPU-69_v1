@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attention &amp; Transformer | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button {
+    font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s;
+  }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* ═══════ 🎬 Attention ทีละจังหวะ ═══════ */
+  .sa-mats { display:flex; gap:10px; flex-wrap:wrap; align-items:stretch; margin:8px 0 12px; }
+  .sa-mat { border:1.5px solid var(--border); border-radius:10px; background:var(--card); padding:6px 10px; transition:all .3s; }
+  .sa-mat.on { border-color:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.22); transform:translateY(-2px); }
+  .sa-mat h4 { margin:0 0 4px; font-size:.78rem; text-align:center; }
+  .sa-mat table { border-collapse:collapse; margin:0 auto; }
+  .sa-mat td { border:1px solid var(--border); padding:2px 9px; font-size:.84rem; text-align:center; font-variant-numeric:tabular-nums; }
+  .sa-matnote { flex:1; min-width:180px; font-size:.8rem; color:var(--muted); align-self:center; line-height:1.6; }
+  .sa-stage { position:relative; border:1px solid var(--border); border-radius:12px; background:#f7f8fb; overflow:hidden; }
+  .sa-stage svg { display:block; width:100%; height:auto; }
+  .sa-phase { position:absolute; top:8px; left:8px; background:rgba(255,255,255,.93); border:1px solid #d5dae6;
+    border-radius:999px; padding:4px 13px; font-size:.85rem; font-weight:700; color:#1f2533;
+    box-shadow:0 4px 14px -8px rgba(15,23,42,.5); }
+  #saSvg g[data-g] { transition:opacity .4s; }
+  .sa-eq { margin-top:10px; border-radius:12px; padding:11px 15px;
+    background:linear-gradient(135deg,#171c30,#101425); border:1px solid rgba(139,148,255,.3);
+    color:#dbe2ff; font-size:1rem; line-height:2; font-variant-numeric:tabular-nums; overflow-x:auto; min-height:2.6em; }
+  .sa-eq b { color:#c4b5fd; }
+  .sa-eq .res { color:#34d399; font-weight:800; }
+  .sa-eq .cur { background:linear-gradient(135deg,#f59e0b,#f97316); color:#fff; padding:1px 8px; border-radius:8px; font-weight:700; }
+  .sa-eq .dimt { color:#5d6787; }
+  .sa-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .sa-step { font-weight:700; color:var(--accent); font-size:.9rem; font-variant-numeric:tabular-nums; }
+
+  /* ═══════ 🧢 Multi-head ═══════ */
+  .mh-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media(min-width:820px){ .mh-grid { grid-template-columns:1fr 1fr; } }
+  .mh-head { border:1.5px solid var(--border); border-radius:12px; background:var(--card); padding:10px 12px; transition:opacity .3s, border-color .3s; }
+  .mh-head.off { opacity:.35; }
+  .mh-head h4 { margin:0 0 6px; font-size:.95rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mh-head h4 label { font-size:.78rem; font-weight:600; color:var(--muted); margin-left:auto; display:flex; align-items:center; gap:4px; cursor:pointer; }
+  .mh-head svg { display:block; width:100%; height:auto; background:#f7f8fb; border:1px solid var(--border); border-radius:8px; }
+  .mh-map { border-collapse:collapse; margin-top:8px; width:100%; }
+  .mh-map th, .mh-map td { border:1px solid var(--border); padding:3px 6px; font-size:.8rem; text-align:center; font-variant-numeric:tabular-nums; }
+  .mh-map th { background:var(--accent-soft); color:var(--accent); }
+  .mh-w { font-size:.76rem; color:var(--muted); margin:6px 0 0; line-height:1.6; }
+  .mh-chip { display:inline-block; border-radius:8px; padding:3px 11px; font-weight:700; font-size:.85rem; color:#fff; margin:2px; font-variant-numeric:tabular-nums; }
+  .mh-out { border:1.5px dashed var(--border); border-radius:12px; padding:10px 14px; margin-top:12px; text-align:center; background:var(--card); }
+
+  /* ═══════ 🌊 Positional Encoding ═══════ */
+  .pe-chips { margin-top:8px; text-align:center; }
+  .pe-chips span { display:inline-block; border-radius:8px; padding:3px 11px; margin:2px; font-weight:700; color:#fff; font-variant-numeric:tabular-nums; font-size:.86rem; }
+  .pe-cmp { display:grid; grid-template-columns:1fr; gap:10px; margin-top:12px; }
+  @media(min-width:780px){ .pe-cmp { grid-template-columns:1fr 1fr; } }
+  .pe-card { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 12px; }
+  .pe-card h4 { margin:0 0 6px; font-size:.9rem; }
+  .pe-card table { border-collapse:collapse; width:100%; }
+  .pe-card th, .pe-card td { border:1px solid var(--border); padding:3px 7px; font-size:.8rem; text-align:center; font-variant-numeric:tabular-nums; }
+  .pe-card th { background:var(--accent-soft); color:var(--accent); }
+  .pe-verdict { margin-top:10px; border-radius:12px; padding:10px 14px; background:rgba(18,161,80,.08);
+    border:1.5px solid #12a150; font-size:.9rem; line-height:1.7; }
+
+  /* ═══════ 🏗️ Transformer block ═══════ */
+  .tb-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media(min-width:860px){ .tb-grid { grid-template-columns:380px 1fr; align-items:start; } }
+  .tb-stage { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; }
+  .tb-stage svg { display:block; width:100%; height:auto; }
+  #tbSvg .st { transition:all .3s; }
+  #tbSvg .pulse { transition:transform .55s; }
+  .tb-msg { border-radius:12px; padding:10px 14px; background:var(--accent-soft); min-height:4.4em; font-size:.92rem; line-height:1.75; }
+  .tb-msg b { color:var(--accent); }
+  .tb-params { font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .tb-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:10px; }
+  .tb-row input[type=range] { flex:1; min-width:120px; accent-color:var(--accent); }
+
+  /* ═══════ 💻 โค้ด ═══════ */
+  .code-wrap { position:relative; margin:10px 0; }
+  .code-wrap pre { background:#0f1425; color:#dbe2ff; border-radius:12px; padding:14px 16px 14px;
+    overflow-x:auto; font-size:.86rem; line-height:1.7; border:1px solid rgba(139,148,255,.25); margin:0; }
+  .code-wrap pre, .code-wrap code { font-family:'Cascadia Code', Consolas, 'Courier New', monospace !important; font-size-adjust:none; }
+  .code-wrap code .cm { color:#7fd18c; }
+  .code-copy { position:absolute; top:8px; right:8px; font-size:.8rem; padding:4px 12px;
+    background:linear-gradient(135deg,#334155,#475569); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>Attention &amp; Transformer ⭐</h1>
+    <p class="subtitle">สถาปัตยกรรมที่อยู่ข้างใน GPT, Claude, Gemini — หัวใจของ AI ยุคปัจจุบัน</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบาย attention ได้ใน 1 ประโยค: "ทุกคำหันไปมองทุกคำ แล้วถ่วงน้ำหนักว่าจะฟังใครมากแค่ไหน"</li>
+      <li>คำนวณ attention weight อย่างง่าย (dot product + softmax) บนเวกเตอร์จิ๋วได้</li>
+      <li>วาดโครง Transformer block ได้: attention → MLP ซ้อนกันหลายชั้น</li>
+      <li>เช็กได้ว่า Transformer ตอบ "ใบสเปก" จากสัปดาห์ที่แล้วครบทุกข้อ</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ: <em>"ตอนอ่านคำว่า 'มัน' ในประโยค 'แมวที่เลี้ยงไว้หน้าบ้านหลังเก่า...มันหิว'
+    สมองคุณกระโดดกลับไปหาคำว่าอะไร — และรู้ได้ไงว่าต้องกระโดดไปหาคำนั้น?"</em></p>
+
+    <h3>Attention: ให้ทุกคำ "หันไปมอง" ทุกคำ</h3>
+    <p>เลิกบีบความจำเป็นทอดๆ แบบ RNN — attention ให้คำทุกคำมองเห็นคำอื่น<em>ทั้งประโยคพร้อมกัน</em>
+    แล้วคำนวณว่าควร "ฟัง" แต่ละคำหนักแค่ไหน ผ่าน 3 บทบาท (ทุกคำเล่นครบทั้งสามบทบาท):</p>
+    <ul>
+      <li><strong>Query (Q)</strong> — "ฉันกำลังตามหาอะไร" (คำว่า "มัน" ตามหา: สิ่งมีชีวิตที่ถูกพูดถึงก่อนหน้า)</li>
+      <li><strong>Key (K)</strong> — "ป้ายชื่อของฉันคืออะไร" (คำว่า "แมว" มีป้าย: สัตว์/ประธานของเรื่อง)</li>
+      <li><strong>Value (V)</strong> — "ถ้าเลือกฟังฉัน ฉันจะส่งข้อมูลอะไรให้"</li>
+    </ul>
+    <p>ขั้นตอน: เอา Q ของคำเราไป dot product กับ K ของทุกคำ (วัดความเข้ากัน) →
+    softmax (ได้น้ำหนักรวมเป็น 1 — เครื่องมือจากเรื่อง Neural Network!) →
+    เฉลี่ย V ของทุกคำตามน้ำหนัก = ความหมายใหม่ของคำเราที่ "ดูดบริบท" มาแล้ว</p>
+
+    <h3>Transformer = (Attention + MLP) ซ้อนกันหลายสิบชั้น</h3>
+    <p>หนึ่ง Transformer block: attention (ให้คำคุยกัน) ตามด้วย MLP (ให้แต่ละคำครุ่นคิดกับตัวเอง — เรื่อง Neural Network!)
+    ซ้อนหลายสิบชั้น ชั้นล่างจับไวยากรณ์ใกล้ตัว ชั้นสูงจับความหมายเชิงเรื่องราว
+    + ทำ attention หลายชุดพร้อมกัน (multi-head — แต่ละ head สนใจคนละแง่)
+    + ฝังลำดับตำแหน่งคำ (positional encoding) เพราะลำพัง attention ไม่รู้ว่าใครมาก่อนหลัง</p>
+
+    <h3>เช็กใบสเปกจากสัปดาห์ที่แล้ว</h3>
+    <table class="simple">
+      <tr><th>สเปกที่ต้องการ</th><th>Transformer ตอบโจทย์ด้วย</th></tr>
+      <tr><td>จำระยะไกลได้ ไม่มีคอขวด</td><td>ทุกคำมองทุกคำโดยตรง — ระยะทาง 1 ก้าวเสมอ ไม่ว่าห่างกี่พันคำ</td></tr>
+      <tr><td>เทรนขนานบน GPU ได้</td><td>ทุกคำคำนวณพร้อมกัน ไม่ต้องรอทีละคำแบบ RNN</td></tr>
+      <tr><td>generalize ได้ ไม่ใช่ตารางนับ</td><td>ทุกอย่างคือ weight ที่เทรนด้วย backprop — เครื่องมือเดียวกับเรื่อง Backpropagation</td></tr>
+    </table>
+    <p>ราคาที่จ่าย: ทุกคำมองทุกคำ = งานโตแบบ n² ตามความยาวบริบท —
+    นี่คือเหตุผลที่ "context window" ของ LLM มีขีดจำกัด และทำไมบริบทยาวถึงแพง</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — คำนวณ attention ด้วยมือใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">ใช้เครื่องมือที่มีครบแล้ว: dot product (คูณ+บวก) กับ softmax (เรื่อง Neural Network) — จบแล้วคุณจะคำนวณหัวใจของ GPT ได้บนกระดาษ</p>
+    <ol class="steps">
+      <li><strong>ตั้งโจทย์จิ๋ว</strong>
+        ประโยค 3 คำ: <code>"แมว ไล่ มัน"</code> — เราจะคำนวณว่าคำว่า <strong>"มัน"</strong> ควรหันไปฟังใคร
+        (คำตอบที่ควรได้: ฟัง "แมว" หนักสุด เพราะ "มัน" อ้างถึงแมว)</li>
+      <li><strong>แจกบทบาทเป็นเวกเตอร์จิ๋ว 2 มิติ</strong>
+        Q ของ "มัน" = (2, 0) — อ่านว่า "กำลังตามหา: สิ่งมีชีวิตที่ถูกพูดถึง"<br>
+        K (ป้ายชื่อ) ของแต่ละคำ: แมว = (1, 0) "ฉันคือสิ่งมีชีวิต/ประธาน", ไล่ = (0, 1) "ฉันคือการกระทำ", มัน = (0.5, 0)<br>
+        (ของจริงเวกเตอร์ยาว 128+ มิติ และตัวเลขมาจากการเทรน — เราย่อเหลือ 2 มิติให้คิดมือได้)</li>
+      <li><strong>วัดความเข้ากันด้วย dot product</strong>
+        คูณตำแหน่งต่อตำแหน่งแล้วบวก: Q·K(แมว) = 2×1 + 0×0 = <strong>2</strong> |
+        Q·K(ไล่) = 0 + 0 = <strong>0</strong> | Q·K(มัน) = <strong>1</strong><br>
+        ทิศตรงกัน = คะแนนสูง — "สิ่งที่ตามหา" ของมัน ตรงกับ "ป้ายชื่อ" ของแมวพอดี</li>
+      <li><strong>แปลงคะแนนเป็นน้ำหนักด้วย softmax (เพื่อนเก่าเรื่อง Neural Network!)</strong>
+        e² = 7.39, e⁰ = 1, e¹ = 2.72 → รวม = 11.11<br>
+        น้ำหนัก: แมว <strong>67%</strong>, ไล่ <strong>9%</strong>, มัน <strong>24%</strong> — "มัน" ตัดสินใจฟังแมวสองในสาม
+        <div class="try">ตัวเลขชุดนี้คุ้นไหม? คือโจทย์ softmax เดียวกับเรื่อง Neural Network เป๊ะ — ลองเปลี่ยน K ของ "ไล่" เป็น (1,1) แล้วคำนวณใหม่</div></li>
+      <li><strong>ผสมความหมายตามน้ำหนัก</strong>
+        แต่ละคำมี V (ข้อมูลที่จะส่งให้) — ความหมายใหม่ของ "มัน" = 0.67×V(แมว) + 0.09×V(ไล่) + 0.24×V(มัน)<br>
+        ผลคือเวกเตอร์ของ "มัน" ตอนนี้<em>ชุ่มไปด้วยความหมายของแมว</em> — มันรู้แล้วว่าตัวเองหมายถึงอะไร
+        นี่คือสิ่งที่ RNN ทำไม่ได้: ดูดความหมายจากคำที่ห่างแค่ไหนก็ได้ ใน 1 ก้าว</li>
+      <li><strong>ขยายเป็น Transformer เต็มตัว</strong>
+        ที่ทำมา = attention ของคำเดียว 1 หัว 1 ชั้น — ของจริงทำ<em>ทุกคำพร้อมกัน</em> (ขนานบน GPU ได้!)
+        × 12 หัว (แต่ละหัวสนใจคนละแง่) × หลายสิบชั้น สลับกับ MLP (เรื่อง Neural Network) —
+        ทั้งหมดนี้เทรนด้วย backprop (เรื่อง Backpropagation) ไม่มีเครื่องมือใหม่เลยสักชิ้น
+        <div class="try">ไปที่ demo "คำนวณ attention เองด้วยเวกเตอร์จิ๋ว" ข้างล่าง ใส่ตัวเลขจากขั้น 2 แล้วเช็คกับมือ</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — attention ทำงานหลายหน้าที่</h3>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — หากรรมของกริยา: "ฉัน กิน ข้าว"</summary>
+      <p>คำว่า "กิน" ตามหากรรม: Q(กิน) = (0, 2) | ป้ายชื่อ K: ฉัน = (1, 0), กิน = (0.5, 0.5), ข้าว = (0, 1)
+      — คำนวณ dot product, softmax แล้วสรุปว่า "กิน" ฟังใคร</p>
+      <div class="ans">
+      <strong>ขั้น 1 — dot product ทีละคู่:</strong> Q·K(ฉัน) = (0)(1)+(2)(0) = 0 | Q·K(กิน) = (0)(0.5)+(2)(0.5) = 1 | Q·K(ข้าว) = (0)(0)+(2)(1) = 2<br>
+      <strong>ขั้น 2 — ยกกำลัง e:</strong> e⁰ = 1, e¹ = 2.72, e² = 7.39 → รวม 11.11<br>
+      <strong>ขั้น 3 — หารเป็นน้ำหนัก:</strong> ฉัน <strong>9%</strong> | กิน <strong>24%</strong> | ข้าว <strong>67%</strong><br>
+      ✅ <strong>คำตอบ:</strong> "กิน" ดูดความหมายจาก "ข้าว" หนักสุด — ตัวเลขเดียวกับบทเรียนเป๊ะแต่คนละความสัมพันธ์
+      (กริยา→กรรม แทน สรรพนาม→เจ้าของ) — ของจริง attention หลาย head แบ่งงานจับคนละความสัมพันธ์แบบนี้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — แก้คำกำกวม: "ตา" สองความหมาย</summary>
+      <p>ประโยค ก: "<u>ตา</u>ของฉันมองไม่ค่อยชัด" | ประโยค ข: "<u>ตา</u>ของฉันอยู่ต่างจังหวัด"
+      — ไม่ต้องคำนวณ ตอบเชิงกลไก: attention ของคำว่า "ตา" ในสองประโยคต่างกันยังไง แล้วเกิดอะไรกับความหมายมัน</p>
+      <div class="ans">
+      <strong>ขั้น 1 — จุดตั้งต้นเหมือนกัน:</strong> คำว่า "ตา" ทั้งสองประโยคเริ่มจาก embedding ตัวเดียวกันเป๊ะ (ผสมทั้งความหมายอวัยวะและญาติ)<br>
+      <strong>ขั้น 2 — ประโยค ก:</strong> Q ของ "ตา" จับคู่แรงกับ K ของ "มอง/ชัด" → ดูด V ฝั่งการมองเห็น → เวกเตอร์เอียงไปทาง "อวัยวะ"<br>
+      <strong>ขั้น 3 — ประโยค ข:</strong> จับคู่แรงกับ K ของ "อยู่/ต่างจังหวัด" → ดูด V ฝั่งบุคคล/สถานที่ → เอียงไปทาง "คุณตา (ญาติ)"<br>
+      ✅ <strong>คำตอบ:</strong> คำเดียวกัน จุดเริ่มเดียวกัน แต่หลัง attention ความหมายแยกทางตามบริบท —
+      สิ่งที่พจนานุกรม (และ embedding เดี่ยวๆ) ทำไม่ได้ นี่คือเหตุผลการมีอยู่ของ attention</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — causal mask: ใครแอบดูเฉลยได้บ้าง</summary>
+      <p>ตอนเทรน GPT กับประโยค 4 คำ "แมว ชอบ กิน ปลา" — เขียนตารางว่าแต่ละคำ "มองเห็น" คำไหนได้บ้าง แล้วตอบว่าทำไมต้องห้าม</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทวนหน้าที่ตอนเทรน:</strong> ทุกตำแหน่งทำนาย "คำถัดไป" พร้อมกัน: "แมว" ทาย "ชอบ", "ชอบ" ทาย "กิน", "กิน" ทาย "ปลา"<br>
+      <strong>ขั้น 2 — วางกฎการมอง:</strong> แต่ละคำมองได้เฉพาะตัวเองกับคำ<strong>ก่อนหน้า</strong>: แมว→{แมว} | ชอบ→{แมว, ชอบ} | กิน→{แมว, ชอบ, กิน} | ปลา→เห็นครบ<br>
+      <strong>ขั้น 3 — ทดลองยกเลิกกฎ:</strong> ถ้า "กิน" มองเห็น "ปลา" ได้ มันแค่ลอกคำตอบมาตอบ — ได้คะแนนเต็มโดยไม่ได้เรียนรู้อะไร<br>
+      ✅ <strong>คำตอบ:</strong> ตารางสามเหลี่ยม (มองได้เฉพาะอดีต) — เหตุผลคือกันแอบดูเฉลย:
+      data leakage เวอร์ชัน attention เรื่อง Overfitting หลอนกลับมาอีกครั้ง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — Query กำกวม: ฟังครึ่งๆ</summary>
+      <p>Q = (1, 1) ป้ายชื่อสองคำ: K(a) = (1, 0), K(b) = (0, 1) — คำนวณน้ำหนัก attention</p>
+      <div class="ans">
+      <strong>ขั้น 1 — dot product:</strong> Q·K(a) = (1)(1)+(1)(0) = 1 | Q·K(b) = (1)(0)+(1)(1) = 1 — เสมอกัน<br>
+      <strong>ขั้น 2 — softmax:</strong> e¹ ต่อ e¹ → <strong>50% / 50%</strong><br>
+      <strong>ขั้น 3 — ตีความ:</strong> Q ชี้ทแยง = "ตามหาสองอย่างพอๆ กัน" → ความหมายที่ได้คือส่วนผสมครึ่งต่อครึ่งของ V ทั้งสอง<br>
+      ✅ <strong>คำตอบ:</strong> 50/50 — attention ไม่ถูกบังคับให้เลือกข้าง มันผสมได้ตามสัดส่วน
+      ความนุ่มนวลนี้ทำให้ความหมายเฉดกลางๆ ("ค่อนข้างเห็นด้วย", ประชดนิดๆ) เป็นไปได้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — ทำไมต้องหาร √d: ดูตัวเลขเอง</summary>
+      <p>เวกเตอร์ยาวขึ้น dot product ก็โตขึ้น สมมุติได้คะแนน (10, 0) — softmax แล้วเป็นยังไง? เทียบกับหลังหาร √100 = 10 เหลือ (1, 0)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — softmax ของ (10, 0):</strong> e¹⁰ ≈ 22,026 ต่อ e⁰ = 1 → <strong>99.995% / 0.005%</strong> — "อิ่มตัว" ฟังคำเดียวสนิท<br>
+      <strong>ขั้น 2 — ดูผลต่อการเทรน:</strong> น้ำหนักที่เกือบ 0/1 สนิท ทำให้ gradient ผ่าน softmax แทบเป็นศูนย์ → โมเดลปรับตัวไม่ได้ "หูดับ" ตั้งแต่เกิด<br>
+      <strong>ขั้น 3 — หารด้วย √d = √100 = 10:</strong> คะแนนเหลือ (1, 0) → softmax = 2.72 ต่อ 1 → <strong>73% / 27%</strong> — เอียงแต่ยังเปิดหู ✓<br>
+      ✅ <strong>คำตอบ:</strong> ก่อนหาร 99.995/0.005 หลังหาร 73/27 — ÷√d ไม่ใช่เครื่องประดับในสูตร
+      มันคือตัวกันโมเดลหูดับตั้งแต่เริ่มเทรน</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — multi-head: หลายหัว หลายหน้าที่</summary>
+      <p>ประโยค "แมวดำที่บ้านยายเลี้ยง<u>มัน</u>หิว" — head 1 จับไวยากรณ์ (คำขยาย→คำหลัก), head 2 จับการอ้างถึง — แต่ละ head ของคำว่า "ดำ" และ "มัน" มองไปที่ไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — head 1 (ไวยากรณ์) มองคำว่า "ดำ":</strong> Q ของมันถามว่า "ฉันขยายใคร" → จับคู่กับ K ของคำนามใกล้ๆ → <strong>"แมว"</strong><br>
+      <strong>ขั้น 2 — head 2 (การอ้างถึง) มองคำว่า "มัน":</strong> Q ถามว่า "ฉันแทนใคร" → จับคู่กับ K ของประธานเรื่อง → <strong>"แมว"</strong> เช่นกัน<br>
+      <strong>ขั้น 3 — สังเกตความต่าง:</strong> เป้าเดียวกัน แต่<strong>คนละเหตุผล</strong> — สองความสัมพันธ์นี้ต้องการ Q/K คนละแบบ จึงต้องคนละ head<br>
+      ✅ <strong>คำตอบ:</strong> ทั้งคู่ชี้ไป "แมว" ด้วยเหตุผลต่างกัน — และไม่มีใครสั่งให้ head ไหนทำหน้าที่อะไร
+      การแบ่งงานเกิดเองจากการเทรน (นักวิจัยค้นพบทีหลังด้วยการ "ผ่า" โมเดล — สาขา interpretability)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — ทำไมต้องบอกตำแหน่งคำ (positional encoding)</summary>
+      <p>"หมากัดคน" กับ "คนกัดหมา" — ถ้าไม่มี positional encoding, attention เห็นสองประโยคนี้ต่างกันไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ดูว่า attention รับอะไรเข้าไป:</strong> เซตของเวกเตอร์คำ {หมา, กัด, คน} — การคำนวณ Q·K ทุกคู่ไม่มีตรงไหนใช้ "ลำดับ" เลย<br>
+      <strong>ขั้น 2 — เทียบสองประโยค:</strong> "หมากัดคน" กับ "คนกัดหมา" ให้เซตเดียวกันเป๊ะ → attention เพียวๆ เห็น<strong>ไม่ต่างเลย</strong> (เหมือนถุงคำ)<br>
+      <strong>ขั้น 3 — วิธีแก้:</strong> ฝัง "เลขที่นั่ง" (ตำแหน่ง 1, 2, 3...) เข้าไปในเวกเตอร์แต่ละคำก่อนเข้า attention → หมา@1 กับ หมา@3 กลายเป็นเวกเตอร์คนละตัว<br>
+      ✅ <strong>คำตอบ:</strong> ไม่ต่าง จึงต้องมี positional encoding — กฎจำ: ภาษาไหนสลับคำแล้วความหมายเปลี่ยน ภาษานั้นต้องการมัน
+      (ภาษาไทยคือตัวอย่างชั้นดี)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — ราคาของ n²: ทำไมบริบทยาวถึงแพง</summary>
+      <p>attention ให้ทุกคำมองทุกคำ — นับจำนวนคู่: บริบท 1,000 token เทียบกับ 100,000 token งานต่างกันกี่เท่า?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — นับคู่กรณีสั้น:</strong> ทุกคำมองทุกคำ: 1,000 × 1,000 = <strong>1 ล้านคู่</strong><br>
+      <strong>ขั้น 2 — นับคู่กรณียาว:</strong> 100,000 × 100,000 = <strong>10,000 ล้านคู่</strong><br>
+      <strong>ขั้น 3 — เทียบอัตราโต:</strong> ความยาว ×100 แต่งาน ×10,000 — โตเป็นกำลังสอง (n²) ไม่ใช่เชิงเส้น<br>
+      ✅ <strong>คำตอบ:</strong> 10,000 เท่า — นี่คือเหตุผลที่ context window มีขีดจำกัดและคิดเงินตามความยาว
+      งานวิจัยลด n² (sparse/linear attention) คือสมรภูมิใหญ่ของวงการตอนนี้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — attention มองรูปภาพ: Vision Transformer</summary>
+      <p>ถ้า "คำ" ของภาพคือชิ้นภาพ 16×16 pixel (patch) — attention ของ patch "หางหมา" จะหันไปมองอะไร แล้วมันต่างจาก CNN ยังไง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แปลงภาพเป็น "ประโยค":</strong> หั่นภาพเป็น patch 16×16 → แต่ละ patch = หนึ่ง token เรียงเป็นลำดับเหมือนคำ<br>
+      <strong>ขั้น 2 — รัน attention ตามปกติ:</strong> patch "หางหมา" สร้าง Q ตามหา "ส่วนอื่นของสิ่งเดียวกัน" → จับคู่ K ของ patch "หัวหมา/ตัวหมา" ได้<strong>ทันทีใน 1 ชั้น</strong> แม้อยู่คนละมุมภาพ<br>
+      <strong>ขั้น 3 — เทียบ CNN:</strong> kernel เห็นแค่ 3×3 — กว่า receptive field จะกว้างถึงสองมุมภาพ ต้องซ้อนหลายสิบชั้น<br>
+      ✅ <strong>คำตอบ:</strong> มอง "ชิ้นส่วนเดียวกันที่อยู่ไกล" ได้ใน 1 ก้าว — ViT ใช้สมการ attention เดียวกับภาษาทุกบรรทัด แค่เปลี่ยน token เป็น patch
+      สถาปัตยกรรมเดียวครองสองโลก = เหตุที่โมเดลยุคนี้ multimodal ได้ง่าย (เรื่อง Diffusion)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — attention map ใช้ "อ่านใจ" โมเดลได้ แต่ระวัง</summary>
+      <p>เครื่องมือ debug ของวิศวกร: เปิดดูว่าตอนแปลคำนี้ผิด โมเดล attend ไปที่คำไหน — เชื่อถือได้ 100% ไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — วิธีใช้เชิงบวก:</strong> โมเดลแปล "ตา" ผิด → เปิด attention map → เห็นว่ามัน attend ไปคำหลอก → รู้จุดแก้ (ข้อมูล/prompt) ตรงเป้า — มีประโยชน์จริง<br>
+      <strong>ขั้น 2 — เหตุผลที่เชื่อ 100% ไม่ได้:</strong> น้ำหนัก attention ชั้นนี้ อาจถูกกลบ/ชดเชยโดยชั้นถัดไป — attention สูงไม่ได้แปลว่าข้อมูลนั้น "ถูกใช้" ตัดสินคำตอบจริง<br>
+      <strong>ขั้น 3 — หลักฐานจากวงการ:</strong> งานวิจัยชื่อดัง "Attention is not Explanation" (2019) แสดงเคสที่เปลี่ยนน้ำหนัก attention แล้วคำตอบไม่เปลี่ยน<br>
+      ✅ <strong>คำตอบ:</strong> เชื่อถือได้ระดับ "เบาะแส" ไม่ใช่ "คำพิพากษา" — ใช้ชี้จุดสืบสวนต่อ อย่าใช้ปิดคดี</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo">
+    <h3>🎬 แอนิเมชัน: "ทุกคำหันไปมองทุกคำ" พร้อมกันทั้งประโยค</h3>
+    <p style="margin-top:0">นี่คือสิ่งที่เกิดใน attention หนึ่งชั้น — เส้นโค้งคือ "สายตา" ของแต่ละคำ
+    ความหนาของเส้น = น้ำหนักที่ฟังคำนั้น สังเกตตอนถึงคำว่า "มัน": สายตาพุ่งกลับไปหา "แมว" ข้ามคำอื่นทั้งหมด</p>
+    <canvas id="attflow" width="760" height="250" style="width:100%; border:1px solid var(--border); border-radius:8px; background:#fcfdff"></canvas>
+    <div style="margin-top:8px">
+      <button onclick="playFlow()">▶ เล่นแอนิเมชัน</button>
+      <button onclick="stopFlow()">⏸ หยุด</button>
+    </div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 ใครมองใคร: attention ในประโยคจริง</h3>
+    <p style="margin-top:0">คลิกคำใดก็ได้ในประโยค แล้วดูว่าคำนั้น "หันไปฟัง" คำไหนหนักแค่ไหน
+    (น้ำหนักจำลองตามหลักภาษา เพื่อให้เห็นพฤติกรรมของ attention จริง)</p>
+    <div id="sentence" style="font-size:1.3rem; line-height:2.4; text-align:center; padding:10px"></div>
+    <div class="output" id="attout">— คลิกคำด้านบน —</div>
+  </div>
+
+  <!-- ═══════════════ 🎬 ชิ้นเอก: attention ทีละจังหวะ ═══════════════ -->
+  <div class="demo" id="saDemo">
+    <h3 style="margin-top:0">🎬 Attention ทีละจังหวะ — คำนวณจริงทุกตัวเลข (ชิ้นเอกของทั้งวิชา)</h3>
+    <p style="margin-top:0">ประโยคจิ๋ว <strong>"แมว ไล่ หนู"</strong> — แต่ละคำมี embedding 2 มิติ แล้วใช้เมทริกซ์ weight จริง 3 ชุดข้างล่างสร้าง Q, K, V
+    จากนั้นเดินดู 4 จังหวะของ attention แบบ<strong>เห็นเลขทุกตัวถูกคูณจริง</strong>:
+    ① ทุกคำสร้าง Q K V (embedding × เมทริกซ์) → ② เอา Q ของคำที่เลือกไปทาบกับ K ทุกคำ (dot product) →
+    ③ หาร √d แล้ว softmax เป็นน้ำหนัก → ④ ถัวเฉลี่ย V ตามน้ำหนัก = ความหมายใหม่ ·
+    ตัวเลขชุดเดียวกันนี้จะไปโผล่ในโค้ด numpy ส่วนที่ 3 ให้รันเช็กได้เอง</p>
+    <div class="sa-mats">
+      <div class="sa-mat" id="saMatQ"><h4 style="color:#6d28d9">W<sub>Q</sub> — สร้าง "คำถาม"</h4>
+        <table><tr><td>1.0</td><td>2.0</td></tr><tr><td>2.0</td><td>0.0</td></tr></table></div>
+      <div class="sa-mat" id="saMatK"><h4 style="color:#2456e6">W<sub>K</sub> — สร้าง "ป้ายชื่อ"</h4>
+        <table><tr><td>1.0</td><td>0.0</td></tr><tr><td>0.5</td><td>1.0</td></tr></table></div>
+      <div class="sa-mat" id="saMatV"><h4 style="color:#0e7f43">W<sub>V</sub> — สร้าง "ของที่ส่งให้"</h4>
+        <table><tr><td>1.0</td><td>0.5</td></tr><tr><td>0.0</td><td>1.0</td></tr></table></div>
+      <div class="sa-matnote">เมทริกซ์ 3 ชุดนี้คือ <b>weight ที่เทรนได้</b> ตัวจริงของ attention —
+        backprop (เรื่อง Backpropagation) คือคนปรับมัน · แต่ละคำคูณ: q = x·W<sub>Q</sub>, k = x·W<sub>K</sub>, v = x·W<sub>V</sub> (linear layer เรื่อง Polynomial Regression!)</div>
+    </div>
+    <div class="sa-stage">
+      <div class="sa-phase" id="saPhase">พร้อม — กด ▶ ถัดไป หรือเล่นอัตโนมัติ</div>
+      <svg id="saSvg" viewBox="0 0 760 480"></svg>
+    </div>
+    <div class="sa-eq" id="saEq"></div>
+    <div class="sa-ctl">
+      <span style="font-weight:700;font-size:.9rem">มองจากคำไหน:</span>
+      <span class="seg" id="saSel"><button data-i="0">แมว</button><button data-i="1" class="on">ไล่</button><button data-i="2">หนู</button></span>
+      <button id="saPrev">◀ ก่อนหน้า</button>
+      <button id="saNext" style="background:linear-gradient(135deg,var(--accent),#8b5cf6)">ถัดไป ▶</button>
+      <button id="saPlay" style="background:linear-gradient(135deg,#f59e0b,#f97316)">🎬 เล่นอัตโนมัติ</button>
+      <button id="saSpeed" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+      <button id="saReset">↺ รีเซ็ต</button>
+      <span class="sa-step" id="saStep">จังหวะ 0/11</span>
+    </div>
+    <div class="try">ลอง: เดินจนจบด้วยผู้มอง "ไล่" (ควรฟัง "หนู" หนักสุด — กริยาตามหากรรมของมัน)
+    แล้วสลับผู้มองเป็น "แมว" — สังเกตว่า K และ V ของทุกคำ<strong>ไม่เปลี่ยนเลย</strong> เปลี่ยนแค่ Q ตัวเดียว น้ำหนักก็ย้ายข้างทั้งแถว
+    → จากนั้นไปพิสูจน์เลขชุดเดียวกันด้วย numpy ในส่วนที่ 3</div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 คำนวณ attention เองด้วยเวกเตอร์จิ๋ว</h3>
+    <p style="margin-top:0">คำ 3 คำ แต่ละคำมีเวกเตอร์ Q, K ขนาด 2 มิติ — แก้ตัวเลขแล้วดู attention weight เปลี่ยนสด
+    (dot product สูง = เข้ากัน → softmax → น้ำหนัก)</p>
+    <table class="simple" style="max-width:480px">
+      <tr><th>คำ</th><th>K₁</th><th>K₂</th></tr>
+      <tr><td>"แมว"</td><td><input type="number" id="k00" value="2" step="1" style="width:55px" oninput="attCalc()"></td>
+          <td><input type="number" id="k01" value="0" step="1" style="width:55px" oninput="attCalc()"></td></tr>
+      <tr><td>"เสื่อ"</td><td><input type="number" id="k10" value="0" step="1" style="width:55px" oninput="attCalc()"></td>
+          <td><input type="number" id="k11" value="1" step="1" style="width:55px" oninput="attCalc()"></td></tr>
+      <tr><td>"กิน"</td><td><input type="number" id="k20" value="-1" step="1" style="width:55px" oninput="attCalc()"></td>
+          <td><input type="number" id="k21" value="0" step="1" style="width:55px" oninput="attCalc()"></td></tr>
+    </table>
+    <p>Query ของคำว่า "มัน" (กำลังตามหาผู้ถูกอ้างถึง):
+      Q₁ = <input type="number" id="q0" value="1" step="1" style="width:55px" oninput="attCalc()">
+      Q₂ = <input type="number" id="q1" value="0" step="1" style="width:55px" oninput="attCalc()"></p>
+    <div class="output" id="attcalc"></div>
+  </div>
+
+  <!-- ═══════════════ 🧢 Multi-head ═══════════════ -->
+  <div class="demo" id="mhDemo">
+    <h3 style="margin-top:0">🧢 หลายหัว หลายมุมมอง — Multi-head Attention</h3>
+    <p style="margin-top:0">ประโยคเดิม "แมว ไล่ หนู" แต่คราวนี้มี attention <strong>2 หัว</strong>ทำงานพร้อมกัน —
+    หัวละชุด W<sub>Q</sub>, W<sub>K</sub> ของตัวเอง (ตัวเลขทุกช่องข้างล่าง<strong>คำนวณจริง</strong>จากเมทริกซ์ที่เขียนกำกับไว้ ด้วยสูตรเดียวกับแอนิเมชันข้างบนเป๊ะ):
+    หัว A เรียนรู้ที่จะถามว่า <b style="color:#7c3aed">"ใครเป็นผู้ทำ"</b> — ทุกคำจึงชี้กลับไปหา "แมว" ·
+    หัว B ถามว่า <b style="color:#d97706">"ทำอะไร / ทำกับใคร"</b> — ลูกศรโยงกริยา-กรรมแทน ·
+    ติ๊กปิด-เปิดแต่ละหัวแล้วดูผลตรงกล่อง "ต่อผลกลับเข้าด้วยกัน" ข้างล่าง</p>
+    <div class="mh-grid">
+      <div class="mh-head" id="mhHeadA">
+        <h4><span class="mh-chip" style="background:#7c3aed">หัว A</span> ถาม "ใครเป็นผู้ทำ"
+          <label><input type="checkbox" id="mhOnA" checked> เปิดหัวนี้</label></h4>
+        <svg id="mhSvgA" viewBox="0 0 460 150"></svg>
+        <table class="mh-map" id="mhMapA"></table>
+        <p class="mh-w">W<sub>Q</sub><sup>A</sup> = [[1, 0], [1, 0]] · W<sub>K</sub><sup>A</sup> = [[2, 0], [−2, 0]] — หัวนี้สนใจแกน "ความเป็นประธาน" อย่างเดียว</p>
+      </div>
+      <div class="mh-head" id="mhHeadB">
+        <h4><span class="mh-chip" style="background:#d97706">หัว B</span> ถาม "ทำอะไร / กับใคร"
+          <label><input type="checkbox" id="mhOnB" checked> เปิดหัวนี้</label></h4>
+        <svg id="mhSvgB" viewBox="0 0 460 150"></svg>
+        <table class="mh-map" id="mhMapB"></table>
+        <p class="mh-w">W<sub>Q</sub><sup>B</sup> = [[1, 1], [1, −1]] · W<sub>K</sub><sup>B</sup> = [[0, −2], [2, 1]] — เมทริกซ์คนละชุด คำถามจึงคนละแบบ ทั้งที่คำ (embedding) เดิมเป๊ะ</p>
+      </div>
+    </div>
+    <div class="mh-out">
+      <span style="font-weight:700;font-size:.9rem">ผลลัพธ์ของคำ:</span>
+      <span class="seg" id="mhSel"><button data-i="0">แมว</button><button data-i="1" class="on">ไล่</button><button data-i="2">หนู</button></span>
+      <div id="mhConcat" style="margin-top:8px"></div>
+    </div>
+    <p style="margin:10px 0 0;font-size:.88rem;color:var(--muted)"><b>สเกลจริง:</b> GPT-2 มี <b>12 หัว × 12 ชั้น = 144 หัว</b> แต่ละหัวเรียนรู้หน้าที่ของตัวเองโดยไม่มีใครสั่ง
+    (นักวิจัยพบหัวจับไวยากรณ์ หัวจับการอ้างถึง หัวนับตำแหน่ง ฯลฯ จากการ "ผ่า" โมเดลทีหลัง)</p>
+    <div class="try">ลองปิดหัว A แล้วดูกล่องผลลัพธ์: ครึ่งที่บอก "ใครเป็นประธาน" หายไปจากเวกเตอร์ที่ต่อกัน —
+    ถ้าเป็นโมเดลจริง ข้อมูลมุมมองนั้นจะไม่ถูกส่งต่อไปชั้นถัดไปเลย นี่คือเหตุผลที่ต้องมีหลายหัว: คำเดียวมีหลายความสัมพันธ์พร้อมกัน</div>
+  </div>
+
+  <!-- ═══════════════ 🌊 Positional Encoding ═══════════════ -->
+  <div class="demo" id="peDemo">
+    <h3 style="margin-top:0">🌊 ตำแหน่งสำคัญ — Positional Encoding</h3>
+    <p style="margin-top:0">attention เพียวๆ มองประโยคเป็น "ถุงคำ" — ไม่รู้ว่าใครมาก่อนหลัง (ตัวอย่าง 7 ข้างบน)
+    วิธีแก้ของ Transformer: สร้าง <strong>"เวกเตอร์เลขที่นั่ง"</strong> จากคลื่น sin/cos หลายความถี่ แล้ว<strong>บวก</strong>เข้ากับ embedding ของคำก่อนเข้า attention ·
+    เลื่อนสไลเดอร์ตำแหน่ง แล้วดูเส้นดิ่งไปตัดคลื่นทั้ง 4 เส้น — ค่าที่ตัดได้คือเวกเตอร์ประจำตำแหน่งนั้น
+    (คลื่นช้าบอก "โซนกว้างๆ" คลื่นเร็วบอก "ตำแหน่งละเอียด" — เหมือนเข็มชั่วโมงกับเข็มนาที)</p>
+    <canvas id="peCv" width="760" height="270" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div class="tb-row" style="margin-top:8px">
+      <span style="font-weight:700;min-width:96px">ตำแหน่งคำ p</span>
+      <input type="range" id="pePos" min="0" max="20" step="1" value="3">
+      <span style="font-weight:700;color:var(--accent);min-width:36px;text-align:right" id="pePosV">3</span>
+    </div>
+    <div class="pe-chips" id="peChips"></div>
+    <div class="pe-cmp" id="peCmp"></div>
+    <div class="pe-verdict"><b>ทำไมโมเดลถึงแยกสองประโยคนี้ได้:</b> เวกเตอร์ "คำ" เหมือนกันทุกตัว
+    แต่พอบวกเวกเตอร์ "ที่นั่ง" ซึ่งไม่เหมือนกัน ผลรวมที่เข้า attention จึงเป็นคนละตัวเลข —
+    "แมว@ตำแหน่ง 0" กับ "แมว@ตำแหน่ง 2" กลายเป็นเวกเตอร์คนละตัว → Q, K, V ต่างกัน → ใครไล่ใครจึงไม่หลุด</div>
+    <div class="try">ลองเลื่อน p ช้าๆ จาก 0 ถึง 20: คู่คลื่นเร็ว (สีน้ำเงิน/ม่วง) หมุนครบรอบหลายรอบ ส่วนคู่คลื่นช้า (เขียว/ส้ม) ค่อยๆ เปลี่ยน —
+    การผสมหลายความถี่ทำให้ทุกตำแหน่งได้ "ลายนิ้วมือ" ไม่ซ้ำกัน แม้ประโยคจะยาวมาก</div>
+  </div>
+
+  <!-- ═══════════════ 🏗️ Transformer block ═══════════════ -->
+  <div class="demo" id="tbDemo">
+    <h3 style="margin-top:0">🏗️ เดินผ่าน Transformer block — โรงงานขัดเกลาความหมาย N ชั้น</h3>
+    <p style="margin-top:0">ทุกชิ้นที่เรียนมาประกอบกันเป็น "บล็อกมาตรฐาน" หนึ่งก้อน: <strong>Attention → Add&amp;Norm → MLP → Add&amp;Norm</strong>
+    แล้วเอาก้อนเดียวกันนี้ซ้อนกัน N ชั้น — กด ▶ แล้วตามสัญญาณของ token หนึ่งตัวเดินผ่านทีละสถานี
+    สังเกต<strong>เส้นประ "ทางด่วน" (residual)</strong> ที่แอบก๊อบปี้ตัวเดิมอ้อมไปบวกคืนทุกสถานี — ตัวกัน gradient จางของเรื่อง Backpropagation/11</p>
+    <div class="tb-grid">
+      <div class="tb-stage"><svg id="tbSvg" viewBox="0 0 380 430"></svg></div>
+      <div>
+        <div class="tb-msg" id="tbMsg"><b>พร้อมเดิน</b> — เลือกจำนวนชั้น N แล้วกด ▶ เดินผ่านทุกชั้น</div>
+        <div class="tb-row">
+          <span style="font-weight:700;min-width:96px">จำนวนชั้น N</span>
+          <input type="range" id="tbN" min="1" max="12" step="1" value="4">
+          <span style="font-weight:700;color:var(--accent);min-width:36px;text-align:right" id="tbNV">4</span>
+        </div>
+        <p style="margin:8px 0;font-size:.9rem">พารามิเตอร์ (สเกล GPT-2, d = 768): <span class="tb-params" id="tbParams"></span></p>
+        <div class="tb-row">
+          <button id="tbPlay" style="background:linear-gradient(135deg,var(--accent),#8b5cf6)">▶ เดินผ่านทุกชั้น</button>
+          <button id="tbFast" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+          <button id="tbReset">↺ รีเซ็ต</button>
+        </div>
+        <p style="margin:10px 0 0;font-size:.88rem;color:var(--muted)"><b>เชื่อมกลับ:</b> กล่อง MLP ข้างในคือเครือข่ายของ<b>เรื่อง Neural Network เป๊ะๆ</b> (768 → 3072 → 768, activation GELU ญาติของ ReLU)
+        ส่วนกล่อง Attention คือแอนิเมชัน 🎬 ข้างบนทั้งอัน ทำพร้อมกัน 12 หัว — GPT-2 ใช้ N = 12, โมเดลยักษ์ปัจจุบันใช้ N ระดับร้อย</p>
+      </div>
+    </div>
+    <div class="try">ลองลาก N จาก 1 → 12 แล้วดูตัวนับพารามิเตอร์: ความ "ลึก" ซื้อความสามารถด้วยพารามิเตอร์ที่โตเชิงเส้น
+    ชั้นล่างจับไวยากรณ์ใกล้ตัว ชั้นบนจับเรื่องราว — เดี๋ยวไปดูของจริงว่าความหมาย "เดินทาง" ยังไงใน demo 3D ถัดไป</div>
+  </div>
+
+  <!-- ═══════════════ 🌌 3D token journey ═══════════════ -->
+  <div class="demo" id="t3Demo">
+    <h3 style="margin-top:0">🌌 การเดินทางของ token ใน 3D — attention คือเครื่องย้ายความหมายตามบริบท</h3>
+    <p style="margin-top:0">จุดแต่ละจุด = เวกเตอร์ความหมายของคำ (ฉายจากหลายร้อยมิติลงมา 3 มิติ — <strong>ลากเมาส์เพื่อหมุนดู</strong>) ·
+    พระเอกคือ <b style="color:#e5484d">"ตา" ในประโยค ก "ตาของฉันมองไม่ชัด"</b> กับ <b style="color:#d97706">"ตา" ในประโยค ข "ตาของฉันอยู่ต่างจังหวัด"</b> —
+    ก่อนเข้าโมเดล (ชั้น 0) มันคือ<strong>จุดเดียวกันเป๊ะ</strong> เพราะ embedding มาจากพจนานุกรมตัวเดียว
+    กดผ่านชั้น Transformer ทีละชั้น แล้วดู attention ค่อยๆ ลากสองจุดแยกจากกัน: ตัวหนึ่งไปซบกลุ่ม "การมองเห็น" อีกตัวไปกลุ่ม "ญาติ/สถานที่"
+    (ตัวอย่างเดียวกับโจทย์ "ตา" สองความหมายข้างบน — คราวนี้เห็นเป็นภาพ)</p>
+    <canvas id="t3Cv" width="760" height="420" style="width:100%;border:1px solid var(--border);border-radius:8px;cursor:grab"></canvas>
+    <div class="sa-ctl">
+      <span style="font-weight:700;font-size:.9rem">ผ่านชั้นที่:</span>
+      <span class="seg" id="t3Sc"><button data-l="0" class="on">0 (embedding)</button><button data-l="1">1</button><button data-l="2">2</button><button data-l="3">3</button><button data-l="4">4</button></span>
+      <button id="t3Play" style="background:linear-gradient(135deg,var(--accent),#8b5cf6)">▶ เล่นทั้ง 4 ชั้น</button>
+      <button id="t3Spin" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🔄 หมุนอัตโนมัติ: เปิด</button>
+    </div>
+    <div class="try">สังเกตเส้นประที่ลากตามหลังจุด "ตา" ทั้งสอง — นั่นคือ "เส้นทางการเดินทางของความหมาย" ผ่านแต่ละชั้น
+    คำรอบข้าง (มอง/ชัด กับ อยู่/ต่างจังหวัด) แทบไม่ขยับเพราะความหมายมันชัดอยู่แล้ว —
+    งานหนักของ attention คือคำกำกวม · นี่คือคำตอบเชิงภาพของคำถามเปิดคาบ "รู้ได้ไงว่าต้องกระโดดไปหาคำไหน"</div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 Transformer Explainer — ของจริงทั้งตัว</h3>
+    <p style="margin-top:0">เปิด <a href="https://poloclub.github.io/transformer-explainer/" target="_blank">poloclub.github.io/transformer-explainer</a>
+    — GPT-2 จริงรันในเบราว์เซอร์ ภารกิจ: พิมพ์ประโยคของตัวเอง แล้วไล่ดู
+    (1) embedding (2) attention map ว่าคำไหนมองคำไหน (3) ความน่าจะเป็นของ token ถัดไปตอนท้ายสุด
+    — ทุกชิ้นคือสิ่งที่เราเรียนมาแล้วทั้งเทอม!</p>
+  </div>
+
+  <h2>ส่วนที่ 3 — โค้ดจริง: attention 25 บรรทัด รันใน Colab ได้เลย <span class="badge">ลงมือ</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">นี่คือ attention หนึ่งหัวแบบครบสมการ <strong>ใช้ตัวเลขชุดเดียวกับแอนิเมชัน 🎬 ข้างบนเป๊ะทุกตัว</strong> —
+    เปิด <a href="https://colab.research.google.com" target="_blank">Google Colab</a> → New Notebook → วาง → Run
+    แล้วเทียบ print กับตัวเลขบนจอ: Q, K, V, คะแนน, น้ำหนัก softmax, เวกเตอร์ผลลัพธ์ ต้องตรงกันหมด</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="codeA">📋 คัดลอก</button>
+      <pre><code id="codeA">import numpy as np
+
+# ประโยค "แมว ไล่ หนู" — embedding 2 มิติ (เลขเดียวกับแอนิเมชันข้างบน)
+X = np.array([[1.0, 0.0],    # แมว
+              [0.0, 1.0],    # ไล่
+              [1.0, 0.5]])   # หนู
+
+W_Q = np.array([[1.0, 2.0], [2.0, 0.0]])   # เมทริกซ์สร้าง Query "คำถาม"
+W_K = np.array([[1.0, 0.0], [0.5, 1.0]])   # เมทริกซ์สร้าง Key "ป้ายชื่อ"
+W_V = np.array([[1.0, 0.5], [0.0, 1.0]])   # เมทริกซ์สร้าง Value "ของที่ส่งให้"
+
+Q, K, V = X @ W_Q, X @ W_K, X @ W_V        # ทุกคำสร้าง 3 บทบาทพร้อมกัน (จังหวะ 1)
+print("Q =\n", Q, "\nK =\n", K, "\nV =\n", V)
+
+scores = Q @ K.T / np.sqrt(K.shape[1])     # dot product ทุกคู่ ÷ √d (จังหวะ 2-3)
+print("คะแนนหลังหาร √2 =\n", scores.round(2))
+
+def softmax(z):                            # เพื่อนเก่าจากเรื่อง Neural Network
+    e = np.exp(z - z.max(axis=-1, keepdims=True))
+    return e / e.sum(axis=-1, keepdims=True)
+
+A = softmax(scores)                        # น้ำหนัก attention — แต่ละแถวรวม = 1
+print("attention weights =\n", A.round(3)) # แถว "ไล่" ต้องได้ [0.343, 0.169, 0.488]
+
+out = A @ V                                # ถัวเฉลี่ย V ตามน้ำหนัก (จังหวะ 4)
+print("ความหมายใหม่ =\n", out.round(3))     # แถว "ไล่" ต้องได้ [0.831, 0.829]</code></pre>
+    </div>
+    <p>แล้วดูว่าโค้ด<strong>เดียวกันเป๊ะ</strong>ทำงานที่สเกลจริงได้เลย — แค่เปลี่ยนตัวเลขให้ใหญ่ขึ้น:</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="codeB">📋 คัดลอก</button>
+      <pre><code id="codeB"># สเกลจริง: ประโยค 100 token, เวกเตอร์ 512 มิติ — โค้ดบรรทัดเดิมทุกบรรทัด
+d = 512
+X = np.random.randn(100, d)
+W_Q, W_K, W_V = [np.random.randn(d, d) * 0.05 for _ in range(3)]
+Q, K, V = X @ W_Q, X @ W_K, X @ W_V
+A = softmax(Q @ K.T / np.sqrt(d))          # ตาราง attention 100×100 (นี่ไง n²!)
+out = A @ V
+print(A.shape, out.shape)                  # (100, 100) (100, 512)</code></pre>
+    </div>
+    <p style="margin-bottom:0"><strong>สิ่งที่ต้องสังเกต:</strong></p>
+    <ul style="margin:6px 0 0">
+      <li>แถว "ไล่" ของ <code>A</code> คือแท่งน้ำหนักในจังหวะ 3 ของแอนิเมชันเป๊ะ (0.343 / 0.169 / 0.488) — แอนิเมชันไม่ได้โกหก และหัวใจของ GPT เขียนได้ใน ~10 บรรทัดจริงๆ</li>
+      <li>แต่ละแถวของ <code>A</code> รวมได้ 1.0 เสมอ (ลอง <code>A.sum(axis=1)</code>) — ทุกคำแบ่ง "หูฟัง" ของตัวเอง 100% ให้ทั้งประโยค</li>
+      <li>บล็อกที่สอง: ตาราง A ขนาด 100×100 โตเป็น n² ตามความยาวประโยค — ลองเปลี่ยน 100 เป็น 2000 แล้วจับเวลา จะเข้าใจราคาของ context ยาวทันที</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — attention ด้วยมือ</div>
+    <p>Q = [1, 0] และ K ของ 3 คำ: K(แมว) = [2, 0], K(เสื่อ) = [0, 1], K(กิน) = [−1, 0]
+    จงคำนวณ (ก) dot product ทั้งสาม (ข) softmax เป็น attention weight (ใช้ e² ≈ 7.39, e⁰ = 1, e⁻¹ ≈ 0.37)
+    (ค) สรุป: "มัน" ฟังใครหนักสุด</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      (ก) แมว: 1×2+0×0 = 2 | เสื่อ: 0 | กิน: −1<br>
+      (ข) ผลรวม e = 7.39 + 1 + 0.37 = 8.76 →
+      แมว <strong>84%</strong>, เสื่อ 11%, กิน 4%<br>
+      (ค) "มัน" ดูดความหมายจาก "แมว" มาเกือบทั้งหมด — โมเดลแก้ปัญหาสรรพนามด้วยคณิตศาสตร์ล้วนๆ
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — งานโต n²</div>
+    <p>ถ้า attention ต้องให้ทุก token มองทุก token จงหาจำนวน "คู่ที่ต้องคำนวณ"
+    เมื่อบริบทยาว 100, 1,000, 100,000 token แล้วตอบ: ทำไมราคาค่าใช้ LLM ถึงคิดตามจำนวน token
+    และทำไมแชทยาวๆ ถึงช้าลง</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      100² = 10⁴ | 1,000² = 10⁶ | 100,000² = 10¹⁰ —
+      ยาวขึ้น 1,000 เท่า งานโต 1,000,000 เท่า ไม่ใช่เชิงเส้น
+      จึงต้องจำกัด context window และคิดเงินตาม token ที่ประมวลผล
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — รายงาน Transformer Explainer</div>
+    <p>จาก Transformer Explainer: ป้อนประโยคภาษาอังกฤษที่มีสรรพนามกำกวม เช่น
+    "The cat chased the mouse because it was..." แคปภาพ attention map
+    แล้วรายงานว่า head ไหน/ชั้นไหนที่ "it" มองกลับไปหาคำนาม พร้อมความเห็น 3–4 ประโยค</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — ตรวจใบสเปกของตัวเอง</div>
+    <p>เอา "ใบสเปกสถาปัตยกรรมในฝัน" ที่เขียนไว้สัปดาห์ที่แล้ว มาเทียบกับ Transformer ทีละข้อ:
+    ข้อไหนตอบครบ ข้อไหนยังไม่ตอบ (เช่น ราคา n²?) — สรุปครึ่งหน้า</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    เราเพิ่งเรียน "ชิ้นส่วนสุดท้าย" — attention ที่ให้ทุกคำมองทุกคำ + MLP เดิม ซ้อนเป็น Transformer
+    ตอนนี้เรามีครบ: โมเดล (Transformer) + งาน (ทำนาย token ถัดไป) + วิธีเทรน (backprop) + อาหาร (ข้อความมหาศาล)<br>
+    <strong>สัปดาห์หน้า:</strong> 🏁 ประกอบทุกชิ้นเป็น LLM ตัวจริง — แล้วตอบคำถามแรกของเทอมให้จบ:
+    "ChatGPT ฉลาดเพราะอะไร และทำไมบางทีมันโกหก"
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=eMlx5fFNoYc" target="_blank">Attention in transformers, visually explained</a> — แอนิเมชันคณิตศาสตร์ของ attention ที่ดีที่สุดที่เคยมีคนทำ</li>
+      <li><span class="src">Jay Alammar</span> <a href="https://jalammar.github.io/illustrated-transformer/" target="_blank">The Illustrated Transformer</a> — บทความภาพประกอบมาตรฐานที่มหาวิทยาลัยทั่วโลกใช้สอน</li>
+      <li><span class="src">Stanford CS224n</span> <a href="https://web.stanford.edu/class/cs224n/" target="_blank">Lecture: Transformers</a> — สไลด์และโน้ตของจริงระดับบัณฑิตศึกษา</li>
+      <li><span class="src">Paper</span> <a href="https://arxiv.org/abs/1706.03762" target="_blank">Attention Is All You Need (2017)</a> — อ่าน abstract + รูปที่ 1 ก็ได้บรรยากาศ "อ่าน paper จริง" แล้ว</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week13.html">← Language Model &amp; RNN</a>
+    <a href="week15.html">LLM ทำงานอย่างไร →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">แมว</span>' +
+    '<span class="chip" style="animation-delay:.3s">ไล่</span>' +
+    '<span class="chip win" style="animation-delay:.5s">มัน = ใคร?</span></div>' +
+    '<div class="note">เป้าหมาย: คำนวณว่า "มัน" ควรหันไปฟังใคร — คำตอบที่ควรได้คือ "แมว"</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">แจกบทบาทเป็นเวกเตอร์จิ๋ว 2 มิติ:</div>' +
+    '<span class="chip" style="animation-delay:.1s">Q(มัน) = (2, 0) "ตามหาสิ่งมีชีวิต"</span><br>' +
+    '<span class="chip" style="animation-delay:.4s">K(แมว) = (1, 0)</span>' +
+    '<span class="chip" style="animation-delay:.6s">K(ไล่) = (0, 1)</span>' +
+    '<span class="chip" style="animation-delay:.8s">K(มัน) = (0.5, 0)</span>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">dot product = วัดว่าทิศตรงกันแค่ไหน:</div>' +
+    '<span class="chip win" style="animation-delay:.1s">Q·K(แมว) = 2</span>' +
+    '<span class="chip" style="animation-delay:.4s">Q·K(ไล่) = 0</span>' +
+    '<span class="chip" style="animation-delay:.7s">Q·K(มัน) = 1</span>' +
+    '<div class="note">"สิ่งที่ตามหา" ของมัน ตรงกับ "ป้ายชื่อ" ของแมวที่สุด</div>',
+  s => {
+    const Q = {
+      'มัน': { k: [2, 0, 1], note: '"มัน" ตามหาสิ่งมีชีวิตที่ถูกพูดถึง → ฟัง "แมว" หนักสุด' },
+      'ไล่': { k: [1, 0, 2], note: '"ไล่" ตามหากรรมของการไล่ → ฟัง "มัน" หนักสุด — คำถามเปลี่ยน คำตอบเปลี่ยน' },
+    };
+    const words = ['แมว', 'ไล่', 'มัน'];
+    s.innerHTML = '<div class="note" style="margin:0 0 4px">👆 เลือกว่าใครเป็นผู้ถาม (Query):</div>' +
+      '<div id="s10b"></div><div id="s10o" style="margin-top:6px"></div>';
+    const render = q => {
+      const e = Q[q].k.map(Math.exp), S = e.reduce((a, b) => a + b);
+      s.querySelector('#s10o').innerHTML = words.map((w, i) =>
+        '<div class="bar-row"><span class="lbl">' + w + '</span><span class="bar" style="width:' + (e[i] / S * 75) + '%"></span>' +
+        (e[i] / S * 100).toFixed(0) + '%</div>').join('') + '<div class="note">' + Q[q].note + '</div>';
+      s.querySelectorAll('.mini-btn').forEach(b => b.classList.toggle('sel', b.dataset.q === q));
+    };
+    s.querySelector('#s10b').innerHTML = Object.keys(Q).map(q =>
+      '<button class="mini-btn" data-q="' + q + '">Q = "' + q + '"</button>').join('');
+    s.querySelectorAll('.mini-btn').forEach(b => b.onclick = () => render(b.dataset.q));
+    render('มัน');
+  },
+  s => s.innerHTML = '<div class="big fade">ความหมายใหม่ของ "มัน" = 0.67×V(แมว) + 0.24×V(มัน) + 0.09×V(ไล่)</div>' +
+    '<div class="big"><span class="chip win" style="animation-delay:.4s">"มัน" ชุ่มไปด้วยความหมายของแมว 🐱</span></div>' +
+    '<div class="note">ดูดบริบทจากคำที่ห่างแค่ไหนก็ได้ ใน 1 ก้าว — สิ่งที่ RNN ทำไม่ได้</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">ทุกคำพร้อมกัน</span>' +
+    '<span class="chip" style="animation-delay:.4s">× 12 หัว</span>' +
+    '<span class="chip" style="animation-delay:.7s">× หลายสิบชั้น</span>' +
+    '<span class="arrow">=</span><span class="chip win" style="animation-delay:1s">Transformer</span></div>' +
+    '<div class="note">สลับกับ MLP (ส.4) เทรนด้วย backprop (ส.5) — ไม่มีเครื่องมือใหม่สักชิ้น แค่ประกอบของที่เรียนมา</div>',
+];
+
+// ===== demo 1: attention ในประโยค (น้ำหนักจำลองเชิงภาษาศาสตร์) =====
+const TOKENS = ['แมว', 'ที่', 'เลี้ยง', 'หน้า', 'บ้าน', 'มัน', 'หิว', 'มาก'];
+const ATT = {
+  0: {0: .55, 2: .25, 5: .10, 6: .10},
+  1: {0: .60, 1: .20, 2: .20},
+  2: {0: .70, 2: .20, 4: .10},
+  3: {4: .65, 3: .20, 2: .15},
+  4: {3: .40, 4: .35, 2: .25},
+  5: {0: .72, 6: .13, 5: .10, 2: .05},   // "มัน" มองกลับไปหา "แมว" หนักสุด
+  6: {5: .45, 0: .35, 7: .20},
+  7: {6: .70, 7: .30}
+};
+const sBox = document.getElementById('sentence');
+sBox.innerHTML = TOKENS.map((t, i) =>
+  `<span id="tk${i}" onclick="showAtt(${i})" style="cursor:pointer; padding:4px 10px; margin:2px; border-radius:8px; background:var(--accent-soft); display:inline-block">${t}</span>`).join(' ');
+
+function showAtt(i) {
+  const w = ATT[i];
+  TOKENS.forEach((_, j) => {
+    const el = document.getElementById('tk' + j);
+    const v = w[j] || 0;
+    el.style.background = j === i ? '#2456e6' : `rgba(36,86,230,${v * 0.9})`;
+    el.style.color = (j === i || v > 0.45) ? '#fff' : 'var(--ink)';
+    el.style.outline = j === i ? '3px solid #1b2a5e' : 'none';
+  });
+  const top = Object.entries(w).filter(([j]) => +j !== i).sort((a, b) => b[1] - a[1]);
+  document.getElementById('attout').innerHTML =
+    `คำว่า "<strong>${TOKENS[i]}</strong>" หันไปฟัง: ` +
+    top.map(([j, v]) => `"${TOKENS[j]}" ${(v * 100).toFixed(0)}%`).join(' | ');
+}
+showAtt(5);
+
+// ===== demo 2: dot product attention calculator =====
+function attCalc() {
+  const q = [+q0.value || 0, +q1.value || 0];
+  const ks = [
+    [+k00.value || 0, +k01.value || 0],
+    [+k10.value || 0, +k11.value || 0],
+    [+k20.value || 0, +k21.value || 0]
+  ];
+  const names = ['แมว', 'เสื่อ', 'กิน'];
+  const scores = ks.map(k => q[0] * k[0] + q[1] * k[1]);
+  const ez = scores.map(s => Math.exp(s));
+  const sum = ez.reduce((a, b) => a + b, 0);
+  document.getElementById('attcalc').innerHTML =
+    'dot product: ' + names.map((n, i) => `${n} = ${scores[i]}`).join(', ') + '<br>attention weight:' +
+    names.map((n, i) =>
+      `<div class="prob-bar"><span class="char" style="flex-basis:4em">${n}</span>` +
+      `<span class="bar" style="width:${Math.round(ez[i] / sum * 250)}px"></span>` +
+      `<span class="pct">${(ez[i] / sum * 100).toFixed(1)}%</span></div>`).join('');
+}
+const q0 = document.getElementById('q0'), q1 = document.getElementById('q1'),
+      k00 = document.getElementById('k00'), k01 = document.getElementById('k01'),
+      k10 = document.getElementById('k10'), k11 = document.getElementById('k11'),
+      k20 = document.getElementById('k20'), k21 = document.getElementById('k21');
+attCalc();
+
+// ===== แอนิเมชัน "ทุกคำมองทุกคำ": เส้นสายตาวิ่งจากคำต้นทางไปทุกคำ ทีละคำจนครบประโยค =====
+const fcv = document.getElementById('attflow'), fctx = fcv.getContext('2d');
+const FY = 200;                                   // แนวตั้งของแถวคำ
+const FX = TOKENS.map((_, i) => 60 + i * (640 / (TOKENS.length - 1)));
+let flowRAF = null;
+
+function drawTokens(srcIdx, weights, progress) {
+  fctx.clearRect(0, 0, fcv.width, fcv.height);
+  // เส้นโค้งสายตา (วาดก่อนเพื่อให้อยู่หลังกล่องคำ)
+  if (srcIdx !== null) {
+    for (const [j, w] of Object.entries(weights)) {
+      if (+j === srcIdx) continue;
+      const x1 = FX[srcIdx], x2 = FX[+j];
+      const mx = (x1 + x2) / 2, my = FY - 40 - Math.abs(x2 - x1) * 0.28;
+      fctx.strokeStyle = `rgba(36,86,230,${0.25 + w * 0.75})`;
+      fctx.lineWidth = 1 + w * 9;
+      fctx.beginPath();
+      fctx.moveTo(x1, FY - 18);
+      // วาดเส้นโค้งแบบค่อยๆ ยืดตาม progress
+      const steps = Math.floor(40 * progress);
+      for (let s = 1; s <= steps; s++) {
+        const t = s / 40;
+        const bx = (1 - t) ** 2 * x1 + 2 * (1 - t) * t * mx + t ** 2 * x2;
+        const by = (1 - t) ** 2 * (FY - 18) + 2 * (1 - t) * t * my + t ** 2 * (FY - 18);
+        fctx.lineTo(bx, by);
+      }
+      fctx.stroke();
+    }
+  }
+  // กล่องคำ
+  TOKENS.forEach((t, i) => {
+    const isSrc = i === srcIdx;
+    const w = srcIdx !== null ? (weights[i] || 0) : 0;
+    fctx.fillStyle = isSrc ? '#2456e6' : `rgba(36,86,230,${0.06 + w * 0.55})`;
+    const tw = fctx.measureText(t).width + 26;
+    fctx.beginPath();
+    fctx.roundRect(FX[i] - tw / 2, FY - 18, tw, 36, 10);
+    fctx.fill();
+    fctx.fillStyle = isSrc || w > 0.4 ? '#fff' : '#1f2533';
+    fctx.font = '600 15px Kanit';
+    fctx.textAlign = 'center';
+    fctx.fillText(t, FX[i], FY + 5);
+    if (srcIdx !== null && !isSrc && w > 0.04 && progress >= 1) {
+      fctx.fillStyle = '#5b6475';
+      fctx.font = '12px Kanit';
+      fctx.fillText((w * 100).toFixed(0) + '%', FX[i], FY - 26);
+    }
+  });
+  if (srcIdx !== null) {
+    fctx.fillStyle = '#1b2a5e';
+    fctx.font = '600 15px Kanit';
+    fctx.textAlign = 'left';
+    fctx.fillText(`คำว่า "${TOKENS[srcIdx]}" กำลังมองหาบริบทของตัวเอง...`, 16, 26);
+  }
+}
+
+function playFlow() {
+  stopFlow();
+  let src = 0, start = performance.now();
+  const HOLD = 1100, GROW = 700;                  // เวลายืดเส้น + เวลาค้างให้อ่าน
+  const frame = now => {
+    const t = now - start;
+    if (t < GROW) {
+      drawTokens(src, ATT[src], t / GROW);
+    } else if (t < GROW + HOLD) {
+      drawTokens(src, ATT[src], 1);
+    } else {
+      src = (src + 1) % TOKENS.length;
+      start = now;
+    }
+    flowRAF = requestAnimationFrame(frame);
+  };
+  flowRAF = requestAnimationFrame(frame);
+}
+function stopFlow() { cancelAnimationFrame(flowRAF); }
+drawTokens(5, ATT[5], 1);                          // ภาพนิ่งเริ่มต้น: "มัน" มอง "แมว"
+</script>
+
+<script>
+/* ======================================================================
+   🎬 Attention ทีละจังหวะ — คำนวณจริงทุกตัวเลข
+   ====================================================================== */
+(function(){
+  const svg=document.getElementById('saSvg'); if(!svg) return;
+  const WORDS=['แมว','ไล่','หนู'];
+  const EMB=[[1,0],[0,1],[1,0.5]];
+  const WQ=[[1,2],[2,0]], WK=[[1,0],[0.5,1]], WV=[[1,0.5],[0,1]];
+  const mm=(x,W)=>[x[0]*W[0][0]+x[1]*W[1][0], x[0]*W[0][1]+x[1]*W[1][1]];
+  const Qs=EMB.map(x=>mm(x,WQ)), Ks=EMB.map(x=>mm(x,WK)), Vs=EMB.map(x=>mm(x,WV));
+  const SD=Math.SQRT2;
+  const n1=v=>(v<0?'−':'')+Math.abs(v).toFixed(1);
+  const n2=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  const TX=[140,380,620], BARC=['#2456e6','#7c3aed','#12a150'];
+  const LAST=11;
+  let sel=1, cur=0, auto=null, speed=1, barTimer=null;
+
+  function calc(){
+    const raw=Ks.map(k=>Qs[sel][0]*k[0]+Qs[sel][1]*k[1]);
+    const sc=raw.map(r=>r/SD);
+    const ex=sc.map(Math.exp);
+    const sum=ex[0]+ex[1]+ex[2];
+    const w=ex.map(e=>e/sum);
+    const out=[0,1].map(d=> w[0]*Vs[0][d]+w[1]*Vs[1][d]+w[2]*Vs[2][d]);
+    return {raw,sc,ex,sum,w,out};
+  }
+
+  /* ---- สร้างฉาก SVG ครั้งเดียว ---- */
+  function chip(id,rid,cx,y,fill,stroke,txtCol,txt){
+    return '<g data-g="1" id="'+id+'"><rect id="'+rid+'" x="'+(cx-70)+'" y="'+y+'" width="140" height="24" rx="8" fill="'+fill+'" stroke="'+stroke+'" stroke-width="2"/>'
+      +'<text x="'+cx+'" y="'+(y+16.5)+'" text-anchor="middle" font-size="12" font-weight="700" fill="'+txtCol+'">'+txt+'</text></g>';
+  }
+  let H='';
+  for(let i=0;i<3;i++){
+    H+='<g data-g="1" id="sat'+i+'">'
+      +'<rect id="satr'+i+'" x="'+(TX[i]-58)+'" y="14" width="116" height="36" rx="10" fill="#eef2ff" stroke="#2456e6" stroke-width="2.5"/>'
+      +'<text x="'+TX[i]+'" y="38" text-anchor="middle" font-size="17" font-weight="800" fill="#1f2533">'+WORDS[i]+'</text>'
+      +'<text x="'+TX[i]+'" y="64" text-anchor="middle" font-size="12.5" font-weight="600" fill="#5b6475">x = ('+n1(EMB[i][0])+', '+n1(EMB[i][1])+')</text></g>';
+  }
+  for(let i=0;i<3;i++){
+    H+=chip('saq'+i,'saqr'+i,TX[i],84 ,'#f5f3ff','#7c3aed','#6d28d9','Q = ('+n1(Qs[i][0])+', '+n1(Qs[i][1])+')');
+    H+=chip('sak'+i,'sakr'+i,TX[i],116,'#eef2ff','#2456e6','#1e40af','K = ('+n1(Ks[i][0])+', '+n1(Ks[i][1])+')');
+    H+=chip('sav'+i,'savr'+i,TX[i],148,'#ecfdf5','#12a150','#0e7f43','V = ('+n1(Vs[i][0])+', '+n1(Vs[i][1])+')');
+  }
+  for(let j=0;j<3;j++){
+    H+='<g data-g="1" id="saa'+j+'"><path id="sapa'+j+'" d="" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 4"/>'
+      +'<circle id="sapc'+j+'" r="3.5" fill="#f59e0b"/>'
+      +'<rect x="'+(TX[j]-56)+'" y="196" width="112" height="26" rx="9" fill="#fff" stroke="#f59e0b" stroke-width="2"/>'
+      +'<text id="sast'+j+'" x="'+TX[j]+'" y="213.5" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309"></text></g>';
+  }
+  H+='<g data-g="1" id="sabars">';
+  for(let j=0;j<3;j++){
+    const by=244+j*34;
+    H+='<text x="150" y="'+(by+15)+'" text-anchor="end" font-size="13" font-weight="700" fill="#1f2533">'+WORDS[j]+'</text>'
+      +'<rect x="160" y="'+by+'" width="420" height="21" rx="6" fill="#e8ebf3"/>'
+      +'<rect id="sabf'+j+'" x="160" y="'+by+'" width="0" height="21" rx="6" fill="'+BARC[j]+'"/>'
+      +'<text id="sabp'+j+'" x="590" y="'+(by+15)+'" font-size="12.5" font-weight="800" fill="#1f2533"></text>';
+  }
+  H+='<rect x="614" y="272" width="130" height="30" rx="15" fill="#ecfdf5" stroke="#12a150" stroke-width="2"/>'
+    +'<text x="679" y="292" text-anchor="middle" font-size="12.5" font-weight="800" fill="#0e7f43">รวม = 1.00 ✓</text></g>';
+  for(let i=0;i<3;i++){
+    H+='<g data-g="1" id="saw'+i+'"><line id="sawl'+i+'" x1="'+TX[i]+'" y1="394" x2="380" y2="428" stroke="#12a150" stroke-width="2" opacity="0.8"/>'
+      +'<rect x="'+(TX[i]-78)+'" y="368" width="156" height="26" rx="8" fill="#ecfdf5" stroke="#12a150" stroke-width="2"/>'
+      +'<text id="sawt'+i+'" x="'+TX[i]+'" y="385.5" text-anchor="middle" font-size="11.5" font-weight="700" fill="#0e7f43"></text></g>';
+  }
+  H+='<g data-g="1" id="saout"><rect x="230" y="426" width="300" height="34" rx="10" fill="#12a150"/>'
+    +'<text id="saoutt" x="380" y="448" text-anchor="middle" font-size="13.5" font-weight="800" fill="#fff"></text></g>';
+  svg.innerHTML=H;
+  const $=id=>document.getElementById(id);
+
+  function arrowPaths(){
+    for(let j=0;j<3;j++){
+      const p=$('sapa'+j), c=$('sapc'+j);
+      if(j===sel){
+        p.setAttribute('d','M '+(TX[sel]-72)+' 96 C '+(TX[sel]-126)+' 96 '+(TX[sel]-126)+' 128 '+(TX[sel]-72)+' 128');
+        c.setAttribute('cx',TX[sel]-72); c.setAttribute('cy',128);
+      } else {
+        p.setAttribute('d','M '+TX[sel]+' 108 Q '+((TX[sel]+TX[j])/2)+' 236 '+TX[j]+' 196');
+        c.setAttribute('cx',TX[j]); c.setAttribute('cy',196);
+      }
+    }
+  }
+
+  function setBars(w,animate){
+    if(barTimer){ clearInterval(barTimer); barTimer=null; }
+    const apply=f=>{ for(let j=0;j<3;j++){
+      $('sabf'+j).setAttribute('width',(420*w[j]*f).toFixed(1));
+      $('sabp'+j).setAttribute('x',(160+420*w[j]+8).toFixed(0));
+      $('sabp'+j).textContent=(w[j]*100).toFixed(1)+'%';
+    }};
+    if(!animate){ apply(1); return; }
+    let t=0; apply(0);
+    barTimer=setInterval(()=>{ t++; const f=t/16; apply(Math.min(1,f*(2-f)));
+      if(t>=16){ clearInterval(barTimer); barTimer=null; } },28);
+  }
+
+  const PHASES=c=>{
+    if(c===0) return 'เริ่มต้น — ประโยคและ embedding';
+    if(c<=3) return 'จังหวะ 1 — สร้าง Q K V: คำ "'+WORDS[c-1]+'"';
+    if(c===4) return 'จังหวะ 2 — เลือกผู้มอง: "'+WORDS[sel]+'"';
+    if(c<=7) return 'จังหวะ 2 — dot product: Q("'+WORDS[sel]+'") · K("'+WORDS[c-5]+'")';
+    if(c===8) return 'จังหวะ 3 — หารด้วย √d = √2';
+    if(c===9) return 'จังหวะ 3 — softmax เป็นน้ำหนัก';
+    if(c===10) return 'จังหวะ 4 — ชั่งน้ำหนัก V ตาม %';
+    return 'จังหวะ 4 — รวมเป็นความหมายใหม่ ✓';
+  };
+  const mul3=(x,W,r)=>'('+n1(x[0])+'×'+n1(W[0][0])+' + '+n1(x[1])+'×'+n1(W[1][0])+', '
+    +n1(x[0])+'×'+n1(W[0][1])+' + '+n1(x[1])+'×'+n1(W[1][1])+') = <span class="res">('+n1(r[0])+', '+n1(r[1])+')</span>';
+
+  function eqFor(c,C){
+    if(c===0) return 'ประโยค 3 คำ แต่ละคำเป็นเวกเตอร์ 2 มิติ: <b>แมว</b> = (1.0, 0.0) · <b>ไล่</b> = (0.0, 1.0) · <b>หนู</b> = (1.0, 0.5) — ของจริงยาว 768+ มิติ แต่กติกาเหมือนกันทุกตัว · กด <b>ถัดไป ▶</b>';
+    if(c<=3){ const i=c-1;
+      return '<b>Q('+WORDS[i]+')</b> = x·W<sub>Q</sub> = '+mul3(EMB[i],WQ,Qs[i])
+        +'<br><b>K('+WORDS[i]+')</b> = x·W<sub>K</sub> = '+mul3(EMB[i],WK,Ks[i])
+        +'<br><b>V('+WORDS[i]+')</b> = x·W<sub>V</sub> = '+mul3(EMB[i],WV,Vs[i]);
+    }
+    if(c===4) return 'เลือกผู้มอง: <span class="cur">"'+WORDS[sel]+'"</span> — จับ <b>Q('+WORDS[sel]+') = ('+n1(Qs[sel][0])+', '+n1(Qs[sel][1])+')</b> บินไปทาบกับ K ของทุกคำ (รวมตัวเอง) — ของจริงทุกคำทำพร้อมกันทั้งประโยค แต่เราตามดูทีละคำ';
+    if(c<=7){ const cs=c-5;
+      return [0,1,2].map(j=>{
+        const t='<b>Q·K('+WORDS[j]+')</b>';
+        if(j>cs) return '<span class="dimt">'+t+' = ?</span>';
+        const a='('+n2(Qs[sel][0])+')('+n2(Ks[j][0])+') + ('+n2(Qs[sel][1])+')('+n2(Ks[j][1])+') = <span class="res">'+n2(C.raw[j])+'</span>';
+        return j===cs? t+' = <span class="cur">'+a+'</span>' : t+' = '+a;
+      }).join('<br>');
+    }
+    if(c===8) return '<b>กัน softmax อิ่มตัว</b> (ตัวอย่าง 5): ทุกคะแนน ÷ √d = √2 ≈ 1.41 →<br>'
+      +[0,1,2].map(j=>WORDS[j]+': '+n2(C.raw[j])+' ÷ 1.41 = <span class="res">'+n2(C.sc[j])+'</span>').join(' &nbsp;·&nbsp; ');
+    if(c===9) return '<b>softmax</b> — ยกกำลัง e แล้วหารด้วยผลรวม: '
+      +[0,1,2].map(j=>'e<sup>'+n2(C.sc[j])+'</sup> = '+n2(C.ex[j])).join(' · ')+' → รวม = '+n2(C.sum)
+      +'<br>น้ำหนัก: '+[0,1,2].map(j=>WORDS[j]+' = '+n2(C.ex[j])+'/'+n2(C.sum)+' = <span class="res">'+(C.w[j]*100).toFixed(1)+'%</span>').join(' &nbsp;·&nbsp; ')+' — รวมกันได้ 1 พอดี';
+    if(c===10) return '<b>ถัวเฉลี่ย V ตามน้ำหนัก:</b> ใหม่ = '+[0,1,2].map(j=>C.w[j].toFixed(2)+'×V('+WORDS[j]+')').join(' + ')
+      +'<br>มิติ 1: '+[0,1,2].map(j=>C.w[j].toFixed(2)+'×'+n1(Vs[j][0])).join(' + ')+' = <span class="res">'+n2(C.out[0])+'</span>'
+      +' &nbsp;·&nbsp; มิติ 2: '+[0,1,2].map(j=>C.w[j].toFixed(2)+'×'+n1(Vs[j][1])).join(' + ')+' = <span class="res">'+n2(C.out[1])+'</span>';
+    const top=C.w.indexOf(Math.max.apply(null,C.w));
+    return '<span class="res" style="font-size:1.1em">ความหมายใหม่ของ "'+WORDS[sel]+'" = ('+n2(C.out[0])+', '+n2(C.out[1])+')</span> — ชุ่มไปด้วย V ของ <span class="cur">"'+WORDS[top]+'" ('+(C.w[top]*100).toFixed(0)+'%)</span> — "'+WORDS[sel]+'" รู้บริบทของตัวเองแล้ว · GPT ทำสิ่งนี้กับทุกคำ ทุกหัว ทุกชั้น ทุกครั้งที่ตอบเรา';
+  }
+
+  function fullSet(c){
+    if(c===0) return null;
+    if(c<=3){ const i=c-1; return new Set(['sat'+i,'saq'+i,'sak'+i,'sav'+i]); }
+    if(c===4) return new Set(['sat'+sel,'saq'+sel]);
+    if(c<=7){ const j=c-5; return new Set(['saq'+sel,'sak'+j,'saa'+j]); }
+    if(c===8) return new Set(['saa0','saa1','saa2']);
+    if(c===9) return new Set(['sabars']);
+    if(c===10) return new Set(['sav0','sav1','sav2','saw0','saw1','saw2']);
+    return new Set(['saw0','saw1','saw2','saout']);
+  }
+  function visibleAt(id,c){
+    const m=id.match(/^sa([qkv])(\d)$/);
+    if(id.slice(0,3)==='sat') return true;
+    if(m) return c>=(+m[2])+1;
+    if(id.slice(0,3)==='saa') return c>=5+(+id[3]);
+    if(id==='sabars') return c>=9;
+    if(id.slice(0,3)==='saw') return c>=10;
+    if(id==='saout') return c>=11;
+    return true;
+  }
+  const GROUPS=['sat0','sat1','sat2','saq0','saq1','saq2','sak0','sak1','sak2','sav0','sav1','sav2','saa0','saa1','saa2','sabars','saw0','saw1','saw2','saout'];
+
+  function render(animBars){
+    const C=calc();
+    arrowPaths();
+    for(let j=0;j<3;j++)
+      $('sast'+j).textContent = cur>=8? '÷√2 → '+n2(C.sc[j]) : 'q·k = '+n2(C.raw[j]);
+    if(cur>=9) setBars(C.w,!!animBars); else setBars([0,0,0],false);
+    for(let i=0;i<3;i++){
+      $('sawt'+i).textContent=C.w[i].toFixed(2)+' × ('+n1(Vs[i][0])+', '+n1(Vs[i][1])+')';
+      $('sawl'+i).setAttribute('stroke-width',(1+8*C.w[i]).toFixed(1));
+    }
+    $('saoutt').textContent='ความหมายใหม่ของ "'+WORDS[sel]+'" = ('+n2(C.out[0])+', '+n2(C.out[1])+')';
+    const fs=fullSet(cur);
+    GROUPS.forEach(id=>{
+      const el=$(id); if(!el) return;
+      el.style.opacity = !visibleAt(id,cur)? 0 : (fs && !fs.has(id)? 0.15 : 1);
+    });
+    for(let i=0;i<3;i++){
+      const on = i===sel && cur>=4;
+      $('satr'+i).setAttribute('stroke', on?'#f59e0b':'#2456e6');
+      $('satr'+i).setAttribute('stroke-width', on?4:2.5);
+      $('saqr'+i).setAttribute('stroke-width', (i===sel&&cur>=4)?3.5:2);
+    }
+    ['saMatQ','saMatK','saMatV'].forEach(id=>document.getElementById(id).classList.toggle('on', cur>=1&&cur<=3));
+    $('saPhase').textContent=PHASES(cur);
+    $('saStep').textContent='จังหวะ '+cur+'/'+LAST;
+    $('saEq').innerHTML=eqFor(cur,C);
+  }
+
+  function go(n,animBars){ cur=Math.max(0,Math.min(LAST,n)); render(animBars); }
+  function stopAuto(){ if(auto){ clearInterval(auto); auto=null; } $('saPlay').textContent='🎬 เล่นอัตโนมัติ'; }
+  function startAuto(){
+    stopAuto();
+    if(cur>=LAST) go(0);
+    $('saPlay').textContent='⏹ หยุด';
+    auto=setInterval(()=>{ if(cur>=LAST){ stopAuto(); return; } go(cur+1,true); }, 3400/speed);
+  }
+  $('saNext').addEventListener('click',()=>{ stopAuto(); go(cur+1,true); });
+  $('saPrev').addEventListener('click',()=>{ stopAuto(); go(cur-1); });
+  $('saReset').addEventListener('click',()=>{ stopAuto(); go(0); });
+  $('saPlay').addEventListener('click',()=>{ if(auto) stopAuto(); else startAuto(); });
+  $('saSpeed').addEventListener('click',function(){
+    speed = speed===1? 2:1;
+    this.textContent = speed===1? '🐢 ความเร็ว ×1':'🐇 ความเร็ว ×2';
+    if(auto) startAuto();
+  });
+  $('saSel').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    sel=+b.dataset.i; render();
+  });
+  render();
+})();
+
+/* ======================================================================
+   🧢 Multi-head — 2 หัว คนละคำถาม (คำนวณจริงจาก W คนละชุด)
+   ====================================================================== */
+(function(){
+  const svgA=document.getElementById('mhSvgA'); if(!svgA) return;
+  const WORDS=['แมว','ไล่','หนู'];
+  const EMB=[[1,0],[0,1],[1,0.5]], WV=[[1,0.5],[0,1]];
+  const mm=(x,W)=>[x[0]*W[0][0]+x[1]*W[1][0], x[0]*W[0][1]+x[1]*W[1][1]];
+  const Vs=EMB.map(x=>mm(x,WV));
+  const n2=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  const HEADS={
+    A:{ WQ:[[1,0],[1,0]],  WK:[[2,0],[-2,0]], rgb:'124,58,237', hex:'#7c3aed', svg:'mhSvgA', map:'mhMapA' },
+    B:{ WQ:[[1,1],[1,-1]], WK:[[0,-2],[2,1]], rgb:'217,119,6',  hex:'#d97706', svg:'mhSvgB', map:'mhMapB' }
+  };
+  Object.values(HEADS).forEach(h=>{
+    const Q=EMB.map(x=>mm(x,h.WQ)), K=EMB.map(x=>mm(x,h.WK));
+    h.W=Q.map(q=>{
+      const sc=K.map(k=>(q[0]*k[0]+q[1]*k[1])/Math.SQRT2);
+      const ex=sc.map(Math.exp), s=ex[0]+ex[1]+ex[2];
+      return ex.map(e=>e/s);
+    });
+    h.out=h.W.map(row=>[0,1].map(d=> row[0]*Vs[0][d]+row[1]*Vs[1][d]+row[2]*Vs[2][d]));
+  });
+
+  const TX=[80,230,380];
+  function buildHead(h){
+    let s='';
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+      const w=h.W[i][j];
+      if(i===j){
+        s+='<path d="M '+(TX[i]-20)+' 108 C '+(TX[i]-52)+' 78 '+(TX[i]+52)+' 78 '+(TX[i]+20)+' 108" fill="none" stroke="rgba('+h.rgb+','+(0.15+0.8*w).toFixed(2)+')" stroke-width="'+(1+7*w).toFixed(1)+'"/>';
+      } else {
+        const my=108-26-Math.abs(i-j)*34;
+        s+='<path d="M '+TX[i]+' 108 Q '+((TX[i]+TX[j])/2)+' '+my+' '+TX[j]+' 108" fill="none" stroke="rgba('+h.rgb+','+(0.15+0.8*w).toFixed(2)+')" stroke-width="'+(1+7*w).toFixed(1)+'"/>'
+          +'<circle cx="'+TX[j]+'" cy="108" r="'+(2+4*w).toFixed(1)+'" fill="rgba('+h.rgb+','+(0.3+0.7*w).toFixed(2)+')"/>';
+      }
+    }
+    for(let i=0;i<3;i++)
+      s+='<rect x="'+(TX[i]-42)+'" y="110" width="84" height="30" rx="9" fill="#fff" stroke="'+h.hex+'" stroke-width="2"/>'
+        +'<text x="'+TX[i]+'" y="130" text-anchor="middle" font-size="14" font-weight="800" fill="#1f2533">'+WORDS[i]+'</text>';
+    document.getElementById(h.svg).innerHTML=s;
+    let t='<tr><th>มอง ↓ ฟัง →</th>'+WORDS.map(w=>'<th>'+w+'</th>').join('')+'</tr>';
+    for(let i=0;i<3;i++){
+      const mx=Math.max.apply(null,h.W[i]);
+      t+='<tr><th>'+WORDS[i]+'</th>'+h.W[i].map(w=>
+        '<td style="background:rgba('+h.rgb+','+(w*0.75).toFixed(2)+');'+(w===mx?'font-weight:800;':'')+(w>0.5?'color:#fff':'')+'">'+(w*100).toFixed(0)+'%</td>').join('')+'</tr>';
+    }
+    document.getElementById(h.map).innerHTML=t;
+  }
+  buildHead(HEADS.A); buildHead(HEADS.B);
+
+  let sel=1;
+  const onA=document.getElementById('mhOnA'), onB=document.getElementById('mhOnB');
+  function renderConcat(){
+    const a=onA.checked, b=onB.checked;
+    document.getElementById('mhHeadA').classList.toggle('off',!a);
+    document.getElementById('mhHeadB').classList.toggle('off',!b);
+    const oa=HEADS.A.out[sel], ob=HEADS.B.out[sel];
+    const ca=a? n2(oa[0])+', '+n2(oa[1]) : '—, —', cb=b? n2(ob[0])+', '+n2(ob[1]) : '—, —';
+    document.getElementById('mhConcat').innerHTML=
+      '<span class="mh-chip" style="background:'+(a?'#7c3aed':'#9aa3b8')+'">หัว A: ('+ca+')</span>'
+      +'<span class="mh-chip" style="background:'+(b?'#d97706':'#9aa3b8')+'">หัว B: ('+cb+')</span>'
+      +'<span style="font-weight:800;margin:0 6px">→ ต่อกัน (concat) →</span>'
+      +'<span class="mh-chip" style="background:#1f2533">('+ca+', '+cb+')</span>'
+      +'<div style="font-size:.8rem;color:var(--muted);margin-top:6px">คำว่า "'+WORDS[sel]+'" ได้เวกเตอร์ 4 มิติ (2 มุมมอง × 2 มิติ) → คูณ W<sub>O</sub> ผสมกลับก่อนส่งเข้า MLP · ของจริง: 12 หัว × 64 มิติ ต่อกันเป็น 768</div>';
+  }
+  document.getElementById('mhSel').addEventListener('click',e=>{
+    const btn=e.target.closest('button'); if(!btn) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); btn.classList.add('on');
+    sel=+btn.dataset.i; renderConcat();
+  });
+  onA.addEventListener('change',renderConcat);
+  onB.addEventListener('change',renderConcat);
+  renderConcat();
+})();
+
+/* ======================================================================
+   🌊 Positional Encoding — คลื่นบอกที่นั่ง
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('peCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=760,Hh=270;
+  const WAVES=[
+    { f:p=>Math.sin(p),   c:'#2456e6', l:'มิติ 1: sin(p)' },
+    { f:p=>Math.cos(p),   c:'#7c3aed', l:'มิติ 2: cos(p)' },
+    { f:p=>Math.sin(p/3), c:'#12a150', l:'มิติ 3: sin(p/3)' },
+    { f:p=>Math.cos(p/3), c:'#f59e0b', l:'มิติ 4: cos(p/3)' }
+  ];
+  const px=p=>50+p/20*(W-90), py=v=>150-v*88;
+  let pos=3;
+  function draw(){
+    ctx.clearRect(0,0,W,Hh);
+    ctx.fillStyle='#fcfdff'; ctx.fillRect(0,0,W,Hh);
+    ctx.strokeStyle='rgba(90,100,120,.25)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px(0),py(0)); ctx.lineTo(px(20),py(0)); ctx.stroke();
+    ctx.fillStyle='#5b6475'; ctx.font='600 11px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+    for(let p=0;p<=20;p+=5) ctx.fillText(p, px(p), py(0)+16);
+    ctx.fillText('ตำแหน่งคำ p →', W-70, py(0)+34);
+    WAVES.forEach((w,k)=>{
+      ctx.strokeStyle=w.c; ctx.lineWidth=2.2; ctx.beginPath();
+      for(let i=0;i<=240;i++){ const p=20*i/240, X=px(p), Y=py(w.f(p));
+        i? ctx.lineTo(X,Y):ctx.moveTo(X,Y); }
+      ctx.stroke();
+      ctx.fillStyle=w.c; ctx.font='700 11.5px Poppins, Kanit, sans-serif'; ctx.textAlign='left';
+      ctx.fillText(w.l, 56+k*170, 22);
+    });
+    ctx.setLineDash([5,4]); ctx.strokeStyle='#e5484d'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(px(pos),34); ctx.lineTo(px(pos),py(0)+4); ctx.stroke(); ctx.setLineDash([]);
+    WAVES.forEach(w=>{
+      ctx.beginPath(); ctx.arc(px(pos),py(w.f(pos)),5.5,0,Math.PI*2);
+      ctx.fillStyle=w.c; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+    });
+    ctx.fillStyle='#e5484d'; ctx.font='700 12.5px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('p = '+pos, px(pos), 46);
+    document.getElementById('peChips').innerHTML='<b style="font-size:.9rem">เวกเตอร์ที่นั่ง PE('+pos+') = </b>'
+      +WAVES.map(w=>'<span style="background:'+w.c+'">'+(w.f(pos)<0?'−':'')+Math.abs(w.f(pos)).toFixed(2)+'</span>').join('');
+  }
+  const slider=document.getElementById('pePos');
+  slider.addEventListener('input',()=>{ pos=+slider.value; document.getElementById('pePosV').textContent=pos; draw(); });
+  draw();
+
+  /* เทียบสองประโยค */
+  const EMBW={ 'แมว':[1,0], 'ไล่':[0,1], 'หนู':[1,0.5] };
+  const pe2=p=>[Math.sin(p),Math.cos(p)];
+  const n2=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  function card(title,words,other){
+    let h='<div class="pe-card"><h4>'+title+'</h4><table><tr><th>p</th><th>คำ</th><th>เวกเตอร์คำ</th><th>+ ที่นั่ง PE(p)</th><th>= ที่เข้า attention</th></tr>';
+    words.forEach((w,p)=>{
+      const e=EMBW[w], q=pe2(p), s=[e[0]+q[0],e[1]+q[1]];
+      const diff = w!==other[p];
+      h+='<tr><td>'+p+'</td><td><b>'+w+'</b></td><td>('+n2(e[0])+', '+n2(e[1])+')</td><td>('+n2(q[0])+', '+n2(q[1])+')</td>'
+        +'<td style="'+(diff?'background:rgba(229,72,77,.12);font-weight:800;':'')+'">('+n2(s[0])+', '+n2(s[1])+')</td></tr>';
+    });
+    return h+'</table></div>';
+  }
+  const A=['แมว','ไล่','หนู'], B=['หนู','ไล่','แมว'];
+  document.getElementById('peCmp').innerHTML=
+    card('ประโยค ก: "แมว ไล่ หนู"',A,B)+card('ประโยค ข: "หนู ไล่ แมว" — คำชุดเดียวกันเป๊ะ!',B,A);
+})();
+
+/* ======================================================================
+   🏗️ เดินผ่าน Transformer block
+   ====================================================================== */
+(function(){
+  const svg=document.getElementById('tbSvg'); if(!svg) return;
+  const CX=175;
+  svg.innerHTML=
+    '<defs><marker id="tbArr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#8b93ad"/></marker></defs>'
+    +'<line x1="'+CX+'" y1="40" x2="'+CX+'" y2="342" stroke="#8b93ad" stroke-width="2.5"/>'
+    /* residual bypasses */
+    +'<path d="M '+CX+' 56 C 315 56 315 161 258 161" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4"/>'
+    +'<path d="M '+CX+' 192 C 315 192 315 297 258 297" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6 4"/>'
+    +'<text x="322" y="104" font-size="10.5" font-weight="700" fill="#b45309" text-anchor="middle">ทางด่วน</text>'
+    +'<text x="322" y="117" font-size="10.5" font-weight="700" fill="#b45309" text-anchor="middle">residual</text>'
+    +'<text x="322" y="242" font-size="10.5" font-weight="700" fill="#b45309" text-anchor="middle">ทางด่วน</text>'
+    /* loop N รอบ */
+    +'<path d="M 268 355 C 356 355 356 30 232 27" fill="none" stroke="#8b93ad" stroke-width="1.8" stroke-dasharray="3 4" marker-end="url(#tbArr)"/>'
+    +'<text x="352" y="196" font-size="11" font-weight="700" fill="#5b6475" text-anchor="middle" transform="rotate(90 352 196)">ทำซ้ำ N ชั้น</text>'
+    /* กล่อง */
+    +'<rect x="'+(CX-52)+'" y="14" width="104" height="26" rx="8" fill="#eef2ff" stroke="#2456e6" stroke-width="2"/>'
+    +'<text x="'+CX+'" y="31.5" text-anchor="middle" font-size="12" font-weight="700" fill="#1e40af">token เข้า</text>'
+    +'<rect class="st" id="tbS0" x="'+(CX-88)+'" y="70" width="176" height="46" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="2"/>'
+    +'<text x="'+CX+'" y="89" text-anchor="middle" font-size="13" font-weight="800" fill="#6d28d9">Attention</text>'
+    +'<text x="'+CX+'" y="106" text-anchor="middle" font-size="10.5" font-weight="600" fill="#6d28d9">คำคุยกัน · ×12 หัว</text>'
+    +'<rect class="st" id="tbS1" x="'+(CX-78)+'" y="146" width="156" height="30" rx="8" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>'
+    +'<text x="'+CX+'" y="165.5" text-anchor="middle" font-size="12" font-weight="800" fill="#b45309">⊕ Add &amp; Norm</text>'
+    +'<rect class="st" id="tbS2" x="'+(CX-88)+'" y="206" width="176" height="46" rx="10" fill="#ecfdf5" stroke="#12a150" stroke-width="2"/>'
+    +'<text x="'+CX+'" y="225" text-anchor="middle" font-size="13" font-weight="800" fill="#0e7f43">MLP</text>'
+    +'<text x="'+CX+'" y="242" text-anchor="middle" font-size="10.5" font-weight="600" fill="#0e7f43">คิดคนเดียว · เรื่อง Neural Network</text>'
+    +'<rect class="st" id="tbS3" x="'+(CX-78)+'" y="282" width="156" height="30" rx="8" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>'
+    +'<text x="'+CX+'" y="301.5" text-anchor="middle" font-size="12" font-weight="800" fill="#b45309">⊕ Add &amp; Norm</text>'
+    +'<rect x="'+(CX-88)+'" y="342" width="176" height="26" rx="8" fill="#1f2533"/>'
+    +'<text x="'+CX+'" y="359.5" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">ออก → ชั้นถัดไป / ทำนายคำ</text>'
+    +'<text id="tbCnt" x="'+CX+'" y="404" text-anchor="middle" font-size="15" font-weight="800" fill="#7c3aed">ชั้นที่ – / –</text>'
+    +'<circle class="pulse" id="tbGhost" r="6" fill="none" stroke="#f59e0b" stroke-width="2.5" opacity="0"/>'
+    +'<circle class="pulse" id="tbPulse" r="9" fill="#7c3aed" stroke="#fff" stroke-width="2.5" transform="translate('+CX+',27)"/>';
+  const $=id=>document.getElementById(id);
+  const P={ in:[CX,27], att:[CX,93], an1:[CX,161], mlp:[CX,229], an2:[CX,297], hop:[CX,27], out:[CX,355] };
+  const perBlock=12*768*768, emb=50257*768+1024*768;
+  const M=x=>(x/1e6).toFixed(1);
+  function params(){
+    const N=+$('tbN').value;
+    $('tbNV').textContent=N;
+    $('tbParams').innerHTML=M(emb)+'M (ตารางคำ+ตำแหน่ง) + '+N+' × '+M(perBlock)+'M = <b>'+M(emb+N*perBlock)+'M</b>'
+      +(N===12?' ← ขนาด GPT-2 small ตัวจริง (12 ชั้น × 12 หัว)':'');
+  }
+  $('tbN').addEventListener('input',params); params();
+
+  let timer=null, speed=1;
+  const hl=st=>{ for(let k=0;k<4;k++){ const el=$('tbS'+k);
+    el.setAttribute('stroke-width', k===st?4.5:2);
+    el.style.filter = k===st? 'drop-shadow(0 0 6px rgba(245,158,11,.7))':''; } };
+  function stopTb(txt){ if(timer){ clearInterval(timer); timer=null; } $('tbPlay').textContent=txt||'▶ เดินผ่านทุกชั้น'; }
+  function resetTb(){
+    stopTb(); hl(-1);
+    $('tbPulse').setAttribute('transform','translate('+CX+',27)');
+    $('tbGhost').setAttribute('opacity',0);
+    $('tbCnt').textContent='ชั้นที่ – / –';
+    $('tbMsg').innerHTML='<b>พร้อมเดิน</b> — เลือกจำนวนชั้น N แล้วกด ▶ เดินผ่านทุกชั้น';
+  }
+  $('tbReset').addEventListener('click',resetTb);
+  $('tbFast').addEventListener('click',function(){
+    speed = speed===1?2:1;
+    this.textContent = speed===1?'🐢 ความเร็ว ×1':'🐇 ความเร็ว ×2';
+  });
+  $('tbPlay').addEventListener('click',function(){
+    if(timer){ resetTb(); return; }
+    const N=+$('tbN').value, seq=[{t:'in',b:1}];
+    for(let b=1;b<=N;b++){
+      seq.push({t:'att',b},{t:'an1',b},{t:'mlp',b},{t:'an2',b});
+      if(b<N) seq.push({t:'hop',b:b+1});
+    }
+    seq.push({t:'out',b:N});
+    let i=-1;
+    this.textContent='⏹ หยุด';
+    const MSG={
+      in:  b=>'<b>token เข้าโรงงาน</b> — คำหนึ่งคำ = เวกเตอร์ 768 มิติ (embedding + เลขที่นั่งจาก demo 🌊)',
+      att: b=>'<b>① Attention</b> — คำหันไปดูดบริบทจากทั้งประโยค (แอนิเมชัน 🎬 ทั้งอัน ×12 หัวพร้อมกัน) — ระหว่างนั้น "ตัวเดิม" ถูกก๊อบปี้ขึ้นทางด่วน residual (เส้นประส้ม)',
+      an1: b=>'<b>② Add &amp; Norm</b> — เอาตัวเดิมจากทางด่วนมา<b>บวกกลับ</b>: ใหม่ = เดิม + สิ่งที่ attention เติม แล้วจัดสเกลให้นิ่ง → gradient ไหลย้อนได้ไม่จาง (แผลเรื่อง Backpropagation/11 ถูกแก้ตั้งแต่ออกแบบ)',
+      mlp: b=>'<b>③ MLP</b> — แต่ละคำ "ครุ่นคิดคนเดียว" กับบริบทที่เพิ่งดูดมา: 768 → 3072 → 768 — <b>นี่คือเครือข่ายเรื่อง Neural Network เป๊ะๆ</b> คูณ-บวก-activation',
+      an2: b=>'<b>④ Add &amp; Norm รอบสอง</b> — บวกตัวเดิมคืนอีกครั้ง จบหนึ่ง block: ทุกคำ "ฉลาดขึ้นหนึ่งขั้น"',
+      hop: b=>'<b>↺ ขึ้นชั้นที่ '+b+'</b> — โครงก้อนเดิมเป๊ะ แต่ weight คนละชุด: ชั้นล่างจับไวยากรณ์ใกล้ตัว ชั้นบนจับความหมายเชิงเรื่องราว',
+      out: b=>'<b>✓ ครบ '+b+' ชั้น!</b> — เวกเตอร์สุดท้ายพร้อมไปให้คะแนนคำศัพท์ 50,257 คำ → softmax → เลือกคำถัดไป (เรื่องของสัปดาห์หน้า)'
+    };
+    const STG={att:0,an1:1,mlp:2,an2:3};
+    const step=()=>{
+      i++;
+      if(i>=seq.length){ stopTb(); return; }
+      const s=seq[i], p=P[s.t];
+      $('tbPulse').setAttribute('transform','translate('+p[0]+','+p[1]+')');
+      hl(s.t in STG? STG[s.t] : -1);
+      const g=$('tbGhost');
+      if(s.t==='att'){ g.setAttribute('opacity',1); g.setAttribute('transform','translate(315,108)'); }
+      else if(s.t==='an1'){ g.setAttribute('transform','translate(258,161)'); setTimeout(()=>g.setAttribute('opacity',0),600/speed); }
+      else if(s.t==='mlp'){ g.setAttribute('opacity',1); g.setAttribute('transform','translate(315,244)'); }
+      else if(s.t==='an2'){ g.setAttribute('transform','translate(258,297)'); setTimeout(()=>g.setAttribute('opacity',0),600/speed); }
+      else g.setAttribute('opacity',0);
+      $('tbCnt').textContent='ชั้นที่ '+s.b+' / '+N;
+      $('tbMsg').innerHTML=MSG[s.t](s.b);
+    };
+    step();
+    timer=setInterval(step, 1600/speed);
+  });
+  resetTb();
+})();
+
+/* ======================================================================
+   🌌 การเดินทางของ token ใน 3D
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('t3Cv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=760,Hh=420;
+  /* a = ตำแหน่ง embedding (ชั้น 0), b = ตำแหน่งหลังชั้น 4 */
+  const PTS=[
+    { t:'ตา (ก)', c:'#e5484d', a:[0,0.2,0],        b:[2.0,1.2,-0.9],  trail:1 },
+    { t:'ตา (ข)', c:'#d97706', a:[0,0.2,0],        b:[-2.0,1.1,1.1],  trail:1 },
+    { t:'มอง',    c:'#2456e6', a:[1.7,0.7,-1.4],   b:[2.2,0.9,-1.2] },
+    { t:'ชัด',    c:'#2456e6', a:[2.4,-0.1,-0.7],  b:[2.6,0.2,-0.7] },
+    { t:'แว่น',   c:'#2456e6', a:[1.9,1.6,-0.4],   b:[2.1,1.5,-0.6] },
+    { t:'ยาย',    c:'#12a150', a:[-1.8,0.9,1.5],   b:[-2.1,1.0,1.3] },
+    { t:'ลุง',    c:'#12a150', a:[-2.4,0.3,0.9],   b:[-2.5,0.4,1.0] },
+    { t:'ต่างจังหวัด', c:'#12a150', a:[-1.5,-0.5,1.7], b:[-1.7,-0.3,1.6] },
+    { t:'ฉัน',    c:'#8b93ad', a:[0.4,-1.3,0.5],   b:[0.3,-1.2,0.5] },
+    { t:'ของ',    c:'#8b93ad', a:[-0.3,-1.6,-0.5], b:[-0.3,-1.5,-0.5] }
+  ];
+  const S={ yaw:0.65, pitch:0.33, L:0, spin:true, drag:null };
+  const lerp3=(a,b,f)=>[a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+  const posAt=(p,l)=>lerp3(p.a,p.b,l/4);
+  PTS.forEach(p=>p.d=p.a.slice());              // ตำแหน่งแสดงผล (ไล่ตามเป้า)
+
+  function proj(x,y,z){
+    const cy=Math.cos(S.yaw), sy=Math.sin(S.yaw);
+    const X1=x*cy+z*sy, Z1=-x*sy+z*cy;
+    const cp=Math.cos(S.pitch), sp=Math.sin(S.pitch);
+    const Y2=y*cp-Z1*sp, Z2=y*sp+Z1*cp;
+    const f=560/(9+Z2);
+    return { x:W/2+X1*f, y:Hh*0.52-Y2*f, z:Z2, f };
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,Hh);
+    ctx.fillStyle='#fcfdff'; ctx.fillRect(0,0,W,Hh);
+    /* พื้นกริด y = -2 */
+    ctx.strokeStyle='rgba(90,100,120,.16)'; ctx.lineWidth=1;
+    for(let g=-3;g<=3;g++){
+      let a=proj(g,-2,-3), b=proj(g,-2,3);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+      a=proj(-3,-2,g); b=proj(3,-2,g);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    /* ป้ายกลุ่ม */
+    ctx.font='700 12.5px Kanit, Poppins, sans-serif'; ctx.textAlign='center';
+    let q=proj(2.2,2.2,-0.9); ctx.fillStyle='rgba(36,86,230,.6)'; ctx.fillText('กลุ่ม "การมองเห็น"',q.x,q.y);
+    q=proj(-2.0,2.0,1.3); ctx.fillStyle='rgba(18,161,80,.65)'; ctx.fillText('กลุ่ม "ญาติ / ต่างจังหวัด"',q.x,q.y);
+    /* เส้นทางเดินของ "ตา" */
+    PTS.forEach(p=>{
+      if(!p.trail || S.L===0) return;
+      ctx.setLineDash([4,4]); ctx.strokeStyle=p.c; ctx.lineWidth=1.6; ctx.globalAlpha=.65;
+      ctx.beginPath();
+      for(let l=0;l<=S.L;l++){ const w=posAt(p,l), pr=proj(w[0],w[1],w[2]);
+        l? ctx.lineTo(pr.x,pr.y):ctx.moveTo(pr.x,pr.y); }
+      const cr=proj(p.d[0],p.d[1],p.d[2]); ctx.lineTo(cr.x,cr.y);
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+    });
+    /* จุด (เรียงตามความลึก) */
+    PTS.map(p=>({p, pr:proj(p.d[0],p.d[1],p.d[2])}))
+      .sort((u,v)=>v.pr.z-u.pr.z)
+      .forEach(({p,pr})=>{
+        const r=Math.max(4, pr.f*0.115);
+        ctx.beginPath(); ctx.arc(pr.x,pr.y,r,0,Math.PI*2);
+        ctx.fillStyle=p.c; ctx.fill();
+        ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+        ctx.fillStyle='#1f2533'; ctx.font=(p.trail?'800 ':'600 ')+'12px Kanit, Poppins, sans-serif';
+        ctx.textAlign='center'; ctx.fillText(p.t, pr.x, pr.y-r-6);
+      });
+    /* ป้ายชั้น */
+    ctx.fillStyle='#7c3aed'; ctx.font='800 15px Kanit, Poppins, sans-serif'; ctx.textAlign='left';
+    ctx.fillText('ชั้นที่ '+S.L+' / 4'+(S.L===0?' — "ตา" สองตัวยังทับกันสนิท':''), 14, 26);
+    ctx.fillStyle='#5b6475'; ctx.font='600 11.5px Kanit, Poppins, sans-serif';
+    ctx.fillText('ลากเพื่อหมุน', 14, Hh-12);
+  }
+  /* rAF: ตกแต่ง (หมุน + เลื่อนนุ่ม) — ตำแหน่งเป้าจริงตั้ง synchronous จากปุ่ม */
+  (function frame(){
+    if(S.spin && !S.drag) S.yaw+=0.0035;
+    PTS.forEach(p=>{ const t=posAt(p,S.L);
+      for(let k=0;k<3;k++) p.d[k]+=(t[k]-p.d[k])*0.07; });
+    draw();
+    requestAnimationFrame(frame);
+  })();
+  /* ลากหมุน */
+  cv.addEventListener('pointerdown',e=>{ S.drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch};
+    cv.style.cursor='grabbing'; try{cv.setPointerCapture(e.pointerId);}catch(_){} });
+  cv.addEventListener('pointermove',e=>{ if(!S.drag) return;
+    S.yaw=S.drag.yaw+(e.clientX-S.drag.x)*0.008;
+    S.pitch=Math.max(-0.2,Math.min(1.1,S.drag.pitch+(e.clientY-S.drag.y)*0.006)); });
+  const endDrag=()=>{ S.drag=null; cv.style.cursor='grab'; };
+  cv.addEventListener('pointerup',endDrag);
+  cv.addEventListener('pointercancel',endDrag);
+  /* ปุ่ม */
+  const seg=document.getElementById('t3Sc');
+  function setL(l){ S.L=l;
+    [...seg.children].forEach(b=>b.classList.toggle('on', +b.dataset.l===l)); }
+  seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    stopPlay(); setL(+b.dataset.l); });
+  let playT=null;
+  const playBtn=document.getElementById('t3Play');
+  function stopPlay(){ if(playT){ clearInterval(playT); playT=null; } playBtn.textContent='▶ เล่นทั้ง 4 ชั้น'; }
+  playBtn.addEventListener('click',()=>{
+    if(playT){ stopPlay(); return; }
+    setL(0); playBtn.textContent='⏸ หยุด';
+    playT=setInterval(()=>{ if(S.L>=4){ stopPlay(); return; } setL(S.L+1); },1500);
+  });
+  document.getElementById('t3Spin').addEventListener('click',function(){
+    S.spin=!S.spin;
+    this.textContent='🔄 หมุนอัตโนมัติ: '+(S.spin?'เปิด':'ปิด');
+  });
+})();
+
+/* ======================================================================
+   💻 โค้ด — ปุ่มคัดลอก + ระบายสีคอมเมนต์
+   ====================================================================== */
+(function(){
+  document.querySelectorAll('#codeA, #codeB').forEach(code=>{
+    const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    code.innerHTML=code.textContent.split('\n').map(line=>{
+      const i=line.indexOf('#');
+      if(i<0) return esc(line);
+      return esc(line.slice(0,i))+'<span class="cm">'+esc(line.slice(i))+'</span>';
+    }).join('\n');
+  });
+  document.querySelectorAll('.code-copy').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const txt=document.getElementById(btn.dataset.code).textContent;
+      const ok=()=>{ const old=btn.textContent; btn.textContent='✓ คัดลอกแล้ว';
+        setTimeout(()=>btn.textContent=old,1600); };
+      const fallback=()=>{ const ta=document.createElement('textarea');
+        ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); ok(); }catch(_){}
+        document.body.removeChild(ta); };
+      if(navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(txt).then(ok, fallback);
+      else fallback();
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNN ทำนายจากภาพ | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .wsec { margin-bottom: 8px; }
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+
+  /* ===== วิดเจ็ตนับพารามิเตอร์ ===== */
+  .pc-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:8px 0; }
+  .pc-row input[type=range]{ flex:1 1 180px; accent-color:var(--accent); min-width:150px; }
+  .pc-big { font-size:1.5rem; font-weight:800; color:#e5484d; font-variant-numeric:tabular-nums; }
+  .pc-vs { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+  @media(max-width:560px){ .pc-vs{ grid-template-columns:1fr; } }
+  .pc-cell { border:1.5px solid var(--border); border-radius:12px; padding:10px 14px; background:var(--card); }
+  .pc-cell h5 { margin:0 0 4px; font-size:.9rem; }
+  .pc-cell .num { font-size:1.25rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .pc-cell.bad .num { color:#e5484d; }
+  .pc-cell.good .num { color:#12a150; }
+
+  /* ===== กริดภาพ / เคอร์เนล / feature map ===== */
+  .cv-wrap { display:grid; grid-template-columns:1fr; gap:16px; }
+  @media(min-width:880px){ .cv-wrap{ grid-template-columns:auto auto 1fr; align-items:start; } }
+  .pxgrid { display:grid; gap:2px; background:var(--border); border:2px solid var(--border);
+    border-radius:8px; padding:2px; width:max-content; touch-action:none; user-select:none; }
+  .pxgrid .px {
+    width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    background:#fff; color:#94a3b8; font-size:.72rem; font-weight:600; cursor:pointer;
+    border-radius:3px; transition:background .12s; font-variant-numeric:tabular-nums;
+  }
+  @media(max-width:560px){ .pxgrid .px{ width:24px; height:24px; font-size:.62rem; } }
+  .pxgrid .px.on { background:#1f2533; color:#fff; }
+  .pxgrid .px.padc { background:#eef1f7; color:#c3cad9; cursor:default; }
+  [data-theme="dark"] .pxgrid .px { background:#2a3040; color:#7a869c; }
+  [data-theme="dark"] .pxgrid .px.on { background:#e8ecf8; color:#141925; }
+  [data-theme="dark"] .pxgrid .px.padc { background:#1d2230; color:#4a5468; }
+  .pxgrid .px.win { outline:3px solid #f59e0b; outline-offset:-3px; z-index:1; }
+  .pxgrid .px.kcell { width:44px; height:38px; cursor:default; }
+  .pxgrid .px.kcell input {
+    width:40px; border:none; background:transparent; text-align:center; font:inherit;
+    color:inherit; font-weight:700; outline:none; -moz-appearance:textfield;
+  }
+  .pxgrid .px.kcell input::-webkit-inner-spin-button { display:none; }
+  .fmap .px { cursor:default; }
+  .fmap .px.cur { outline:3px solid #7c3aed; outline-offset:-3px; }
+  .fmap .px.pwin { outline:3px solid #12a150; outline-offset:-3px; }
+  .cv-cap { font-size:.85rem; font-weight:700; margin:0 0 6px; color:var(--ink); }
+  .cv-cap small { color:var(--muted); font-weight:600; }
+
+  /* แถบสมการ MAC */
+  .mac-line {
+    background:rgba(124,58,237,.08); border:1px solid rgba(124,58,237,.25); border-radius:10px;
+    padding:8px 12px; font-size:.86rem; line-height:1.8; margin-top:10px; overflow-x:auto;
+    font-variant-numeric:tabular-nums; min-height:44px;
+  }
+  .mac-line b.res { color:#7c3aed; font-size:1.05rem; }
+  .mac-line .ip { color:#1f6feb; font-weight:700; }
+  .mac-line .kp { color:#e5484d; font-weight:700; }
+  [data-theme="dark"] .mac-line .ip { color:#6ea8ff; }
+
+  .cv-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  .cv-ctl .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .cv-ctl .seg button { font-family:inherit; font-size:.83rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 12px; cursor:pointer; margin:0; box-shadow:none; }
+  .cv-ctl .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  #cvStep { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+  .cv-note { font-size:.84rem; color:var(--muted); margin:6px 0 0; }
+  .cv-note b { color:var(--accent); }
+  .cv-size {
+    display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:9px;
+    padding:2px 12px; font-weight:700; font-variant-numeric:tabular-nums;
+  }
+
+  /* ===== pipeline ===== */
+  .pipe { display:flex; gap:6px; flex-wrap:wrap; align-items:stretch; margin:10px 0; }
+  .pipe .pb {
+    flex:1 1 90px; min-width:88px; border:1.5px solid var(--border); border-radius:12px;
+    background:var(--card); padding:8px 6px; text-align:center; cursor:pointer;
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .pipe .pb:hover { border-color:var(--accent); }
+  .pipe .pb.on { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
+  .pipe .pb b { display:block; font-size:.82rem; }
+  .pipe .pb .dim { display:block; font-size:.78rem; color:var(--accent); font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .pipe .arr { align-self:center; color:var(--muted); font-weight:700; }
+  .pipe-info { border:1px dashed var(--border); border-radius:10px; padding:9px 13px; font-size:.87rem;
+    color:var(--muted); min-height:40px; }
+  .pipe-info b { color:var(--ink); }
+
+  /* ===== O/X demo ===== */
+  .ox-wrap { display:grid; grid-template-columns:1fr; gap:16px; }
+  @media(min-width:820px){ .ox-wrap{ grid-template-columns:auto 1fr; align-items:start; } }
+  .ox-out { display:flex; flex-direction:column; gap:10px; }
+  .ox-verdict {
+    border-radius:12px; padding:12px 16px; font-size:1.35rem; font-weight:800; text-align:center;
+    background:var(--card); border:1.5px solid var(--border); transition:all .3s;
+  }
+  .ox-bar { display:flex; align-items:center; gap:8px; font-size:.9rem; }
+  .ox-bar .nm { min-width:64px; font-weight:800; font-size:1.05rem; }
+  .ox-bar .tr { flex:1; height:18px; background:rgba(127,127,127,.13); border-radius:9px; overflow:hidden; }
+  .ox-bar .tr > i { display:block; height:100%; border-radius:9px; transition:width .45s cubic-bezier(.2,.8,.3,1); }
+  .ox-bar .pc { min-width:56px; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+  .ox-nums { font-size:.87rem; line-height:1.9; background:rgba(127,127,127,.07); border-radius:10px; padding:8px 13px; }
+  .ox-nums b { color:var(--accent); }
+  .ox-minimaps { display:flex; gap:14px; flex-wrap:wrap; }
+
+  /* ===== การ์ดลำดับชั้นฟีเจอร์ ===== */
+  .hier { display:grid; grid-template-columns:1fr; gap:10px; margin-top:8px; }
+  @media(min-width:700px){ .hier{ grid-template-columns:1fr 1fr 1fr; } }
+  .hier .hc { border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; background:var(--card); text-align:center; }
+  .hier .hc svg { width:84px; height:84px; margin-bottom:6px; }
+  .hier .hc b { display:block; margin-bottom:4px; }
+  .hier .hc p { margin:0; font-size:.85rem; color:var(--muted); }
+
+  .eq-final { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin:12px 0; text-align:center; }
+  [data-theme="dark"] .eq-final { background: var(--card); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>CNN: สอนเครื่องให้มองเห็น</h1>
+    <p class="subtitle">ทำไมเครือข่ายธรรมดา "ตาบอด" กับภาพ — และเคล็ดลับ "มองทีละหย่อม" ของ Convolutional Neural Network ที่เปิดยุคเครื่องมองเห็นโลกได้จริง</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3.4"/><path d="M12 8.6v-1M12 16.4v-1M8.6 12h-1M16.4 12h-1" opacity=".6"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายได้ว่าทำไม MLP ธรรมดาไม่เหมาะกับภาพ (พารามิเตอร์ระเบิด + ไม่ทนการเลื่อนภาพ)</li>
+      <li>คำนวณ <strong>convolution</strong> ด้วยมือได้: เลื่อนหน้าต่าง 3×3 → คูณจับคู่ → บวกรวม → เติม feature map</li>
+      <li>ใช้สูตรขนาดผลลัพธ์ <strong>(n + 2p − k)/s + 1</strong> ได้ และอธิบายบทบาทของ stride / padding</li>
+      <li>อธิบาย <strong>ReLU</strong> และ <strong>Max Pooling</strong> ว่าทำอะไรกับ feature map และช่วยอะไร</li>
+      <li>ไล่สถาปัตยกรรม CNN เต็มสาย Conv→ReLU→Pool→…→Flatten→Dense→Softmax พร้อมขนาด tensor ทุกขั้นได้</li>
+      <li>เชื่อมโยงบทเรียน "สถาปัตยกรรมต้องเข้ากับธรรมชาติของข้อมูล" ไปยังคำถามของสัปดาห์หน้า: แล้ว "ข้อความ" ล่ะ?</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 — แนวคิด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: ทำไมเครือข่ายธรรมดา "ตาบอด" กับภาพ <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">คำถามเปิดคาบ: <em>"สัปดาห์ก่อนเรามี MLP ที่เก่งอยู่แล้ว — เอาภาพยัดเข้าไปตรงๆ เลยไม่ได้หรือ?"</em>
+    ได้ครับ… แต่จะเจอกำแพง 2 ด่านทันที ลองเลื่อน slider ดูด่านแรก:</p>
+
+    <div class="demo" id="pcw" style="margin:0 0 8px">
+      <h3 style="margin-top:0">⚖️ ด่านที่ 1 — พารามิเตอร์ระเบิด</h3>
+      <p style="margin-top:0">สมมติเอาภาพขนาด n×n พิกเซล "คลี่เป็นเส้น" ต่อเข้า dense layer 128 นิวรอน — ต้องใช้ weight กี่ตัว?</p>
+      <div class="pc-row">
+        <label style="font-weight:600">ขนาดภาพ</label>
+        <input type="range" id="pcN" min="28" max="224" step="14" value="28">
+        <span class="cv-size" id="pcNv">28×28</span>
+      </div>
+      <div class="pc-row">
+        <span>weight ที่ต้องใช้ = n × n × 128 =</span>
+        <span class="pc-big" id="pcOut">100,352</span>
+        <span id="pcRgb" style="color:var(--muted); font-size:.9rem"></span>
+      </div>
+      <div class="pc-vs">
+        <div class="pc-cell bad">
+          <h5>MLP มองทั้งภาพพร้อมกัน</h5>
+          <div class="num" id="pcMlp">100,352</div>
+          <div style="font-size:.82rem;color:var(--muted)">weight ชั้นแรกชั้นเดียว — โตตามพื้นที่ภาพ (n²)</div>
+        </div>
+        <div class="pc-cell good">
+          <h5>CNN มองทีละหย่อม 3×3 (32 ฟิลเตอร์)</h5>
+          <div class="num">320</div>
+          <div style="font-size:.82rem;color:var(--muted)">3×3×32 + bias 32 = 320 ตัว <strong>เท่าเดิมไม่ว่าภาพใหญ่แค่ไหน!</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>ด่านที่ 2 — เลื่อนภาพนิดเดียว MLP มองเป็น "คนละโลก"</h3>
+    <div style="text-align:center; margin:8px 0">
+      <svg viewBox="0 0 460 120" style="max-width:460px; width:100%; height:auto" role="img" aria-label="ภาพแมวเลื่อน 1 พิกเซล">
+        <g font-family="Kanit, sans-serif" font-size="11" fill="currentColor">
+          <rect x="10" y="10" width="90" height="90" rx="8" fill="none" stroke="currentColor" opacity=".4"/>
+          <circle cx="48" cy="52" r="22" fill="#f59e0b" opacity=".85"/>
+          <path d="M34 38 l6 -12 6 10 M50 36 l6 -10 6 12" stroke="#f59e0b" stroke-width="5" fill="none"/>
+          <text x="55" y="112" text-anchor="middle">ภาพเดิม</text>
+          <rect x="150" y="10" width="90" height="90" rx="8" fill="none" stroke="currentColor" opacity=".4"/>
+          <circle cx="196" cy="52" r="22" fill="#f59e0b" opacity=".85"/>
+          <path d="M182 38 l6 -12 6 10 M198 36 l6 -10 6 12" stroke="#f59e0b" stroke-width="5" fill="none"/>
+          <text x="195" y="112" text-anchor="middle">เลื่อนขวา 1 พิกเซล</text>
+          <text x="275" y="50" font-size="13" font-weight="700">MLP: เวกเตอร์อินพุตเปลี่ยนเกือบทุกช่อง</text>
+          <text x="275" y="68" font-size="13">= ต้อง "เรียนใหม่" ทุกตำแหน่งที่แมวอาจอยู่</text>
+          <text x="275" y="92" font-size="13" fill="#12a150" font-weight="700">CNN: ฟิลเตอร์เดิมไถลไปเจอแมวเองทุกที่ ✓</text>
+        </g>
+      </svg>
+    </div>
+
+    <p style="margin-bottom:0"><strong>เคล็ดลับของ CNN</strong> จึงมี 2 ข้อ:
+    <strong>① มองทีละหย่อมเล็ก (local receptive field)</strong> — ขอบ ลาย มุม ล้วนเป็นเรื่อง "เฉพาะที่" ไม่ต้องมองทั้งภาพพร้อมกัน
+    และ <strong>② ใช้ฟิลเตอร์ชุดเดียวกันไถลทั้งภาพ (weight sharing)</strong> — ตัวจับ "ขอบตั้ง" ที่มุมซ้ายบน ก็คือตัวเดียวกับที่มุมขวาล่าง
+    ผลคือพารามิเตอร์น้อยลงมหาศาล และ<strong>ทนต่อการเลื่อนตำแหน่ง</strong>โดยธรรมชาติ — การ "ไถลฟิลเตอร์" นี้มีชื่อทางคณิตศาสตร์ว่า <strong>convolution</strong></p>
+  </div>
+
+  </section>
+
+  <!-- ===================== ส่วนที่ 2 — Convolution Playground ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: ไถลฟิลเตอร์เอง เห็นเลขคูณ-บวกทุกจังหวะ <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo" id="convLab">
+    <h3 style="margin-top:0">🔍 Convolution Playground</h3>
+    <p style="margin-top:0"><b style="color:var(--accent)">วาดภาพเอง</b>บนกริดซ้าย (คลิก/ลากสลับ 0↔1) หรือใช้ปุ่ม preset ·
+    เลือกเคอร์เนล (แก้เลขในช่องได้ทุกตัว!) แล้วกด <b>▶ ทีละขั้น</b> — หน้าต่างส้มจะไถลบนภาพ พร้อมกางการคูณจับคู่ 9 คู่ให้ดูเลขจริง
+    แล้วผลรวมไปเติม <b>feature map</b> ทีละเซลล์ (น้ำเงิน = ติดลบ, แดง = บวก)</p>
+
+    <div class="cv-wrap">
+      <div>
+        <p class="cv-cap">ภาพอินพุต <small id="imgDim">(8×8)</small></p>
+        <div class="pxgrid" id="imgGrid"></div>
+        <div class="cv-ctl" style="margin-top:8px">
+          <button data-p="vline" class="cv-pre">เส้นตั้ง</button>
+          <button data-p="hline" class="cv-pre">เส้นนอน</button>
+          <button data-p="x" class="cv-pre">กากบาท X</button>
+          <button data-p="o" class="cv-pre">กรอบ O</button>
+          <button data-p="clear" class="cv-pre" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ล้าง</button>
+        </div>
+      </div>
+
+      <div>
+        <p class="cv-cap">เคอร์เนล 3×3 <small>(แก้เลขได้)</small></p>
+        <div class="pxgrid" id="kGrid" style="grid-template-columns:repeat(3,auto)"></div>
+        <div class="cv-ctl" style="margin-top:8px; flex-direction:column; align-items:flex-start">
+          <div class="seg" id="kSeg" style="flex-wrap:wrap">
+            <button data-k="vedge" class="on">ขอบตั้ง</button>
+            <button data-k="hedge">ขอบนอน</button>
+            <button data-k="blur">เบลอ</button>
+            <button data-k="sharp">คมชัด</button>
+          </div>
+          <div class="seg" id="strideSeg">
+            <button data-s="1" class="on">stride 1</button>
+            <button data-s="2">stride 2</button>
+          </div>
+          <div class="seg" id="padSeg">
+            <button data-pd="0" class="on">ไม่มี padding</button>
+            <button data-pd="1">padding 1</button>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <p class="cv-cap">Feature map ผลลัพธ์ <small id="fmDim"></small></p>
+        <div class="pxgrid fmap" id="fmGrid"></div>
+        <div class="cv-note" style="margin-top:8px">ขนาดผลลัพธ์ = (n + 2p − k)/s + 1 = <span id="fmFormula" class="cv-size"></span></div>
+        <div class="cv-ctl">
+          <button id="cvStep">▶ ทีละขั้น</button>
+          <button id="cvAuto">เล่นอัตโนมัติ</button>
+          <button id="cvReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">เริ่มใหม่</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mac-line" id="macLine">กด ▶ ทีละขั้น เพื่อดูการคูณจับคู่ <span class="ip">พิกเซล</span> × <span class="kp">เคอร์เนล</span> ทั้ง 9 คู่ตรงนี้…</div>
+
+    <p class="cv-note"><b>ลองดู:</b> วาด "เส้นตั้ง" + เคอร์เนล "ขอบตั้ง" → feature map สว่างจ้าตรงขอบเส้นพอดี ·
+    สลับเป็นเคอร์เนล "ขอบนอน" → เงียบกริบ (ฟิลเตอร์แต่ละตัว "เชี่ยวชาญ" คนละลาย!) ·
+    เปิด stride 2 → ผลลัพธ์เล็กลงครึ่งหนึ่งเพราะกระโดดทีละ 2 ช่อง</p>
+  </div>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่น:</strong>
+    <ul style="margin:6px 0 0">
+      <li>ทำไมเคอร์เนล "ขอบตั้ง" [−1 0 1] ให้ค่า 0 บนพื้นที่เรียบๆ? (คำใบ้: ซ้ายกับขวาของหน้าต่างเหมือนกัน หักล้างพอดี)</li>
+      <li>ค่าติดลบใน feature map แปลว่าอะไร? (คำใบ้: ขอบ "ทิศตรงข้าม" — สว่างซ้าย มืดขวา)</li>
+      <li>เปิด padding แล้วขนาดผลลัพธ์เท่าภาพเดิมพอดี (8×8) — ทำไมนักออกแบบเครือข่ายชอบแบบนี้?</li>
+    </ul>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — ReLU + Pooling ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — ReLU + Max Pooling: กรองแล้วย่อ <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo" id="poolLab">
+    <p style="margin-top:0">feature map จากส่วนที่ 2 จะไหลมาที่นี่ — ขั้นแรก <b>ReLU</b> ตัดค่าติดลบทิ้ง (เก็บเฉพาะ "หลักฐานที่เจอ")
+    แล้ว <b>Max Pooling 2×2</b> ไถลกรอบเขียวเก็บเฉพาะค่าสูงสุดของแต่ละบล็อก → แผนที่เล็กลงครึ่งหนึ่งแต่ใจความยังอยู่</p>
+    <div class="cv-wrap" style="grid-template-columns:auto auto auto">
+      <div>
+        <p class="cv-cap">1) feature map <small>(จากส่วนที่ 2)</small></p>
+        <div class="pxgrid fmap" id="pl0"></div>
+      </div>
+      <div>
+        <p class="cv-cap">2) หลัง ReLU <small>= max(0, x)</small></p>
+        <div class="pxgrid fmap" id="pl1"></div>
+      </div>
+      <div>
+        <p class="cv-cap">3) หลัง Max Pool 2×2 <small id="plDim"></small></p>
+        <div class="pxgrid fmap" id="pl2"></div>
+      </div>
+    </div>
+    <div class="cv-ctl">
+      <button id="plRelu">① ใช้ ReLU</button>
+      <button id="plPool">② Max Pool ทีละบล็อก</button>
+      <span class="cv-note" id="plMsg" style="margin:0">ทำ convolution ในส่วนที่ 2 ให้จบก่อน (หรือกดปุ่มนี้ เดี๋ยวจัดให้อัตโนมัติ)</span>
+    </div>
+    <p class="cv-note" style="margin-top:10px"><b>ทำไมต้อง pooling?</b> ① ลดขนาด → ชั้นถัดไปคำนวณถูกลง 4 เท่า
+    ② <b>ทนการเลื่อน</b>: ลายขยับ 1 พิกเซลภายในบล็อก 2×2 ค่า max ยังเท่าเดิม — แมวขยับนิดเดียวคำตอบไม่เปลี่ยน</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — สถาปัตยกรรมเต็ม + O/X ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ประกอบร่าง: CNN เต็มตัวที่จำแนกภาพได้จริง <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">CNN จริงคือการต่อบล็อกพวกนี้เป็นสายพาน — <b>คลิกแต่ละกล่อง</b>เพื่อดูหน้าที่ (ตัวเลขคือขนาด tensor จริงของเดโมข้างล่าง):</p>
+    <div class="pipe" id="pipe">
+      <div class="pb on" data-i="0"><b>ภาพ</b><span class="dim">8×8</span></div><span class="arr">→</span>
+      <div class="pb" data-i="1"><b>Conv</b><span class="dim">6×6×2</span></div><span class="arr">→</span>
+      <div class="pb" data-i="2"><b>ReLU</b><span class="dim">6×6×2</span></div><span class="arr">→</span>
+      <div class="pb" data-i="3"><b>MaxPool</b><span class="dim">3×3×2</span></div><span class="arr">→</span>
+      <div class="pb" data-i="4"><b>Flatten</b><span class="dim">18</span></div><span class="arr">→</span>
+      <div class="pb" data-i="5"><b>Dense</b><span class="dim">2</span></div><span class="arr">→</span>
+      <div class="pb" data-i="6"><b>Softmax</b><span class="dim">2 คลาส</span></div>
+    </div>
+    <div class="pipe-info" id="pipeInfo"></div>
+  </div>
+
+  <div class="demo" id="oxLab">
+    <h3 style="margin-top:0">✍️ เดโมจริง: วาด O หรือ X แล้วให้ CNN จิ๋วทาย</h3>
+    <p style="margin-top:0">เครือข่ายนี้ใช้ <b>ฟิลเตอร์ทแยง 2 ตัว</b> (↘ และ ↙) — ตัว X เต็มไปด้วยเส้นทแยงจึงจุดฟิลเตอร์ติดสว่าง
+    ส่วนตัว O มีแต่ขอบตั้ง/นอน/โค้ง พลังทแยงต่อหมึกจึงต่ำ · ชั้น Dense ชั่งหลักฐานนี้แล้วส่งเข้า softmax
+    — <b>วาดเอง แก้เอง ลองหลอกมันดู!</b></p>
+    <div class="ox-wrap">
+      <div>
+        <p class="cv-cap">วาดบนกริด 8×8 (คลิก/ลาก)</p>
+        <div class="pxgrid" id="oxGrid"></div>
+        <div class="cv-ctl" style="margin-top:8px">
+          <button data-p="x" class="ox-pre">ใส่ตัว X</button>
+          <button data-p="o" class="ox-pre">ใส่ตัว O</button>
+          <button data-p="clear" class="ox-pre" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ล้าง</button>
+        </div>
+        <div class="cv-ctl">
+          <button id="oxGo" style="background:linear-gradient(135deg,var(--accent),#8b5cf6)">🔮 ให้เครือข่ายทาย</button>
+        </div>
+      </div>
+      <div class="ox-out">
+        <div class="ox-verdict" id="oxVerdict">วาดรูปแล้วกด "ให้เครือข่ายทาย"</div>
+        <div class="ox-bar"><span class="nm" style="color:#e5484d">X</span><span class="tr"><i id="oxBarX" style="background:linear-gradient(90deg,#e5484d,#f97316)"></i></span><span class="pc" id="oxPcX">–</span></div>
+        <div class="ox-bar"><span class="nm" style="color:#2456e6">O</span><span class="tr"><i id="oxBarO" style="background:linear-gradient(90deg,#2456e6,#60a5fa)"></i></span><span class="pc" id="oxPcO">–</span></div>
+        <div class="ox-minimaps">
+          <div><p class="cv-cap" style="margin-bottom:4px">แผนที่ฟิลเตอร์ ↘ <small>(หลัง pool)</small></p><div class="pxgrid fmap" id="oxM1"></div></div>
+          <div><p class="cv-cap" style="margin-bottom:4px">แผนที่ฟิลเตอร์ ↙ <small>(หลัง pool)</small></p><div class="pxgrid fmap" id="oxM2"></div></div>
+        </div>
+        <div class="ox-nums" id="oxNums">ตัวเลขการตัดสินใจจะแสดงตรงนี้</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👁️ ลำดับชั้นของการมองเห็น — ชั้นลึกขึ้น มองเห็น "เรื่องใหญ่ขึ้น"</h3>
+    <div class="hier">
+      <div class="hc">
+        <svg viewBox="0 0 84 84"><rect x="4" y="4" width="76" height="76" rx="10" fill="none" stroke="currentColor" opacity=".25"/><path d="M20 64 L38 20" stroke="#2456e6" stroke-width="5" stroke-linecap="round"/><path d="M46 22 v40" stroke="#12a150" stroke-width="5" stroke-linecap="round"/><path d="M56 58 h16" stroke="#e5484d" stroke-width="5" stroke-linecap="round"/></svg>
+        <b>ชั้นแรก: ขอบและเส้น</b>
+        <p>ฟิลเตอร์จับขอบตั้ง นอน เฉียง จุดสี — เหมือนที่เราเพิ่งเล่นในส่วนที่ 2</p>
+      </div>
+      <div class="hc">
+        <svg viewBox="0 0 84 84"><rect x="4" y="4" width="76" height="76" rx="10" fill="none" stroke="currentColor" opacity=".25"/><circle cx="30" cy="34" r="9" fill="none" stroke="#2456e6" stroke-width="4"/><circle cx="55" cy="34" r="9" fill="none" stroke="#2456e6" stroke-width="4"/><path d="M28 58 q14 12 28 0" fill="none" stroke="#e5484d" stroke-width="4" stroke-linecap="round"/></svg>
+        <b>ชั้นกลาง: ลวดลาย</b>
+        <p>ขอบหลายแบบประกอบเป็นตา จมูก ล้อรถ ลายผ้า — receptive field กว้างขึ้น</p>
+      </div>
+      <div class="hc">
+        <svg viewBox="0 0 84 84"><rect x="4" y="4" width="76" height="76" rx="10" fill="none" stroke="currentColor" opacity=".25"/><circle cx="42" cy="38" r="22" fill="none" stroke="#f59e0b" stroke-width="4"/><circle cx="34" cy="33" r="3.4" fill="#f59e0b"/><circle cx="50" cy="33" r="3.4" fill="#f59e0b"/><path d="M33 46 q9 8 18 0" fill="none" stroke="#f59e0b" stroke-width="3.6" stroke-linecap="round"/><path d="M24 22 l7 -10 M60 22 l-7 -10" stroke="#f59e0b" stroke-width="5" stroke-linecap="round"/></svg>
+        <b>ชั้นลึก: วัตถุทั้งตัว</b>
+        <p>ลวดลายประกอบเป็น "หน้าแมว" "รถทั้งคัน" — พร้อมส่งให้ชั้นตัดสินใจ</p>
+      </div>
+    </div>
+    <p style="margin-bottom:0; margin-top:10px"><strong>ที่มหัศจรรย์ที่สุด:</strong> ฟิลเตอร์ทุกตัวในลำดับชั้นนี้ <em>ไม่มีใครออกแบบมือ</em> —
+    ทั้งหมดถูก "เรียน" ขึ้นมาเองด้วย backpropagation จากเรื่อง Backpropagation เป๊ะๆ (ฟิลเตอร์ก็คือ weight!)
+    ในเดโม O/X ข้างบนเราตั้งฟิลเตอร์มือให้ดูง่าย แต่ CNN จริงค้นพบฟิลเตอร์ที่ดีกว่าเราคิดเองได้เสมอ</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — convolution ด้วยมือ</div>
+    <p>ภาพ 4×4 และเคอร์เนล "ขอบตั้ง" 3×3 (stride 1, ไม่มี padding):</p>
+    <div class="math" style="text-align:center">ภาพ = [ 0 0 1 1 / 0 0 1 1 / 0 0 0 0 / 0 0 0 0 ] &nbsp;&nbsp; K = [ −1 0 1 / −1 0 1 / −1 0 1 ]</div>
+    <p>จงหา feature map ผลลัพธ์ (ขนาด 2×2) โดยแสดงการคูณ-บวกของทุกเซลล์</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ขนาดผลลัพธ์ = (4−3)/1 + 1 = 2 → feature map 2×2<br><br>
+      <strong>เซลล์ (แถว1, คอล1)</strong> — หน้าต่างคือ [0 0 1 / 0 0 1 / 0 0 0]:<br>
+      (0×−1)+(0×0)+(1×1) + (0×−1)+(0×0)+(1×1) + (0×−1)+(0×0)+(0×1) = 1+1+0 = <b>2</b><br>
+      <strong>เซลล์ (แถว1, คอล2)</strong> — หน้าต่าง [0 1 1 / 0 1 1 / 0 0 0]:<br>
+      (0×−1)+(1×0)+(1×1) + (0×−1)+(1×0)+(1×1) + 0 = 1+1+0 = <b>2</b><br>
+      <strong>เซลล์ (แถว2, คอล1)</strong> — หน้าต่าง [0 0 1 / 0 0 0 / 0 0 0]:<br>
+      (1×1) เพียงเทอมเดียวที่ไม่เป็นศูนย์ = <b>1</b><br>
+      <strong>เซลล์ (แถว2, คอล2)</strong> — หน้าต่าง [0 1 1 / 0 0 0 / 0 0 0]:<br>
+      (1×0)+(1×1) = <b>1</b><br><br>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>feature map = <b>[ 2 2 / 1 1 ]</b> — ค่าสูงแถวบนเพราะ "ขอบตั้ง" ของบล็อกสว่างอยู่บริเวณนั้น
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — สูตรขนาดผลลัพธ์</div>
+    <p>ใช้สูตร (n + 2p − k)/s + 1 หาขนาด feature map:
+    <br>(ก) ภาพ 28×28, เคอร์เนล 3×3, ไม่มี padding, stride 1
+    <br>(ข) ภาพ 32×32, เคอร์เนล 5×5, padding 2, stride 2</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      (ก) (28 + 0 − 3)/1 + 1 = <b>26×26</b><br>
+      (ข) (32 + 4 − 5)/2 + 1 = 31/2 + 1 → ปัดลง 15 + 1 = <b>16×16</b> (หารไม่ลงตัวให้ปัดเศษทิ้ง)
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 3 (ทำในคาบ) — ทำไม pooling ทำให้ "ทนการเลื่อน"</div>
+    <p>สมมติ feature map บล็อก 2×2 หนึ่งมีค่า [0 7 / 1 2] แล้วภาพต้นฉบับเลื่อนไป 1 พิกเซลจนบล็อกกลายเป็น [7 0 / 2 1]
+    จงหา max ของทั้งสองกรณี และอธิบายว่านี่ช่วยการจำแนกภาพอย่างไร</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      max เท่ากันทั้งคู่ = <b>7</b> — ตำแหน่งภายในบล็อกเปลี่ยน แต่ "หลักฐานที่แรงที่สุด" ยังถูกส่งต่อเหมือนเดิม
+      ดังนั้นวัตถุขยับเล็กน้อย ผลชั้นถัดไปแทบไม่เปลี่ยน → เครือข่ายไม่ต้องเรียนทุกตำแหน่งแยกกัน
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — ออกแบบเคอร์เนลเอง</div>
+    <p>จงออกแบบเคอร์เนล 3×3 ที่ตอบสนองแรงกับ <strong>เส้นทแยงมุม ↘</strong> แต่เงียบกับเส้นตั้ง/เส้นนอน
+    แล้วไปพิสูจน์ในเวทีเล่นส่วนที่ 2: ใส่เลขเคอร์เนลของคุณ วาดเส้นทแยง เทียบกับวาดเส้นตั้ง — แนบภาพผลลัพธ์ทั้งสอง
+    (คำใบ้: ช่องทแยงเป็นบวก ช่องข้างเคียงเป็นลบ ให้ผลรวมทั้งเคอร์เนล ≈ 0)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 5 (การบ้าน) — สะพานสู่สัปดาห์หน้า</div>
+    <p>CNN เกิดจากการสังเกตธรรมชาติของ "ภาพ": ข้อมูลข้างเคียงเกี่ยวข้องกัน + ลายเดียวกันโผล่ได้ทุกตำแหน่ง
+    จงวิเคราะห์ธรรมชาติของ <strong>"ข้อความ"</strong> ว่าต่างจากภาพอย่างไร (ลำดับสำคัญไหม? คำที่เกี่ยวข้องกันอยู่ใกล้กันเสมอหรือไม่ — ยกตัวอย่างประโยคที่คำต้นกับคำท้ายผูกกัน)
+    แล้วเสนอว่าสถาปัตยกรรมสำหรับข้อความควรมีความสามารถอะไร (การบ้าน — เฉลยคือเนื้อหาเรื่อง AI คืออะไร3–14!)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 6 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    CNN สอนบทเรียนที่ใหญ่ที่สุดข้อหนึ่งของดีปเลิร์นนิง: <strong>"สถาปัตยกรรมที่เข้ากับธรรมชาติของข้อมูล ชนะเสมอ"</strong> —
+    ภาพมีความเป็น "เฉพาะที่" และ "ลายซ้ำได้ทุกตำแหน่ง" convolution จึงถูกออกแบบมารับคุณสมบัตินี้ตรงๆ แล้วชนะ MLP ขาดลอยทั้งที่พารามิเตอร์น้อยกว่าเป็นพันเท่า<br>
+    แล้ว <strong>ข้อความ</strong> ล่ะ? ธรรมชาติของมันคือ <em>ลำดับ</em> และ <em>การอ้างถึงระยะไกล</em> ("แมวตัวที่เจอเมื่อเช้า<b>มัน</b>หายไปแล้ว" — "มัน" ผูกกับ "แมว" ที่อยู่ห่างออกไปหลายคำ)
+    ไม่มีหน้าต่าง 3×3 ไหนมองเห็นความสัมพันธ์แบบนี้ได้<br>
+    <strong>สัปดาห์หน้า (หลังเทรนจริงและสอบกลางภาค):</strong> เราจะไล่ล่าสถาปัตยกรรมสำหรับภาษา — ความพยายามแรกชื่อ <strong>RNN</strong> (เรื่อง Language Model &amp; RNN) และคำตอบตัวจริงที่อยู่ข้างใน GPT ทุกตัวคือ <strong>Transformer</strong> (เรื่อง Attention &amp; Transformer)
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=KuXjwB4LzSA" target="_blank">But what is a convolution?</a> — ภาพเคลื่อนไหวอธิบาย convolution สวยที่สุดเท่าที่มี</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=HGwBXDKFk9I" target="_blank">Neural Networks Part 8: Image Classification with CNNs</a> — ไล่ CNN ทีละขั้นด้วยเลขจริงแบบเดียวกับคาบนี้</li>
+      <li><span class="src">Interactive</span> <a href="https://poloclub.github.io/cnn-explainer/" target="_blank">CNN Explainer</a> — เว็บโต้ตอบส่อง CNN จริงทีละชั้น ซูมดูทุกการคูณได้ (Georgia Tech)</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week09.html">← Backpropagation</a>
+    <a href="week11.html">เทรนจริงให้เป็น →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ======================================================================
+   วิดเจ็ตนับพารามิเตอร์ (ส่วนที่ 1)
+   ====================================================================== */
+(function(){
+  const n=document.getElementById('pcN'); if(!n) return;
+  const nv=document.getElementById('pcNv'), out=document.getElementById('pcOut'),
+        mlp=document.getElementById('pcMlp'), rgb=document.getElementById('pcRgb');
+  function upd(){
+    const N=+n.value, w=N*N*128;
+    nv.textContent=N+'×'+N;
+    out.textContent=w.toLocaleString();
+    mlp.textContent=w.toLocaleString();
+    rgb.textContent='(ถ้าเป็นภาพสี RGB คูณอีก 3 = '+(w*3).toLocaleString()+'!)';
+  }
+  n.addEventListener('input', upd); upd();
+})();
+</script>
+
+<script>
+/* ======================================================================
+   Convolution Playground (ส่วนที่ 2) + ReLU/Pooling (ส่วนที่ 3)
+   — IIFE เดียว แชร์ feature map ระหว่างสองส่วน · ตรรกะ synchronous ทั้งหมด
+   ====================================================================== */
+(function(){
+  const imgGrid=document.getElementById('imgGrid'); if(!imgGrid) return;
+  const kGrid=document.getElementById('kGrid'), fmGrid=document.getElementById('fmGrid');
+  const macEl=document.getElementById('macLine');
+  const N=8;
+
+  /* ---------- สถานะ ---------- */
+  const PRESETS={
+    vline: r=>r.map((row,i)=>row.map((_,j)=> (j===3||j===4)?1:0)),
+    hline: r=>r.map((row,i)=>row.map((_,j)=> (i===3||i===4)?1:0)),
+    x:     ()=>[[1,0,0,0,0,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,0,0,1,0,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,0,1,0,0,1,0,0],[0,1,0,0,0,0,1,0],[1,0,0,0,0,0,0,1]],
+    o:     ()=>[[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,1,1,1,0,0]],
+    clear: r=>r.map(row=>row.map(()=>0))
+  };
+  const KERNELS={
+    vedge:[[-1,0,1],[-1,0,1],[-1,0,1]],
+    hedge:[[-1,-1,-1],[0,0,0],[1,1,1]],
+    blur: [[0.11,0.11,0.11],[0.11,0.11,0.11],[0.11,0.11,0.11]],
+    sharp:[[0,-1,0],[-1,5,-1],[0,-1,0]]
+  };
+  const S={
+    img: PRESETS.vline(Array.from({length:N},()=>Array(N).fill(0))),
+    K: KERNELS.vedge.map(r=>r.slice()),
+    stride:1, pad:0,
+    pos:0, fmap:null, timer:null,
+    rmap:null, pmap:null, poolPos:0, poolTimer:null,
+    paint:null
+  };
+
+  const nf=v=>{ const r=Math.round(v*100)/100; return (Math.abs(r-Math.round(r))<1e-9? String(Math.round(r)) : String(r)); };
+  const outSize=()=> Math.floor((N + 2*S.pad - 3)/S.stride) + 1;
+
+  /* ---------- สีฮีตแมป ---------- */
+  function heat(v, mx){
+    if(v==null) return '';
+    const a=Math.min(1, Math.abs(v)/(mx||1))*0.85+0.08;
+    return v>=0? 'rgba(229,72,77,'+a.toFixed(2)+')' : 'rgba(36,86,230,'+a.toFixed(2)+')';
+  }
+
+  /* ---------- เรนเดอร์กริดภาพ (รวมช่อง padding จางๆ) ---------- */
+  function renderImg(winR, winC){
+    const P=S.pad, M=N+2*P;
+    imgGrid.style.gridTemplateColumns='repeat('+M+',auto)';
+    let h='';
+    for(let r=0;r<M;r++) for(let c=0;c<M;c++){
+      const inner = r>=P && r<N+P && c>=P && c<N+P;
+      const v = inner? S.img[r-P][c-P] : 0;
+      const isWin = winR!=null && r>=winR && r<winR+3 && c>=winC && c<winC+3;
+      h+='<div class="px'+(inner? (v?' on':'') : ' padc')+(isWin?' win':'')+'" '
+        +(inner? 'data-r="'+(r-P)+'" data-c="'+(c-P)+'"' : '')+'>'+(inner? v : 0)+'</div>';
+    }
+    imgGrid.innerHTML=h;
+  }
+
+  /* ---------- เรนเดอร์เคอร์เนล (input แก้ได้) ---------- */
+  function renderK(){
+    let h='';
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+      h+='<div class="px kcell"><input type="number" step="any" data-r="'+r+'" data-c="'+c+'" value="'+nf(S.K[r][c])+'"></div>';
+    }
+    kGrid.innerHTML=h;
+  }
+  kGrid.addEventListener('change', e=>{
+    const i=e.target; if(!i.dataset.r) return;
+    S.K[+i.dataset.r][+i.dataset.c]=parseFloat(i.value)||0;
+    document.querySelectorAll('#kSeg button').forEach(b=>b.classList.remove('on'));
+    resetConv();
+  });
+
+  /* ---------- เรนเดอร์ feature map ---------- */
+  function renderFmap(){
+    const n=outSize();
+    fmGrid.style.gridTemplateColumns='repeat('+n+',auto)';
+    const flat=(S.fmap||[]).flat().filter(v=>v!=null);
+    const mx=Math.max(1,...flat.map(Math.abs));
+    let h='';
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      const v=S.fmap? S.fmap[r][c] : null;
+      const idx=r*n+c;
+      h+='<div class="px'+(idx===S.pos&&v==null?' cur':'')+'" style="background:'+heat(v,mx)+';color:'+(v!=null&&Math.abs(v)/mx>0.5?'#fff':'')+'">'+(v==null?'·':nf(v))+'</div>';
+    }
+    fmGrid.innerHTML=h;
+    document.getElementById('fmDim').textContent='('+n+'×'+n+')';
+    document.getElementById('fmFormula').textContent='(8 + '+(2*S.pad)+' − 3)/'+S.stride+' + 1 = '+n;
+    document.getElementById('imgDim').textContent = S.pad? '(8×8 + ขอบ padding)' : '(8×8)';
+  }
+
+  /* ---------- อ่านค่าพิกเซลรวม padding ---------- */
+  const pxAt=(r,c)=>{ const rr=r-S.pad, cc=c-S.pad;
+    return (rr>=0&&rr<N&&cc>=0&&cc<N)? S.img[rr][cc] : 0; };
+
+  /* ---------- หนึ่งขั้น convolution (synchronous) ---------- */
+  function step(){
+    const n=outSize();
+    if(!S.fmap) S.fmap=Array.from({length:n},()=>Array(n).fill(null));
+    if(S.pos>=n*n){ stopAuto(); return false; }
+    const r=Math.floor(S.pos/n), c=S.pos%n;
+    const wr=r*S.stride, wc=c*S.stride;      /* มุมบนซ้ายของหน้าต่างบนภาพ (รวม pad) */
+    let sum=0; const terms=[];
+    for(let i=0;i<3;i++) for(let j=0;j<3;j++){
+      const p=pxAt(wr+i, wc+j), k=S.K[i][j];
+      sum+=p*k;
+      terms.push('(<span class="ip">'+nf(p)+'</span>×<span class="kp">'+nf(k)+'</span>)');
+    }
+    sum=Math.round(sum*100)/100;
+    S.fmap[r][c]=sum;
+    S.pos++;
+    macEl.innerHTML='เซลล์ (แถว '+(r+1)+', คอล '+(c+1)+'):&nbsp; '+terms.join(' + ')+' = <b class="res">'+nf(sum)+'</b>';
+    renderImg(wr, wc);
+    renderFmap();
+    invalidatePool();
+    return true;
+  }
+  function finishConv(){ while(step()); stopAuto(); renderImg(null,null); }
+
+  function resetConv(){
+    stopAuto(); S.fmap=null; S.pos=0;
+    macEl.innerHTML='กด ▶ ทีละขั้น เพื่อดูการคูณจับคู่ <span class="ip">พิกเซล</span> × <span class="kp">เคอร์เนล</span> ทั้ง 9 คู่ตรงนี้…';
+    renderImg(null,null); renderFmap(); invalidatePool();
+  }
+  function stopAuto(){ if(S.timer){ clearInterval(S.timer); S.timer=null;
+    document.getElementById('cvAuto').textContent='เล่นอัตโนมัติ'; } }
+
+  document.getElementById('cvStep').addEventListener('click', ()=>{ stopAuto(); step(); });
+  document.getElementById('cvAuto').addEventListener('click', function(){
+    if(S.timer){ stopAuto(); return; }
+    this.textContent='⏸ หยุด';
+    S.timer=setInterval(()=>{ if(!step()) stopAuto(); }, 200);
+  });
+  document.getElementById('cvReset').addEventListener('click', resetConv);
+
+  /* ---------- ปุ่ม preset ภาพ / เคอร์เนล / stride / padding ---------- */
+  document.querySelectorAll('.cv-pre').forEach(b=>b.addEventListener('click', ()=>{
+    S.img=PRESETS[b.dataset.p](S.img); resetConv();
+  }));
+  document.getElementById('kSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    S.K=KERNELS[b.dataset.k].map(r=>r.slice()); renderK(); resetConv();
+  });
+  document.getElementById('strideSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    S.stride=+b.dataset.s; resetConv();
+  });
+  document.getElementById('padSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    S.pad=+b.dataset.pd; resetConv();
+  });
+
+  /* ---------- วาดพิกเซล (คลิก/ลาก) ---------- */
+  function paintCell(el){
+    if(!el||!el.dataset.r) return;
+    const r=+el.dataset.r, c=+el.dataset.c;
+    if(S.paint==null) S.paint = S.img[r][c]? 0:1;
+    if(S.img[r][c]!==S.paint){ S.img[r][c]=S.paint; resetConv(); }
+  }
+  imgGrid.addEventListener('pointerdown', e=>{
+    S.paint=null; paintCell(e.target.closest('.px'));
+    const move=ev=>{ const el=document.elementFromPoint(ev.clientX,ev.clientY);
+      paintCell(el&&el.closest('#imgGrid .px')); };
+    const up=()=>{ S.paint=null; document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); };
+    document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
+  });
+
+  /* ======================================================================
+     ส่วนที่ 3 — ReLU + Max Pool (ใช้ S.fmap)
+     ====================================================================== */
+  const pl0=document.getElementById('pl0'), pl1=document.getElementById('pl1'), pl2=document.getElementById('pl2');
+  const plMsg=document.getElementById('plMsg');
+
+  function renderMap(el, map, hl){
+    if(!map){ el.style.gridTemplateColumns='repeat(1,auto)'; el.innerHTML='<div class="px" style="width:auto;padding:0 10px">—</div>'; return; }
+    const n=map.length, m=map[0].length;
+    el.style.gridTemplateColumns='repeat('+m+',auto)';
+    const mx=Math.max(1,...map.flat().filter(v=>v!=null).map(Math.abs));
+    let h='';
+    for(let r=0;r<n;r++) for(let c=0;c<m;c++){
+      const v=map[r][c];
+      const isH = hl && r>=hl.r && r<hl.r+2 && c>=hl.c && c<hl.c+2;
+      h+='<div class="px'+(isH?' pwin':'')+'" style="background:'+heat(v,mx)+';color:'+(v!=null&&Math.abs(v)/mx>0.5?'#fff':'')+'">'+(v==null?'·':nf(v))+'</div>';
+    }
+    el.innerHTML=h;
+  }
+  function invalidatePool(){
+    S.rmap=null; S.pmap=null; S.poolPos=0;
+    if(S.poolTimer){ clearInterval(S.poolTimer); S.poolTimer=null; }
+    renderMap(pl0, S.fmap && S.pos>=outSize()*outSize()? S.fmap : null);
+    renderMap(pl1,null); renderMap(pl2,null);
+    document.getElementById('plDim').textContent='';
+  }
+
+  document.getElementById('plRelu').addEventListener('click', ()=>{
+    const n=outSize();
+    if(!S.fmap || S.pos<n*n){ finishConv(); }          /* conv ยังไม่จบ → จบให้ทันที */
+    S.rmap=S.fmap.map(r=>r.map(v=>Math.max(0,v)));
+    renderMap(pl0,S.fmap); renderMap(pl1,S.rmap); renderMap(pl2,null);
+    plMsg.textContent='ค่าติดลบทั้งหมดกลายเป็น 0 — เก็บเฉพาะ "เจอลายนี้จริง" · ต่อด้วยปุ่ม ②';
+  });
+
+  document.getElementById('plPool').addEventListener('click', function(){
+    if(!S.rmap){ document.getElementById('plRelu').click(); }
+    if(S.poolTimer){ clearInterval(S.poolTimer); S.poolTimer=null; this.textContent='② Max Pool ทีละบล็อก'; return; }
+    const n=S.rmap.length, pn=Math.floor(n/2);
+    if(pn<1){ plMsg.textContent='แผนที่เล็กเกินกว่าจะ pool (ลอง stride 1)'; return; }
+    S.pmap=Array.from({length:pn},()=>Array(pn).fill(null));
+    S.poolPos=0;
+    document.getElementById('plDim').textContent='('+pn+'×'+pn+')'+(n%2?' — เศษขอบถูกตัดทิ้ง':'');
+    this.textContent='⏸ หยุด';
+    const btn=this;
+    S.poolTimer=setInterval(()=>{
+      if(S.poolPos>=pn*pn){ clearInterval(S.poolTimer); S.poolTimer=null;
+        btn.textContent='② Max Pool ทีละบล็อก';
+        renderMap(pl1,S.rmap,null);
+        plMsg.textContent='เสร็จ! ขนาดลดจาก '+n+'×'+n+' เหลือ '+pn+'×'+pn+' แต่ค่าเด่นยังครบ'; return; }
+      const r=Math.floor(S.poolPos/pn), c=S.poolPos%pn;
+      const vals=[S.rmap[2*r][2*c], S.rmap[2*r][2*c+1], S.rmap[2*r+1][2*c], S.rmap[2*r+1][2*c+1]];
+      S.pmap[r][c]=Math.max.apply(null,vals);
+      S.poolPos++;
+      renderMap(pl1,S.rmap,{r:2*r,c:2*c});
+      renderMap(pl2,S.pmap);
+      plMsg.textContent='บล็อก (แถว '+(r+1)+', คอล '+(c+1)+'): max('+vals.map(nf).join(', ')+') = '+nf(S.pmap[r][c]);
+    }, 450);
+  });
+
+  /* ---------- เริ่มต้น ---------- */
+  renderK(); resetConv();
+})();
+</script>
+
+<script>
+/* ======================================================================
+   Pipeline คลิกดูคำอธิบาย (ส่วนที่ 4)
+   ====================================================================== */
+(function(){
+  const pipe=document.getElementById('pipe'); if(!pipe) return;
+  const info=document.getElementById('pipeInfo');
+  const TXT=[
+    '<b>ภาพอินพุต 8×8</b> — ตัวเลขความสว่าง 0/1 จำนวน 64 ช่อง นี่คือทั้งหมดที่เครื่อง "เห็น"',
+    '<b>Convolution</b> — ฟิลเตอร์ 3×3 จำนวน 2 ตัว (↘ กับ ↙) ไถลทั้งภาพ ได้ feature map 6×6 สองแผ่น = 6×6×2 · พารามิเตอร์แค่ 3×3×2 = 18 ตัว',
+    '<b>ReLU</b> — max(0, x) ทุกช่อง ตัด "หลักฐานเชิงลบ" ทิ้ง เหลือเฉพาะจุดที่เจอลายจริง (ขนาดไม่เปลี่ยน)',
+    '<b>Max Pooling 2×2</b> — เก็บค่าสูงสุดของแต่ละบล็อก ขนาดลดครึ่ง: 6×6×2 → 3×3×2 ทนการเลื่อนภาพเล็กน้อย',
+    '<b>Flatten</b> — คลี่ 3×3×2 = 18 ช่องเป็นเวกเตอร์แถวเดียว พร้อมส่งเข้าเครือข่ายแบบเรื่อง Neural Network',
+    '<b>Dense</b> — ชั่งน้ำหนักหลักฐาน 18 ช่องเป็นคะแนน 2 คลาส (z_X, z_O) — นี่คือ MLP ธรรมดานั่นเอง!',
+    '<b>Softmax</b> — แปลงคะแนนเป็นความน่าจะเป็นรวม 100% เหมือนชั้นสุดท้ายของ LLM ตอนเลือกคำถัดไปเป๊ะ'
+  ];
+  info.innerHTML=TXT[0];
+  pipe.addEventListener('click', e=>{
+    const b=e.target.closest('.pb'); if(!b) return;
+    pipe.querySelectorAll('.pb').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    info.innerHTML=TXT[+b.dataset.i];
+  });
+})();
+</script>
+
+<script>
+/* ======================================================================
+   เดโมจำแนก O/X (ส่วนที่ 4) — CNN จิ๋ว weights ตั้งมือ ตรวจเลขแล้ว:
+   preset X: diag=24, ink=16 → ratio 1.50 · preset O: diag=16, ink=20 → ratio 0.80
+   เส้นตัด ratio = 1.15 → X ชนะเมื่อทแยงหนาแน่น
+   ====================================================================== */
+(function(){
+  const grid=document.getElementById('oxGrid'); if(!grid) return;
+  const N=8;
+  const PRE={
+    x:[[1,0,0,0,0,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,0,0,1,0,0],[0,0,0,1,1,0,0,0],[0,0,0,1,1,0,0,0],[0,0,1,0,0,1,0,0],[0,1,0,0,0,0,1,0],[1,0,0,0,0,0,0,1]],
+    o:[[0,0,1,1,1,1,0,0],[0,1,0,0,0,0,1,0],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,1],[0,1,0,0,0,0,1,0],[0,0,1,1,1,1,0,0]]
+  };
+  const F1=[[1,-0.5,-0.5],[-0.5,1,-0.5],[-0.5,-0.5,1]];   /* จับทแยง ↘ */
+  const F2=[[-0.5,-0.5,1],[-0.5,1,-0.5],[1,-0.5,-0.5]];   /* จับทแยง ↙ */
+  let img=PRE.x.map(r=>r.slice());
+  let paint=null;
+
+  const nf=v=>{ const r=Math.round(v*100)/100; return (Math.abs(r-Math.round(r))<1e-9? String(Math.round(r)) : String(r)); };
+
+  function render(){
+    grid.style.gridTemplateColumns='repeat('+N+',auto)';
+    let h='';
+    for(let r=0;r<N;r++) for(let c=0;c<N;c++)
+      h+='<div class="px'+(img[r][c]?' on':'')+'" data-r="'+r+'" data-c="'+c+'">'+img[r][c]+'</div>';
+    grid.innerHTML=h;
+  }
+  function paintCell(el){
+    if(!el||!el.dataset.r) return;
+    const r=+el.dataset.r, c=+el.dataset.c;
+    if(paint==null) paint = img[r][c]? 0:1;
+    if(img[r][c]!==paint){ img[r][c]=paint; render(); }
+  }
+  grid.addEventListener('pointerdown', e=>{
+    paint=null; paintCell(e.target.closest('.px'));
+    const move=ev=>{ const el=document.elementFromPoint(ev.clientX,ev.clientY);
+      paintCell(el&&el.closest('#oxGrid .px')); };
+    const up=()=>{ paint=null; document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); };
+    document.addEventListener('pointermove',move); document.addEventListener('pointerup',up);
+  });
+  document.querySelectorAll('.ox-pre').forEach(b=>b.addEventListener('click', ()=>{
+    img = b.dataset.p==='clear'? img.map(r=>r.map(()=>0)) : PRE[b.dataset.p].map(r=>r.slice());
+    render();
+  }));
+
+  /* ---- forward pass ทั้งสาย (synchronous) ---- */
+  const conv=(im,K)=>{ const o=[]; for(let r=0;r<6;r++){ const row=[];
+    for(let c=0;c<6;c++){ let s=0;
+      for(let i=0;i<3;i++) for(let j=0;j<3;j++) s+=im[r+i][c+j]*K[i][j];
+      row.push(s); } o.push(row); } return o; };
+  const relu=m=>m.map(r=>r.map(v=>Math.max(0,v)));
+  const pool=m=>{ const o=[]; for(let r=0;r<3;r++){ const row=[];
+    for(let c=0;c<3;c++) row.push(Math.max(m[2*r][2*c],m[2*r][2*c+1],m[2*r+1][2*c],m[2*r+1][2*c+1]));
+    o.push(row); } return o; };
+
+  function renderMini(el,map){
+    const mx=Math.max(1,...map.flat().map(Math.abs));
+    el.style.gridTemplateColumns='repeat(3,auto)';
+    let h='';
+    map.flat().forEach(v=>{
+      const a=Math.min(1,Math.abs(v)/mx)*0.85+0.08;
+      h+='<div class="px" style="background:rgba(229,72,77,'+(v>0?a.toFixed(2):0.05)+');color:'+(v/mx>0.5?'#fff':'')+'">'+nf(v)+'</div>';
+    });
+    el.innerHTML=h;
+  }
+
+  document.getElementById('oxGo').addEventListener('click', ()=>{
+    const ink=img.flat().reduce((a,b)=>a+b,0);
+    const vd=document.getElementById('oxVerdict');
+    if(ink<4){ vd.textContent='ยังไม่มีรูปเลย — วาดก่อนสิ!'; vd.style.borderColor=''; vd.style.color=''; return; }
+    const p1=pool(relu(conv(img,F1))), p2=pool(relu(conv(img,F2)));
+    const diag=[...p1.flat(),...p2.flat()].reduce((a,b)=>a+b,0);
+    const ratio=diag/ink;
+    /* Dense ตั้งมือ: z = 6 × (ratio − 1.15) แล้ว softmax(z, −z) */
+    const z=6*(ratio-1.15);
+    const eZ=Math.exp(z), eZn=Math.exp(-z);
+    const pX=eZ/(eZ+eZn), pO=1-pX;
+    renderMini(document.getElementById('oxM1'),p1);
+    renderMini(document.getElementById('oxM2'),p2);
+    document.getElementById('oxBarX').style.width=(pX*100).toFixed(1)+'%';
+    document.getElementById('oxBarO').style.width=(pO*100).toFixed(1)+'%';
+    document.getElementById('oxPcX').textContent=(pX*100).toFixed(1)+'%';
+    document.getElementById('oxPcO').textContent=(pO*100).toFixed(1)+'%';
+    const isX=pX>=0.5;
+    vd.textContent='ทายว่า: '+(isX?'X':'O')+' ('+((isX?pX:pO)*100).toFixed(1)+'% มั่นใจ)';
+    vd.style.borderColor=isX?'#e5484d':'#2456e6';
+    vd.style.color=isX?'#e5484d':'#2456e6';
+    document.getElementById('oxNums').innerHTML=
+      'พลังทแยงรวม (หลัง ReLU+Pool ทั้ง 2 แผนที่) = <b>'+nf(diag)+'</b> · หมึกรวม = <b>'+ink+'</b><br>'
+      +'สัดส่วนทแยง/หมึก = '+nf(diag)+' ÷ '+ink+' = <b>'+ratio.toFixed(2)+'</b> (เส้นตัดที่ 1.15)<br>'
+      +'คะแนน Dense: z = 6 × ('+ratio.toFixed(2)+' − 1.15) = <b>'+z.toFixed(2)+'</b> → softmax → X '+(pX*100).toFixed(1)+'% / O '+(pO*100).toFixed(1)+'%';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

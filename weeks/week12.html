@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สอบกลางภาค + ทบทวน | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .demo .try { background:var(--amber-soft); border-radius:8px; padding:8px 12px; margin-top:12px; font-size:.92rem; line-height:1.75; }
+  .demo .try::before { content:"✍️ ลองเอง: "; font-weight:700; color:var(--amber); }
+  .demo button:disabled { opacity:.45; cursor:not-allowed; transform:none !important; box-shadow:none !important; filter:none !important; }
+
+  /* ═══════ 1) Flashcards ═══════ */
+  .fc-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .fc-count { font-weight:700; font-size:.92rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .fc-prog { flex:1; min-width:150px; height:10px; background:var(--accent-soft); border-radius:999px; overflow:hidden; }
+  .fc-prog i { display:block; height:100%; width:0; border-radius:999px;
+    background:linear-gradient(90deg,var(--green),#3ecf96); transition:width .4s; }
+  .fc-top button { margin:0; }
+  .fc-scene { perspective:1100px; margin:14px 0 4px; }
+  .fc-card3d { position:relative; width:100%; min-height:215px; transform-style:preserve-3d;
+    transition:transform .55s cubic-bezier(.3,.9,.35,1); cursor:pointer; }
+  .fc-card3d.fc-on { transform:rotateY(180deg); }
+  .fc-card3d.fc-snap { transition:none; }
+  .fc-face { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    border:2px solid var(--accent); border-radius:14px; background:var(--card); padding:14px 18px;
+    display:flex; flex-direction:column; gap:8px; overflow:auto;
+    box-shadow:0 10px 26px -18px rgba(15,23,42,.45); }
+  .fc-face.fc-back { transform:rotateY(180deg); border-color:var(--green); background:var(--green-soft); }
+  [data-theme="dark"] .fc-face.fc-back { background:#13251f; }
+  .fc-wtag { align-self:flex-start; background:var(--accent-soft); color:var(--accent); font-weight:700;
+    font-size:.78rem; border-radius:999px; padding:3px 10px; text-decoration:none; }
+  .fc-wtag:hover { filter:brightness(1.08); text-decoration:underline; }
+  .fc-back .fc-wtag { background:var(--green-soft); color:var(--green); outline:1px solid var(--green); }
+  [data-theme="dark"] .fc-back .fc-wtag { background:#0f1e19; }
+  .fc-q { font-size:1.05rem; font-weight:600; line-height:1.85; margin:auto 0; }
+  .fc-a { font-size:.95rem; line-height:1.9; margin:auto 0; }
+  .fc-hint { font-size:.76rem; color:var(--muted); text-align:center; }
+  .fc-btns { display:flex; gap:4px; flex-wrap:wrap; }
+  #fcAgain { background:linear-gradient(135deg,var(--amber),#d99a2b); }
+  .fc-done { display:none; border:2px dashed var(--green); border-radius:12px; background:var(--green-soft);
+    padding:14px 18px; margin-top:12px; line-height:1.9; }
+  [data-theme="dark"] .fc-done { background:#13251f; }
+
+  /* ═══════ 2) แผนที่ความรู้ ═══════ */
+  .km-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  @media(min-width:820px){ .km-grid { grid-template-columns:1.65fr 1fr; align-items:start; } }
+  .km-svgwrap { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:4px; }
+  .km-svgwrap svg { display:block; width:100%; height:auto; }
+  .km-edge { stroke:#8b93ad; stroke-width:2.5; fill:none; opacity:.5; transition:opacity .3s, stroke .3s; }
+  .km-edge.km-fade { stroke-dasharray:5 7; opacity:.25; }
+  .km-edge.km-hl { stroke:var(--accent); opacity:1; stroke-width:3.5; stroke-dasharray:7 7;
+    animation:kmdash .55s linear infinite; }
+  @keyframes kmdash { to { stroke-dashoffset:-14; } }
+  .km-node { cursor:pointer; transition:opacity .25s; }
+  .km-node circle { fill:var(--card); stroke:#8b93ad; stroke-width:3; transition:fill .25s, stroke .25s; }
+  .km-node .km-no { font-weight:700; fill:var(--ink); }
+  .km-node .km-sub { font-weight:600; fill:var(--muted); }
+  .km-node:hover circle { stroke:var(--accent); }
+  .km-node.km-hl circle { stroke:var(--accent); fill:var(--accent-soft); }
+  .km-node.km-hl .km-no { fill:var(--accent); }
+  .km-node.km-sel circle { stroke:var(--accent); fill:var(--accent); }
+  .km-node.km-sel .km-no { fill:#fff; }
+  .km-node.km-dim { opacity:.3; }
+  .km-node.km-ghost circle { stroke-dasharray:4 4; }
+  .km-node.km-ghost { opacity:.45; }
+  .km-node.km-ghost.km-sel, .km-node.km-ghost.km-hl { opacity:1; }
+  .km-panel { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    padding:13px 16px; min-height:190px; }
+  .km-panel h4 { margin:0 0 8px; font-size:1rem; color:var(--accent); }
+  .km-panel ul { margin:0 0 10px; padding-left:19px; font-size:.9rem; line-height:1.95; }
+  .km-go { display:inline-block; font-weight:700; color:var(--accent); text-decoration:none; }
+  .km-go:hover { text-decoration:underline; }
+
+  /* ═══════ 3) สอบเสมือนจริง ═══════ */
+  .mx-top { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+  .mx-top button { margin:0; }
+  .mx-clock { font-variant-numeric:tabular-nums; font-weight:800; font-size:1.45rem; color:var(--accent);
+    background:var(--accent-soft); border-radius:10px; padding:3px 16px; min-width:104px; text-align:center; }
+  .mx-clock.mx-low { color:#d13c4b; background:#fdecec; animation:mxblink 1s steps(2) infinite; }
+  [data-theme="dark"] .mx-clock.mx-low { background:#3a1520; }
+  @keyframes mxblink { 50% { opacity:.55; } }
+  .mx-state { font-size:.85rem; color:var(--muted); }
+  #mxQs.mx-off { opacity:.45; pointer-events:none; user-select:none; filter:blur(3px); }
+  #mxQs { transition:opacity .3s, filter .3s; }
+  .mx-q { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    padding:12px 14px; margin:10px 0; }
+  .mx-q h4 { margin:0 0 9px; font-size:.96rem; line-height:1.8; }
+  .mx-choices { display:grid; grid-template-columns:1fr; gap:6px; }
+  @media(min-width:700px){ .mx-choices { grid-template-columns:1fr 1fr; } }
+  .demo .mx-choice { text-align:left; background:var(--card); color:var(--ink);
+    border:1.5px solid var(--border); border-radius:10px; padding:8px 12px; font-size:.9rem;
+    font-weight:500; margin:0; box-shadow:none; line-height:1.7; }
+  .demo .mx-choice:hover { transform:none; filter:none; box-shadow:none; border-color:var(--accent); }
+  .demo .mx-choice.mx-picked { border-color:var(--accent); background:var(--accent-soft);
+    color:var(--accent); font-weight:700; }
+  .demo .mx-choice.mx-right { border-color:var(--green); background:var(--green-soft); color:var(--green); font-weight:700; opacity:1; }
+  .demo .mx-choice.mx-wrong { border-color:#d13c4b; background:#fdecec; color:#d13c4b; opacity:1; }
+  [data-theme="dark"] .demo .mx-choice.mx-right { background:#13251f; }
+  [data-theme="dark"] .demo .mx-choice.mx-wrong { background:#3a1520; }
+  .mx-fb { display:none; font-size:.85rem; line-height:1.8; margin-top:9px; padding:8px 11px;
+    border-radius:8px; background:var(--accent-soft); }
+  .mx-fb .mx-wk { background:var(--card); color:var(--accent); font-weight:700; font-size:.76rem;
+    border-radius:999px; padding:2px 9px; text-decoration:none; outline:1px solid var(--accent); margin-left:4px; white-space:nowrap; }
+  .mx-result { display:none; border:2px solid var(--accent); border-radius:12px; background:var(--card);
+    padding:14px 16px; margin-top:12px; }
+  .mx-bars { margin-top:10px; }
+  .mx-bars .row { display:flex; align-items:center; gap:9px; margin:5px 0; font-size:.88rem;
+    font-variant-numeric:tabular-nums; }
+  .mx-bars .lbl { min-width:42px; font-weight:700; }
+  .mx-bars .track { flex:1; height:12px; background:var(--accent-soft); border-radius:999px; overflow:hidden; }
+  .mx-bars .fill { height:100%; border-radius:999px; transition:width .5s; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>สอบกลางภาค + ทบทวนครึ่งทาง</h1>
+    <p class="subtitle">ครึ่งแรกจบ: เรามี "เครื่องทำนายที่เรียนรู้ได้" แล้ว</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 ขอบเขตการสอบ:</strong> เนื้อหาครึ่งแรกทั้งหมด (ตั้งแต่ AI คืออะไร จนถึง Overfitting) —
+    เน้นความเข้าใจและการคำนวณด้วยมือบนโจทย์เล็กๆ แบบเดียวกับแบบฝึกหัดในคาบ
+    ไม่มีการเขียนโค้ดในห้องสอบ
+  </div>
+
+  <h2>แผนที่ความรู้ครึ่งแรก — เช็กตัวเองทีละข้อ</h2>
+
+  <div class="card">
+    <table class="simple">
+      <tr><th>สัปดาห์</th><th>แก่นที่ต้องตอบได้</th><th>ทักษะคำนวณที่ต้องทำได้</th></tr>
+      <tr><td>1</td><td>AI 4 ยุคต่างกันอย่างไร / LLM = ทำนายตัวถัดไป</td><td>นับ bigram + หาความน่าจะเป็น</td></tr>
+      <tr><td>2</td><td>เรียนรู้ = ปรับ weight ให้ loss ต่ำ</td><td>คำนวณ MSE</td></tr>
+      <tr><td>3</td><td>การพูดของ LLM คือ classification ซ้ำๆ</td><td>คำนวณ softmax 3 ตัวเลือก</td></tr>
+      <tr><td>4</td><td>ซ้อนชั้น = สร้าง feature เป็นลำดับขั้น / ทำไม XOR ต้อง 2 ชั้น</td><td>ไล่ output ของ perceptron</td></tr>
+      <tr><td>5</td><td>gradient descent + backprop คือหัวใจการเทรนทุกโมเดล</td><td>อัปเดต weight 2–3 ก้าว / chain rule เครือข่ายจิ๋ว</td></tr>
+      <tr><td>6</td><td>overfit = จำข้อสอบ / ทำไมต้องแยก train-test</td><td>วินิจฉัยโมเดลจากคู่ train/test loss</td></tr>
+      <tr><td>7</td><td>สถาปัตยกรรมที่เข้ากับข้อมูลชนะเสมอ</td><td>convolution 3×3 หนึ่งตำแหน่ง</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 ทบทวนทีละขั้น — แผน 6 ขั้นก่อนสอบ (เรียงตามนี้ได้ผลกว่าอ่านวนๆ)</h3>
+    <ol class="steps">
+      <li><strong>ไล่ตารางแก่นข้างบน ทีละแถว</strong>
+        แถวไหนอ่านแล้ว "เล่าต่อให้เพื่อนฟังได้" ติ๊กผ่าน แถวไหนตะกุกตะกัก จดไว้ — นี่คือรายการที่ต้องกลับไปเก็บ</li>
+      <li><strong>กลับไปอ่านเฉพาะ "เข้าใจทีละขั้น" ของสัปดาห์ที่ติ๊กไม่ผ่าน</strong>
+        ทุกสัปดาห์มีส่วน 👣 ที่ไล่กลไกด้วยตัวเลขจริง — อ่านพร้อมคำนวณตามด้วยมือ เร็วกว่าอ่านเนื้อหาเต็มทั้งหน้า</li>
+      <li><strong>ทำแบบฝึกหัด "ทำในคาบ" ของทุกเรื่องก่อนสอบใหม่ โดยไม่ดูเฉลย</strong>
+        ข้อสอบออกแนวเดียวกันทุกข้อ — ทำได้โดยไม่แอบดู = พร้อมจริง</li>
+      <li><strong>ข้อที่พลาด: เล่น demo ของสัปดาห์นั้นอีกรอบ</strong>
+        ความเข้าใจจากการ "เห็นมันขยับ" ติดทนกว่าการอ่านซ้ำ — โดยเฉพาะ gradient descent (ส.5) และ overfitting (ส.6)</li>
+      <li><strong>ทำข้อสอบตัวอย่าง 3 ข้อข้างล่าง จับเวลา</strong>
+        ข้อละไม่เกิน 10 นาที ทำเสร็จค่อยเปิดเฉลย — ฝึก "เชื่อมข้ามสัปดาห์" เพราะข้อสอบจริงชอบถามแบบนั้น</li>
+      <li><strong>ปิดท้าย: เล่าเส้นเรื่องทั้งเทอมใน 3 นาที</strong>
+        จาก bigram (นับ) → regression (หมุนปุ่ม) → classification (ความน่าจะเป็น) → ซ้อนชั้น → backprop → overfit → CNN
+        — เล่าให้เพื่อน/กระจก/แมวฟังก็ได้ ถ้าเล่าลื่นโดยไม่เปิดโน้ต แปลว่าโครงความรู้ครบแล้ว</li>
+    </ol>
+  </div>
+
+  <h2>เครื่องมือทบทวนแบบโต้ตอบ — เล่นให้ครบก่อนลงสนาม</h2>
+
+  <p>การอ่านซ้ำเฉยๆ ได้ผลน้อยกว่าการ "ดึงความรู้ออกมาใช้" มาก —
+  สามเครื่องมือนี้บังคับให้สมองดึงคอนเซปต์ครึ่งแรกออกมาทีละชิ้น: ไล่การ์ด → เห็นภาพรวม → จับเวลาสอบจริง</p>
+
+  <div class="demo">
+    <h3>🃏 ฝึกด้วย flashcards — ครึ่งแรกทั้งหมดใน 24 ใบ</h3>
+    <p>พลิกการ์ดแล้วตอบในใจก่อนดูเฉลย — ใบไหนกด "ยังไม่แน่น" จะวนกลับเข้ากองมาให้ตอบใหม่ จนกว่าจะแม่นครบทุกใบ</p>
+    <div class="fc-top">
+      <span class="fc-count" id="fcCount">แม่นแล้ว 0/24</span>
+      <div class="fc-prog"><i id="fcBarFill"></i></div>
+      <button id="fcShuffle" type="button">🔀 สับไพ่</button>
+    </div>
+    <div class="fc-scene" id="fcScene">
+      <div class="fc-card3d" id="fcCard">
+        <div class="fc-face fc-front">
+          <a class="fc-wtag" id="fcTagF" href="week01.html">ส.1</a>
+          <div class="fc-q" id="fcQ"></div>
+          <div class="fc-hint">👆 แตะการ์ดเพื่อพลิกดูคำตอบ</div>
+        </div>
+        <div class="fc-face fc-back">
+          <a class="fc-wtag" id="fcTagB" href="week01.html">ทบทวนที่ ส.1 →</a>
+          <div class="fc-a" id="fcA"></div>
+          <div class="fc-hint">ตอบตรงไหม? ให้คะแนนตัวเองด้วยปุ่มข้างล่าง</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-btns">
+      <button id="fcOk" type="button" disabled>✅ แม่นแล้ว</button>
+      <button id="fcAgain" type="button" disabled>🔁 ยังไม่แน่น</button>
+    </div>
+    <div class="fc-done" id="fcDone"></div>
+    <div class="try">เล่นจนขึ้น "แม่นแล้ว 24/24" แล้วอ่านสรุปจุดอ่อนท้ายเกม —
+    สัปดาห์ที่โดนกด 🔁 บ่อยที่สุด คือที่ที่ควรกลับไปเก็บก่อนสอบ</div>
+  </div>
+
+  <div class="demo">
+    <h3>🗺️ แผนที่ความรู้แบบกดได้ — บันไดครึ่งแรกพึ่งพากันอย่างไร</h3>
+    <p>คลิกสัปดาห์ใดก็ได้ — เส้นทางความรู้ที่ "ต้องมาก่อน" จะสว่างขึ้นทั้งสาย พร้อมสรุป 3 บรรทัดและลิงก์กลับไปทบทวน</p>
+    <div class="km-grid">
+      <div class="km-svgwrap" id="kmWrap"></div>
+      <div class="km-panel">
+        <h4 id="kmTitle">👆 คลิกโหนดบนแผนที่</h4>
+        <div id="kmBody">แต่ละวงกลมคือหนึ่งสัปดาห์ ลูกศรคือ "ต้องเข้าใจก่อนถึงจะไปต่อได้" —
+        ส่วนเส้นประจางๆ ที่ชี้ออกขวาบน คือปลายทางครึ่งหลัง: ส.13 LLM</div>
+      </div>
+    </div>
+    <div class="try">กด ส.7 (Backprop) ดูว่ากว่าจะถึงยอดครึ่งแรกต้องไต่ผ่านอะไรมาบ้าง
+    แล้วลองกดโหนดจาง ส.13 — บันไดทั้งเส้นจะสว่างพร้อมกัน</div>
+  </div>
+
+  <div class="demo">
+    <h3>⏱️ สอบเสมือนจริง 10 นาที — 10 ข้อ ครอบคลุม ส.1–8</h3>
+    <p>ข้อสอบชุดใหม่ ไม่ซ้ำกับโจทย์เก็งข้างล่าง — กดเริ่มแล้วเวลาเดินทันที หมดเวลาระบบส่งคำตอบให้อัตโนมัติเหมือนห้องสอบจริง</p>
+    <div class="mx-top">
+      <button id="mxStart" type="button">▶ เริ่มสอบ</button>
+      <span class="mx-clock" id="mxClock">10:00</span>
+      <span class="mx-state" id="mxState">ยังไม่เริ่ม — กดปุ่มเมื่อพร้อม แล้วห้ามเปิดโน้ต</span>
+    </div>
+    <div id="mxQs" class="mx-off"></div>
+    <button id="mxSubmit" type="button" style="display:none">📤 ส่งคำตอบ</button>
+    <div class="mx-result" id="mxResult"></div>
+    <div class="try">ทำแบบห้ามเปิดโน้ตแล้วส่งก่อนหมดเวลา — ดูแถบรายสัปดาห์ท้ายผลสอบ:
+    แถบไหนไม่เต็ม คือสัปดาห์ที่ต้องกลับไปทบทวนก่อนสอบจริง</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 โจทย์เก็งเพิ่มเติม — ข้อสั้นไว้วอร์มก่อนทำข้อสอบตัวอย่าง</h3>
+    <details class="example">
+      <summary>วอร์ม 1 — softmax กับคะแนนเสมอกัน</summary>
+      <p>คะแนนดิบ 3 คำเท่ากันหมด: 1, 1, 1 — ความน่าจะเป็นแต่ละคำเท่าไหร่? แล้วถ้าเปลี่ยน temperature ผลเปลี่ยนไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1:</strong> ยกกำลัง e — ได้ e¹ เท่ากันทั้งสามตัว<br>
+      <strong>ขั้น 2:</strong> หารด้วยผลรวม — เท่ากันสามตัวย่อมได้อย่างละ <strong>1/3 ≈ 33%</strong><br>
+      <strong>ขั้น 3:</strong> ลองใส่ T — (1,1,1)÷T ก็ยังเท่ากันหมด ความต่างเป็นศูนย์เหมือนเดิม → ผลไม่เปลี่ยน<br>
+      ✅ <strong>คำตอบ:</strong> 33% เท่ากันทุกคำ ไม่ว่า T เท่าไหร่ — softmax สนใจแค่ "ความต่าง" ของคะแนน</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 2 — ทำไมต้องมี activation function</summary>
+      <p>ถ้าตัด activation ออกจากเครือข่าย 100 ชั้น จะเกิดอะไรขึ้น? (ตอบสั้นๆ 1 ประโยค)</p>
+      <div class="ans">
+      <strong>ขั้น 1:</strong> ชั้นไม่มี activation = การคูณ weight แล้วบวก = ฟังก์ชันเชิงเส้น<br>
+      <strong>ขั้น 2:</strong> เชิงเส้นซ้อนเชิงเส้น (w₂(w₁x + b₁) + b₂) กระจายออกมา = เชิงเส้นเส้นเดียว (w'x + b')<br>
+      <strong>ขั้น 3:</strong> ทำซ้ำ 100 ชั้นก็ยุบเหลือเส้นเดียวอยู่ดี<br>
+      ✅ <strong>คำตอบ:</strong> 100 ชั้นมีพลังเท่าชั้นเดียว แก้ XOR ไม่ได้เหมือนเดิม — activation คือ "ข้อหักงอ" ที่ทำให้ความลึกมีความหมาย</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 3 — gradient descent ที่จบใน 1 ก้าว</summary>
+      <p>L(w) = (w−2)² เริ่ม w = 5, learning rate = 0.5 — คำนวณ 2 ก้าว แล้วอธิบายสิ่งที่เห็น</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ก้าวแรก:</strong> ชันที่ w=5: 2(5−2) = 6 → w = 5 − 0.5(6) = <strong>2</strong> — ถึงคำตอบเป๊ะ!<br>
+      <strong>ขั้น 2 — ก้าวสอง:</strong> ชันที่ w=2: 2(2−2) = 0 → ไม่ขยับอีก (ก้นหุบ ความชันศูนย์)<br>
+      <strong>ขั้น 3 — ตีความ:</strong> lr = 0.5 บนพาราโบลา (w−c)² คือก้าวพอดีเผง: กระโดดถึงจุดต่ำสุดเสมอไม่ว่าเริ่มที่ไหน<br>
+      ✅ <strong>คำตอบ:</strong> ถึง w = 2 ใน 1 ก้าวแล้วหยุดนิ่ง — แต่อย่าหลงดีใจ: loss จริงไม่ใช่พาราโบลาสวยๆ จึงไม่มี lr วิเศษแบบนี้ในงานจริง</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 4 — bigram ความเร็วสูง</summary>
+      <p>ข้อมูลฝึก: <code>"ABAB"</code> — หลังตัว A โมเดลทำนายอะไร ด้วยความน่าจะเป็นเท่าไหร่?</p>
+      <div class="ans">
+      <strong>ขั้น 1:</strong> จับคู่จาก A-B-A-B: AB, BA, AB<br>
+      <strong>ขั้น 2:</strong> นับหลัง A: B 2 ครั้ง จาก 2 ครั้ง<br>
+      ✅ <strong>คำตอบ:</strong> B 100% (หลัง B ก็ A 100% เช่นกัน) — โมเดลนี้แต่งข้อความได้แบบเดียว: ABABAB...</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 5 — MSE สองโมเดลใน 30 วินาที</summary>
+      <p>ข้อมูล (1,2), (2,4) — โมเดล ก: ŷ = 2x | โมเดล ข: ŷ = x+1 — ใคร MSE ต่ำกว่า?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — โมเดล ก ทำนาย:</strong> 2(1)=2 ✓, 2(2)=4 ✓ → ผิด 0, 0 → MSE = 0<br>
+      <strong>ขั้น 2 — โมเดล ข ทำนาย:</strong> 1+1=2 ✓, 2+1=3 (จริง 4 ผิด 1) → MSE = (0+1)/2 = 0.5<br>
+      ✅ <strong>คำตอบ:</strong> ก ชนะ (MSE 0 ต่อ 0.5)</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 6 — sigmoid ที่ศูนย์</summary>
+      <p>sig(0) เท่ากับเท่าไหร่ และทำไมค่านี้ถึง "ต้อง" เป็นแบบนั้น?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แทนค่าในสูตร:</strong> sig(0) = 1/(1+e⁻⁰) = 1/(1+1) = 1/2<br>
+      <strong>ขั้น 2 — ตีความ:</strong> คะแนนดิบศูนย์ = หลักฐานสองฝั่งสมดุล ไม่เอียงข้างไหน → ความน่าจะเป็นต้องกลางพอดี<br>
+      ✅ <strong>คำตอบ:</strong> 50% เสมอ — จุด z = 0 คือ decision boundary โดยนิยาม</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 7 — XOR หนึ่งประโยค</summary>
+      <p>อธิบายใน 1 ประโยคว่าทำไม perceptron ชั้นเดียวทำ XOR ไม่ได้</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แปลง perceptron เป็นภาพ:</strong> ชั้นเดียว = เส้นตรงแบ่งระนาบหนึ่งเส้น<br>
+      <strong>ขั้น 2 — วาดจุด XOR:</strong> กลุ่ม "1" อยู่มุม (1,0) กับ (0,1) | กลุ่ม "0" อยู่มุม (0,0) กับ (1,1) — สลับทแยงกัน<br>
+      <strong>ขั้น 3 — ลองลากเส้น:</strong> เส้นตรงเส้นเดียวแยกคู่ทแยงไม่ได้ (ลองดูในกระดาษ — แยกได้อย่างมาก 3 จาก 4 จุด)<br>
+      ✅ <strong>คำตอบ:</strong> เพราะ XOR ไม่ใช่ปัญหาที่เส้นตรงเส้นเดียวแบ่งได้ — ต้องซ้อนชั้นเพื่อสร้างเส้นแบ่งหักงอ</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 8 — กับดักการวินิจฉัย: train 0.05 / test 0.07</summary>
+      <p>train loss ต่ำมากขนาดนี้ overfit หรือเปล่า?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทวนนิยาม overfit:</strong> ตัดสินจาก<strong>ช่องว่าง</strong>ระหว่าง train กับ test ไม่ใช่ค่า train เดี่ยวๆ<br>
+      <strong>ขั้น 2 — วัดช่องว่าง:</strong> 0.07 − 0.05 = 0.02 — แคบมาก<br>
+      <strong>ขั้น 3 — สรุปอาการ:</strong> ต่ำทั้งคู่ + ช่องว่างแคบ = เรียนรู้ได้ดีและ generalize ได้ดี<br>
+      ✅ <strong>คำตอบ:</strong> ไม่ overfit — นี่คือโมเดลในฝัน ข้อสอบชอบหลอกด้วย "train ต่ำ = overfit" ซึ่งผิด</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 9 — kernel ที่ไม่ทำอะไรเลย</summary>
+      <p>kernel 3×3 ที่เป็นศูนย์ทุกช่อง ยกเว้นช่องกลาง = 1 — ภาพที่ผ่าน kernel นี้หน้าตาเป็นยังไง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทาบ kernel ที่ตำแหน่งใดก็ได้:</strong> คูณช่องต่อช่อง — รอบข้าง 8 ช่อง × 0 = 0 หมด เหลือแค่ช่องกลาง × 1<br>
+      <strong>ขั้น 2 — บวกรวม:</strong> output = ค่า pixel กลางเป๊ะๆ<br>
+      <strong>ขั้น 3 — ทำทุกตำแหน่ง:</strong> ทุก output = pixel เดิมของมัน<br>
+      ✅ <strong>คำตอบ:</strong> ได้ภาพเดิมเป๊ะ (identity kernel) — ถ้าอธิบายข้อนี้ได้ แปลว่าเข้าใจกลไก convolution จริง</div>
+    </details>
+    <details class="example">
+      <summary>วอร์ม 10 — จริงหรือเท็จ: "GPT เทรนด้วย MSE"</summary>
+      <p>ตอบพร้อมเหตุผลสั้นๆ — ระวังข้อแบบนี้ในข้อสอบ</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ถามก่อน: GPT ทำนายอะไร?</strong> เลือก token ถัดไปจากคลังศัพท์ = โจทย์<strong>หมวดหมู่</strong> (classification) ไม่ใช่ตัวเลขต่อเนื่อง<br>
+      <strong>ขั้น 2 — จับคู่ loss ให้ตรงชนิดโจทย์:</strong> หมวดหมู่ → cross-entropy (−log P ของคำตอบจริง) | ตัวเลข → MSE<br>
+      ✅ <strong>คำตอบ:</strong> เท็จ — GPT ใช้ cross-entropy (ส่วน diffusion ที่ทำนาย noise เป็นตัวเลข ใช้ MSE — ระวังข้อหลอกแบบนี้)</div>
+    </details>
+  </div>
+
+  <h2>ข้อสอบตัวอย่าง (ทำเองก่อนดูเฉลย)</h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ตัวอย่างข้อ 1 — เชื่อมโยงข้ามสัปดาห์</div>
+    <p>"การเทรน GPT ใช้แนวคิดจากทุกสัปดาห์ที่เรียนมา" — จงยกแนวคิดจาก 3 สัปดาห์ใดก็ได้
+    แล้วอธิบายว่าแต่ละแนวคิดไปโผล่ตรงไหนในการเทรน LLM (6 คะแนน)</p>
+    <details class="answer">
+      <summary>แนวคำตอบ</summary>
+      ตัวอย่าง: (ส.2) weight/loss — LLM มี weight แสนล้านตัว loss คือทำนายคำถัดไปผิดแค่ไหน |
+      (ส.3) softmax — ทุก token ที่พิมพ์คือ softmax เหนือคำศัพท์ทั้งหมด |
+      (ส.5) backprop — วิธีอัปเดต weight ทั้งหมดคือ backprop วนหลายล้านรอบ |
+      (ส.6) ข้อมูลมหาศาล — กัน overfit ฯลฯ (เลือก 3 จากนี้หรือเทียบเท่า)
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ตัวอย่างข้อ 2 — คำนวณผสม</div>
+    <p>โมเดล ŷ = wx โดย w = 2 ข้อมูล (x, y) = (3, 9) และ loss = (ŷ − y)², learning rate = 0.05<br>
+    (ก) หา loss ปัจจุบัน (ข) หา gradient dL/dw (ค) อัปเดต w หนึ่งก้าว (ง) loss ใหม่ลดลงจริงไหม</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      (ก) ŷ = 6, loss = 9 &nbsp;
+      (ข) dL/dw = 2(ŷ−y)·x = 2(−3)(3) = −18 &nbsp;
+      (ค) w = 2 − 0.05(−18) = <strong>2.9</strong> &nbsp;
+      (ง) ŷ = 8.7, loss = 0.09 — ลดจาก 9 เหลือ 0.09 ✓
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ตัวอย่างข้อ 3 — วิเคราะห์สถานการณ์</div>
+    <p>สตาร์ทอัพเทรนโมเดลตรวจมะเร็งจากภาพ X-ray ของโรงพยาบาล A ได้ accuracy 97% บน test set
+    (ที่มาจากโรงพยาบาล A เช่นกัน) แต่พอใช้จริงที่โรงพยาบาล B ได้แค่ 62% —
+    จงอธิบายปรากฏการณ์นี้ด้วยแนวคิดที่เรียนมา และเสนอวิธีแก้ 2 วิธี</p>
+    <details class="answer">
+      <summary>แนวคำตอบ</summary>
+      โมเดล overfit กับลักษณะเฉพาะของโรงพยาบาล A (เครื่องถ่าย, มุม, ประชากรผู้ป่วย) —
+      train และ test มาจากแหล่งเดียวกันจึงวัด "ความเข้าใจโรค" ไม่ได้จริง (distribution shift)<br>
+      วิธีแก้: ผสมข้อมูลหลายโรงพยาบาลตอนเทรน / ทำ test set ข้ามโรงพยาบาล / data augmentation / fine-tune กับข้อมูลโรงพยาบาล B
+    </details>
+  </div>
+
+  <h2>กิจกรรมทบทวนในคาบ (ก่อนสอบ)</h2>
+
+  <div class="card">
+    <p><strong>เกม "ต่อบันไดให้ครบ":</strong> แบ่งกลุ่ม กลุ่มละ 4–5 คน
+    แจกการ์ดคำศัพท์ครึ่งแรกของเทอม (weight, loss, gradient, softmax, activation, overfit, kernel, feature map, ...)
+    ให้แต่ละกลุ่มเรียงการ์ดเป็น "เส้นเรื่องจาก bigram → CNN" แล้วเล่าหน้าห้อง 3 นาที
+    ว่าแนวคิดไหนเกิดมาเพื่อแก้ปัญหาของแนวคิดก่อนหน้า — กลุ่มที่เล่าเชื่อมโยงได้ลื่นที่สุดได้คะแนนพิเศษ</p>
+  </div>
+
+  <h2>ส่วนที่ 4 — ขั้นบันได <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 มาถึงครึ่งทาง:</strong> เรามี "เครื่องทำนายที่เรียนรู้ได้" ครบเครื่อง —
+    โมเดล, loss, วิธีเทรน, วิธีวัดผล และบทเรียนเรื่องสถาปัตยกรรม<br>
+    <strong>ครึ่งหลังของเทอม:</strong> เอาเครื่องนี้มา "เข้าใจภาษา" —
+    เริ่มจากความพยายามแรก (RNN) ที่ล้มเหลวอย่างมีบทเรียน ไปจนถึง Transformer และ LLM ตัวจริง
+  </div>
+
+  <div class="resources">
+    <h3>📚 ทบทวนครึ่งแรกกับมหาวิทยาลัยโลก</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi" target="_blank">Neural networks (เพลย์ลิสต์เต็ม)</a> — ตอน 1–4 ครอบคลุมเรื่อง Neural Network และ Backpropagation ของเราพอดี ดูรวดเดียวก่อนสอบได้</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/playlist?list=PLblh5JKOoLUICTaGLRoHQDuF_7q2GfuJF" target="_blank">Machine Learning playlist</a> — เลือกดูเฉพาะหัวข้อที่ยังไม่แน่น (regression, logistic, bias-variance)</li>
+      <li><span class="src">เคล็ดลับ</span> วิธีทบทวนที่ได้ผลกว่าอ่านซ้ำ: กลับไปทำ "แบบฝึกหัดในคาบ" ของทุกเรื่องก่อนสอบใหม่โดยไม่ดูเฉลย — ข้อสอบออกแนวเดียวกันทุกข้อ</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week11.html">← เทรนจริงให้เป็น</a>
+    <a href="week13.html">Language Model &amp; RNN →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "ทบทวนทีละขั้น" =====
+const prog = i => '<div class="bar-row"><span class="lbl">แผน</span><span class="bar" data-w="' +
+  Math.round(i / 6 * 88) + '%" style="background:linear-gradient(90deg,#1d9b6c,#3ecf96)"></span>' + i + '/6</div>';
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big fade">🗺️ ไล่ตารางแก่นทีละแถว — เล่าต่อได้ = ติ๊กผ่าน</div>' + prog(1) +
+    '<div class="note">แถวที่ตะกุกตะกัก จดไว้ — นั่นคือรายการที่ต้องเก็บ</div>',
+  s => s.innerHTML = '<div class="big fade">👣 กลับไปอ่าน "เข้าใจทีละขั้น" เฉพาะสัปดาห์ที่ไม่ผ่าน</div>' + prog(2) +
+    '<div class="note">อ่านพร้อมคำนวณตามด้วยมือ — เร็วกว่าอ่านทั้งหน้า</div>',
+  s => s.innerHTML = '<div class="big fade">✍️ ทำแบบฝึกหัด ส.1–7 ใหม่ โดยไม่ดูเฉลย</div>' + prog(3) +
+    '<div class="note">ข้อสอบออกแนวเดียวกันทุกข้อ — ทำได้เอง = พร้อมจริง</div>',
+  s => s.innerHTML = '<div class="big fade">🎮 ข้อที่พลาด → ไปเล่น demo ของสัปดาห์นั้น</div>' + prog(4) +
+    '<div class="note">ความเข้าใจจาก "เห็นมันขยับ" ติดทนกว่าอ่านซ้ำ</div>',
+  s => {
+    s.innerHTML = '<div class="big fade">⏱️ ข้อสอบตัวอย่าง 3 ข้อข้างล่าง — ข้อละ 10 นาที</div>' +
+      '<div class="netrow"><button class="mini-btn" id="t8go">▶ เริ่มจับเวลา</button>' +
+      '<span class="wchip" id="t8v" style="font-size:1.05rem">10:00</span></div>' + prog(5) +
+      '<div class="note">👆 กดจับเวลาแล้วลงมือจริง — ฝึกเชื่อมข้ามสัปดาห์ เพราะข้อสอบจริงชอบถามแบบนั้น</div>';
+    clearInterval(window.__w8timer);
+    s.querySelector('#t8go').onclick = () => {
+      clearInterval(window.__w8timer);
+      let t = 600;
+      const v = s.querySelector('#t8v');
+      v.textContent = '10:00';
+      window.__w8timer = setInterval(() => {
+        t--;
+        v.textContent = t <= 0 ? '⏰ หมดเวลา!' : Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+        if (t <= 0) clearInterval(window.__w8timer);
+      }, 1000);
+    };
+  },
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">bigram</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.3s">regression</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.5s">classification</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.7s">ซ้อนชั้น</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.9s">backprop</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:1.1s">overfit</span><span class="arrow">→</span>' +
+    '<span class="chip win" style="animation-delay:1.3s">CNN</span></div>' + prog(6) +
+    '<div class="note">เล่าเส้นเรื่องนี้ 3 นาทีโดยไม่เปิดโน้ต — ลื่น = โครงความรู้ครบ 🎓</div>',
+];
+</script>
+
+<script>
+// ═══════════ 1) Flashcards ครึ่งแรกใน 24 ใบ ═══════════
+(function () {
+  const FC = [
+    // ส.1 — AI คืออะไร & bigram
+    { w: 1, q: 'Machine Learning ต่างจากการเขียนโปรแกรมแบบเดิมตรงไหน?', a: 'แบบเดิม: คนเขียน "กฎ" เอง / ML: เครื่องหากฎจากตัวอย่างข้อมูล — เราให้ข้อมูล ไม่ใช่ให้กฎ' },
+    { w: 1, q: 'โมเดล bigram ทำนายคำถัดไปจากอะไร?', a: 'จากคำก่อนหน้าเพียง 1 คำ — นับความถี่ของคู่คำในข้อมูลฝึก แล้วเลือกตามความน่าจะเป็น' },
+    { w: 1, q: 'LLM อย่าง GPT ทำงานพื้นฐานเดียวกับ bigram — งานนั้นคืออะไร?', a: 'ทำนาย "ตัวถัดไป" ทีละตัวซ้ำๆ — ต่างกันที่ LLM ดูบริบทยาวกว่ามาก และใช้ neural network แทนตารางนับ' },
+    // ส.2 — Linear Regression
+    { w: 2, q: 'MSE คำนวณอย่างไร และบอกอะไรเรา?', a: 'เฉลี่ยของ (ทำนาย − จริง)² ทุกจุด — ตัววัดว่าโมเดลพลาดแค่ไหน ยิ่งต่ำยิ่งแม่น' },
+    { w: 2, q: '"การเรียนรู้" ของโมเดลในนิยามของวิชานี้คืออะไร?', a: 'การปรับ weight/bias ไปเรื่อยๆ ให้ loss ต่ำลง — ทุกโมเดลตั้งแต่เส้นตรงยัน GPT เรียนรู้แบบนี้' },
+    { w: 2, q: 'ใน ŷ = wx + b ค่า w กับ b คุมอะไรของเส้นทำนาย?', a: 'w = ความชันของเส้น / b = จุดตัดแกน y (เลื่อนเส้นขึ้นลงทั้งเส้น)' },
+    // ส.3 — Polynomial Regression
+    { w: 3, q: 'ทำไมต้องเพิ่ม x², x³ เข้าไปในโมเดลถดถอย?', a: 'ข้อมูลจริงมักไม่เป็นเส้นตรง — พจน์กำลังสูงทำให้เส้นทำนาย "ดัดโค้ง" ตามข้อมูลได้' },
+    { w: 3, q: 'เพิ่ม degree สูงมากๆ แล้ว train error ต่ำลง — แต่เกิดอะไรกับ test error?', a: 'มักพุ่งขึ้น: เส้นโค้งวิ่งเก็บทุกจุดรวมทั้ง noise = overfitting (จำข้อสอบ ไม่ได้เข้าใจ)' },
+    { w: 3, q: 'จะเลือก degree ที่ "พอดี" ได้อย่างไร?', a: 'ดู error บนข้อมูลที่โมเดลไม่เคยเห็น (test/validation) — เลือกจุดที่ test error ต่ำสุด ไม่ใช่ train ต่ำสุด' },
+    // ส.4 — KNN
+    { w: 4, q: 'KNN ทำนายคลาสของจุดใหม่อย่างไร?', a: 'วัดระยะหาเพื่อนบ้านที่ใกล้ที่สุด k ตัว แล้วให้โหวตเสียงข้างมาก' },
+    { w: 4, q: 'KNN มีขั้นตอน "เทรน" เหมือนโมเดลอื่นไหม?', a: 'แทบไม่มี — แค่เก็บข้อมูลทั้งหมดไว้ งานหนักย้ายไปอยู่ตอนทำนาย (ต้องวัดระยะกับทุกจุด)' },
+    { w: 4, q: 'k เล็กเกินไป vs k ใหญ่เกินไป ให้ผลต่างกันอย่างไร?', a: 'k เล็ก = อ่อนไหวต่อ noise เส้นแบ่งหยึกหยัก (overfit) / k ใหญ่ = เนียนเกินจนกลืนกลุ่มเล็กหาย (underfit)' },
+    // ส.5 — K-means
+    { w: 5, q: 'K-means ต่างจาก KNN ตรงไหนเรื่อง "ป้ายคำตอบ"?', a: 'KNN มี label ให้ดู (supervised) / K-means ไม่มีเลย — ให้เครื่องค้นพบกลุ่มเอง (unsupervised)' },
+    { w: 5, q: 'ลูปของ K-means ทำ 2 ขั้นอะไรสลับกัน?', a: '1) จัดทุกจุดเข้ากลุ่มของ centroid ที่ใกล้สุด 2) ย้าย centroid ไปที่ค่าเฉลี่ยของกลุ่ม — วนจน centroid นิ่ง' },
+    { w: 5, q: 'Elbow method ใช้เลือกอะไร และดูจากอะไร?', a: 'เลือกจำนวนกลุ่ม K — พล็อตความกระจายในกลุ่มเทียบ K แล้วเลือกตรง "จุดหักศอก" ของกราฟ' },
+    // ส.6 — Neural Network
+    { w: 6, q: 'นิวรอน 1 ตัวคำนวณอะไรบ้าง?', a: 'z = ผลรวมถ่วงน้ำหนัก (Σwᵢxᵢ + b) แล้วส่งผ่าน activation — "เส้นตรง + ข้อหักงอ" หนึ่งหน่วย' },
+    { w: 6, q: 'activation function มีไว้ทำไม?', a: 'ใส่ความไม่เป็นเส้นตรง — ถ้าไม่มี ต่อกี่ชั้นก็ยุบเหลือเส้นตรงเส้นเดียว แก้ปัญหาอย่าง XOR ไม่ได้' },
+    { w: 6, q: 'softmax รับคะแนนดิบหลายตัว แล้วให้อะไรออกมา?', a: 'ความน่าจะเป็นที่รวมกันได้ 1 — ยกกำลัง e ทุกคะแนนแล้วหารด้วยผลรวม คะแนนสูงได้สัดส่วนมาก' },
+    // ส.7 — Backprop
+    { w: 7, q: 'gradient บอกอะไร และใช้อัปเดต weight อย่างไร?', a: 'บอกทิศ/ความชันที่ loss เพิ่ม — เดินสวนทาง: w ← w − learning rate × gradient' },
+    { w: 7, q: 'backprop ใช้กฎคณิตศาสตร์อะไรส่งความชันย้อนกลับทีละชั้น?', a: 'chain rule — คูณอนุพันธ์ทีละท่อนจาก loss ย้อนกลับไปถึง weight ทุกตัวในเครือข่าย' },
+    { w: 7, q: 'learning rate ใหญ่ไป/เล็กไป เกิดอะไรขึ้น?', a: 'ใหญ่ไป = ก้าวข้ามหุบเขา loss แกว่งหรือระเบิด / เล็กไป = ลงถูกทางแต่ช้ามากจนไม่ทันใช้งาน' },
+    // ส.8 — CNN
+    { w: 8, q: 'kernel (filter) ของ CNN ทำงานอย่างไร?', a: 'ทาบหน้าต่างเล็กๆ บนภาพ คูณช่องต่อช่องแล้วบวกรวมเป็น 1 ค่า — เลื่อนสแกนทั่วภาพ' },
+    { w: 8, q: 'feature map คืออะไร?', a: 'ผลจากการสแกน kernel หนึ่งตัวทั่วทั้งภาพ — แผนที่บอกว่า "ลายที่ kernel ตามหา" อยู่ตรงไหนบ้าง' },
+    { w: 8, q: 'ทำไม CNN เหมาะกับภาพกว่า MLP ธรรมดา?', a: 'มองทีละหย่อม + ใช้ weight ชุดเดียวกันทั่วภาพ (แชร์ weight) → พารามิเตอร์น้อยลงมหาศาล และเจอลายเดิมได้ไม่ว่าอยู่มุมไหน' },
+  ];
+  const $ = id => document.getElementById(id);
+  const card = $('fcCard'), qEl = $('fcQ'), aEl = $('fcA'), tagF = $('fcTagF'), tagB = $('fcTagB'),
+    okBtn = $('fcOk'), againBtn = $('fcAgain'), shufBtn = $('fcShuffle'),
+    cntEl = $('fcCount'), fillEl = $('fcBarFill'), doneEl = $('fcDone'), scene = $('fcScene');
+  let queue = [], doneN = 0, seen = false, miss = {};
+
+  function fcProg() {
+    cntEl.textContent = 'แม่นแล้ว ' + doneN + '/' + FC.length;
+    fillEl.style.width = (doneN / FC.length * 100) + '%';
+  }
+  function render() {
+    if (!queue.length) { finish(); return; }
+    const c = FC[queue[0]];
+    card.classList.add('fc-snap');            // สลับใบใหม่แบบไม่หมุนค้าง
+    card.classList.remove('fc-on');
+    seen = false;
+    okBtn.disabled = againBtn.disabled = true;
+    qEl.textContent = c.q;
+    aEl.textContent = c.a;
+    tagF.textContent = 'ส.' + c.w;
+    tagF.href = 'week0' + c.w + '.html';
+    tagB.textContent = 'ทบทวนที่ ส.' + c.w + ' →';
+    tagB.href = tagF.href;
+    setTimeout(() => card.classList.remove('fc-snap'), 60);
+  }
+  function finish() {
+    scene.style.display = 'none';
+    okBtn.disabled = againBtn.disabled = true;
+    const weak = Object.keys(miss).map(Number).sort((x, y) => miss[y] - miss[x]);
+    let html = '<strong>🎉 ครบทั้งกอง ' + FC.length + ' ใบ!</strong> ';
+    if (!weak.length) {
+      html += 'และไม่กด "ยังไม่แน่น" เลยสักครั้ง — แน่นมาก ไปลุยสอบเสมือนจริงข้างล่างต่อได้เลย';
+    } else {
+      html += 'จุดที่ยังไม่แน่น เรียงจากหนักไปเบา:' +
+        '<ul style="margin:8px 0 0;padding-left:20px">' +
+        weak.map(w => '<li>สัปดาห์ ' + w + ' — กด "ยังไม่แน่น" ' + miss[w] + ' ครั้ง → <a href="week0' + w + '.html">กลับไปทบทวน ส.' + w + ' →</a></li>').join('') +
+        '</ul>';
+    }
+    html += '<div style="margin-top:10px"><button type="button" id="fcRestart">↺ เล่นใหม่อีกรอบ</button></div>';
+    doneEl.innerHTML = html;
+    doneEl.style.display = 'block';
+    doneEl.querySelector('#fcRestart').onclick = reset;
+  }
+  function reset() {
+    queue = FC.map((_, i) => i);
+    doneN = 0; miss = {};
+    doneEl.style.display = 'none';
+    scene.style.display = '';
+    fcProg(); render();
+  }
+  card.addEventListener('click', e => {
+    if (e.target.closest('a') || !queue.length) return;   // คลิกลิงก์ = ไปหน้า ไม่พลิก
+    card.classList.toggle('fc-on');
+    if (card.classList.contains('fc-on') && !seen) {
+      seen = true;
+      okBtn.disabled = againBtn.disabled = false;
+    }
+  });
+  okBtn.addEventListener('click', () => {
+    if (!seen || !queue.length) return;
+    queue.shift(); doneN++;
+    fcProg(); render();
+  });
+  againBtn.addEventListener('click', () => {
+    if (!seen || !queue.length) return;
+    const i = queue.shift();
+    miss[FC[i].w] = (miss[FC[i].w] || 0) + 1;
+    queue.push(i);                                        // วนกลับเข้าท้ายกอง
+    render();
+  });
+  shufBtn.addEventListener('click', () => {
+    for (let i = queue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [queue[i], queue[j]] = [queue[j], queue[i]];
+    }
+    if (queue.length) render();
+  });
+  reset();
+})();
+
+// ═══════════ 2) แผนที่ความรู้แบบกดได้ ═══════════
+(function () {
+  const NS = 'http://www.w3.org/2000/svg';
+  const NODES = {
+    1: { x: 66, y: 258, name: 'AI คืออะไร & bigram', sub: 'AI & bigram', lines: [
+      'AI 4 ยุค — จากกฎที่คนเขียน สู่เครื่องที่เรียนรู้เอง',
+      'โมเดลภาษาเล็กที่สุดในโลก: bigram นับคู่คำแล้วทำนายคำถัดไป',
+      'หัวใจที่ใช้ทั้งเทอม: ทำนาย "ตัวถัดไป" จากข้อมูลที่เคยเห็น'] },
+    2: { x: 180, y: 212, name: 'Linear Regression', sub: 'Linear Reg', lines: [
+      'โมเดลแรกที่เรียนรู้ได้: ŷ = wx + b ลากเส้นผ่านข้อมูล',
+      'loss (MSE) = ตัววัดว่าทำนายพลาดแค่ไหน',
+      'นิยามการเรียนรู้: ปรับ w, b ให้ loss ต่ำลง'] },
+    3: { x: 296, y: 158, name: 'Polynomial Regression', sub: 'Poly Reg', lines: [
+      'ข้อมูลโค้ง? เพิ่ม x², x³ ให้เส้นดัดตามได้',
+      'หา w ทีเดียวจบด้วย OLS (สมการเมทริกซ์)',
+      'กับดักแรกของวิชา: degree สูงไป = จำ noise = overfit'] },
+    4: { x: 300, y: 286, name: 'KNN', sub: 'KNN', lines: [
+      'จุดใหม่เป็นพวกไหน? ดู k เพื่อนบ้านใกล้สุดแล้วโหวต',
+      'ไม่มีการเทรน — งานหนักอยู่ตอนทำนาย (วัดระยะทุกจุด)',
+      'k เล็ก = อ่อนไหว noise / k ใหญ่ = กลืนกลุ่มเล็ก'] },
+    5: { x: 432, y: 296, name: 'K-means', sub: 'K-means', lines: [
+      'ไม่มีป้ายคำตอบ → unsupervised: เครื่องจับกลุ่มเอง',
+      'วนสองขั้น: จัดจุดเข้า centroid ใกล้สุด ↔ ย้าย centroid ไปค่าเฉลี่ย',
+      'เลือกจำนวนกลุ่ม K ด้วย elbow method'] },
+    6: { x: 438, y: 112, name: 'Neural Network', sub: 'Neural Net', lines: [
+      'นิวรอน = ผลรวมถ่วงน้ำหนัก + activation (ข้อหักงอ)',
+      'ซ้อนชั้นเป็น MLP → สร้าง feature ซับซ้อนขึ้นทีละชั้น แก้ XOR ได้',
+      'softmax เปลี่ยนคะแนนดิบเป็นความน่าจะเป็น'] },
+    7: { x: 568, y: 64, name: 'Backpropagation', sub: 'Backprop', lines: [
+      'gradient บอกทิศที่ loss ชันขึ้น → ก้าวสวนทาง: w ← w − lr·g',
+      'backprop ใช้ chain rule ส่งความชันย้อนกลับทุกชั้น',
+      'นี่คือวิธีเทรนของทุกโมเดล ตั้งแต่ MLP ยัน GPT'] },
+    8: { x: 592, y: 170, name: 'CNN', sub: 'CNN', lines: [
+      'MLP ตาบอดกับภาพ — CNN มองทีละหย่อมด้วย kernel',
+      'kernel สแกนทั่วภาพ (แชร์ weight) ได้ feature map',
+      'บทเรียนใหญ่: สถาปัตยกรรมที่เข้ากับข้อมูล ชนะเสมอ'] },
+    13: { x: 706, y: 30, name: 'LLM (ครึ่งหลัง)', sub: 'LLM', ghost: true, lines: [
+      'ปลายทางของทุกอย่างที่เรียนมา: ประกอบเป็น ChatGPT/Claude ตัวจริง',
+      'สังเกตว่าทุกเส้นบนแผนที่ไหลขึ้นมารวมที่นี่',
+      'เจอกันครึ่งหลัง — ผ่านสอบกลางภาคก่อน!'] },
+  };
+  const EDGES = [[1, 2], [2, 3], [3, 6], [2, 4], [4, 5], [6, 7], [6, 8], [7, 13, 1], [8, 13, 1]];
+  const PAR = { 2: [1], 3: [2], 4: [2], 5: [4], 6: [3], 7: [6], 8: [6], 13: [7, 8] };
+
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 760 345');
+  document.getElementById('kmWrap').appendChild(svg);
+
+  const edgeEls = [];
+  EDGES.forEach(([a, b, ghost]) => {
+    const l = document.createElementNS(NS, 'line');
+    l.setAttribute('x1', NODES[a].x); l.setAttribute('y1', NODES[a].y);
+    l.setAttribute('x2', NODES[b].x); l.setAttribute('y2', NODES[b].y);
+    l.setAttribute('class', 'km-edge' + (ghost ? ' km-fade' : ''));
+    svg.appendChild(l);
+    edgeEls.push({ a, b, el: l });
+  });
+  const nodeEls = {};
+  Object.keys(NODES).forEach(k => {
+    const n = NODES[k];
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'km-node' + (n.ghost ? ' km-ghost' : ''));
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('cx', n.x); c.setAttribute('cy', n.y); c.setAttribute('r', 20);
+    const no = document.createElementNS(NS, 'text');
+    no.setAttribute('x', n.x); no.setAttribute('y', n.y + 5);
+    no.setAttribute('text-anchor', 'middle'); no.setAttribute('font-size', '14');
+    no.setAttribute('class', 'km-no');
+    no.textContent = k;
+    const sub = document.createElementNS(NS, 'text');
+    sub.setAttribute('x', n.x); sub.setAttribute('y', n.y + 36);
+    sub.setAttribute('text-anchor', 'middle'); sub.setAttribute('font-size', '11');
+    sub.setAttribute('class', 'km-sub');
+    sub.textContent = n.sub;
+    g.appendChild(c); g.appendChild(no); g.appendChild(sub);
+    g.addEventListener('click', () => select(+k));
+    svg.appendChild(g);
+    nodeEls[k] = g;
+  });
+
+  function ancestors(w) {          // เซตของสัปดาห์ที่ "ต้องมาก่อน" รวมตัวเอง
+    const set = new Set([w]), st = [w];
+    while (st.length) {
+      const c = st.pop();
+      (PAR[c] || []).forEach(p => { if (!set.has(p)) { set.add(p); st.push(p); } });
+    }
+    return set;
+  }
+  function select(w) {
+    const set = ancestors(w);
+    Object.keys(nodeEls).forEach(k => {
+      nodeEls[k].classList.toggle('km-hl', set.has(+k) && +k !== w);
+      nodeEls[k].classList.toggle('km-sel', +k === w);
+      nodeEls[k].classList.toggle('km-dim', !set.has(+k));
+    });
+    edgeEls.forEach(e =>
+      e.el.classList.toggle('km-hl', set.has(e.a) && set.has(e.b) && (PAR[e.b] || []).includes(e.a)));
+    const n = NODES[w];
+    document.getElementById('kmTitle').textContent = 'ส.' + w + ' — ' + n.name;
+    document.getElementById('kmBody').innerHTML =
+      '<ul>' + n.lines.map(l => '<li>' + l + '</li>').join('') + '</ul>' +
+      '<a class="km-go" href="' + (w < 10 ? 'week0' + w : 'week' + w) + '.html">ไปทบทวน ส.' + w + ' →</a>';
+  }
+})();
+
+// ═══════════ 3) สอบเสมือนจริง 10 นาที ═══════════
+(function () {
+  /*MX-TEST-START*/
+  const MXQ = [
+    { w: 1, q: 'ข้อใดตรงกับหัวใจของ Machine Learning มากที่สุด?', k: 1, c: [
+      'โปรแกรมที่ผู้เชี่ยวชาญเขียนกฎ if-else ครอบคลุมทุกกรณี',
+      'โปรแกรมที่ปรับพารามิเตอร์ของตัวเองจากตัวอย่างข้อมูล',
+      'ฐานข้อมูลขนาดใหญ่ที่ค้นหาได้รวดเร็ว',
+      'หุ่นยนต์ที่เคลื่อนไหวได้เหมือนมนุษย์'],
+      why: 'ML คือการหากฎจากข้อมูลด้วยการปรับพารามิเตอร์ — ไม่ใช่คนเขียนกฎเอง และไม่เกี่ยวกับการมีร่างกาย' },
+    { w: 1, q: 'ฝึก bigram ด้วยข้อความ "กินข้าว กินน้ำ กินข้าว" — หลังคำว่า "กิน" โมเดลให้ P(ข้าว) เท่าไหร่?', k: 2, c: [
+      '1/3', '1/2', '2/3', '1'],
+      why: 'หลัง "กิน" ปรากฏ 3 ครั้ง: ข้าว 2 ครั้ง น้ำ 1 ครั้ง → P(ข้าว) = 2/3' },
+    { w: 2, q: 'ข้อมูล (1,3) และ (2,5) กับโมเดล ŷ = 2x + 1 — MSE เท่ากับเท่าไหร่?', k: 3, c: [
+      '2', '1', '0.5', '0'],
+      why: 'ทำนายได้ 3 และ 5 ตรงค่าจริงเป๊ะทั้งสองจุด → ผิดพลาดเป็นศูนย์ MSE = 0' },
+    { w: 3, q: 'เพิ่ม degree ของพหุนามขึ้นเรื่อยๆ — กราฟ error แบบไหนคือสัญญาณ overfitting?', k: 1, c: [
+      'train ลดลง และ test ลดลงพร้อมกัน',
+      'train ลดลงเรื่อยๆ แต่ test กลับพุ่งขึ้น',
+      'train เพิ่มขึ้น และ test เพิ่มขึ้น',
+      'ทั้งคู่คงที่ไม่เปลี่ยนแปลง'],
+      why: 'โมเดลจำ noise ของ train → คะแนน train ดีขึ้นแต่พังกับข้อมูลใหม่ = ช่องว่าง train/test ถ่างออก' },
+    { w: 4, q: 'KNN ที่ k = 3 เพื่อนบ้านใกล้สุดของจุดใหม่คือ แมว แมว หมา — ระบบทำนายว่าอะไร?', k: 2, c: [
+      'หมา — เพราะอยู่ใกล้ที่สุดหนึ่งตัว',
+      'ตอบไม่ได้ ต้องเทรนโมเดลก่อน',
+      'แมว — เสียงข้างมาก 2 ต่อ 1',
+      'สุ่มระหว่างแมวกับหมา'],
+      why: 'KNN ตัดสินด้วยเสียงข้างมากของ k เพื่อนบ้าน (2:1) — และ KNN ไม่มีขั้นตอนเทรน' },
+    { w: 5, q: 'elbow method ใน K-means มีไว้ทำอะไร?', k: 1, c: [
+      'เลือก learning rate ที่เหมาะสม',
+      'เลือกจำนวนกลุ่ม K ที่เหมาะสม',
+      'วัด accuracy เทียบกับ label จริง',
+      'ตัดสินว่า centroid นิ่งแล้วหรือยัง'],
+      why: 'พล็อตความกระจายในกลุ่มเทียบ K แล้วเลือกจุดหักศอก — K-means ไม่มี label และไม่มี learning rate' },
+    { w: 6, q: 'นิวรอน: x = (1, 2), w = (0.5, −1), b = 1 ผ่าน ReLU — output คือเท่าไหร่?', k: 0, c: [
+      '0', '−0.5', '0.5', '1.5'],
+      why: 'z = 0.5(1) + (−1)(2) + 1 = −0.5 แล้ว ReLU ตัดค่าลบเป็น 0' },
+    { w: 6, q: 'softmax กับคะแนนดิบ (2, 0) สองตัวเลือก — ความน่าจะเป็นของตัวที่ได้คะแนน 2 ใกล้ค่าใดที่สุด?', k: 2, c: [
+      '50%', '73%', '88%', '100%'],
+      why: 'e²/(e²+e⁰) = 7.39/8.39 ≈ 88% — ชนะขาดแต่ไม่ใช่ 100% เพราะ softmax ไม่เคยให้ศูนย์กับใคร' },
+    { w: 7, q: 'y = w·x โดย w = 1, x = 2, เป้าหมาย t = 4 และ L = (y − t)² — dL/dw เท่ากับเท่าไหร่?', k: 2, c: [
+      '−4', '4', '−8', '−16'],
+      why: 'chain rule: dL/dw = 2(y − t) · x = 2(2 − 4)(2) = −8 — ค่าลบแปลว่าต้องเพิ่ม w' },
+    { w: 8, q: 'ภาพ 5×5 ผ่าน kernel 3×3 (stride 1, ไม่มี padding) — feature map มีขนาดเท่าไหร่?', k: 3, c: [
+      '5×5', '4×4', '2×2', '3×3'],
+      why: 'kernel เลื่อนได้ 5−3+1 = 3 ตำแหน่งต่อแกน → 3×3' },
+  ];
+  function mxScore(qs, ans) {
+    let score = 0;
+    const perWeek = {};
+    qs.forEach(function (q, i) {
+      if (!perWeek[q.w]) perWeek[q.w] = { total: 0, correct: 0 };
+      perWeek[q.w].total++;
+      if (ans[i] === q.k) { score++; perWeek[q.w].correct++; }
+    });
+    return { score: score, perWeek: perWeek };
+  }
+  /*MX-TEST-END*/
+
+  const $ = id => document.getElementById(id);
+  const qsBox = $('mxQs'), clock = $('mxClock'), startB = $('mxStart'),
+    subB = $('mxSubmit'), res = $('mxResult'), state = $('mxState');
+  const TH = 'กขคง';
+  let ans = {}, started = false, submitted = false, deadline = 0, tick = null;
+
+  MXQ.forEach((q, i) => {
+    const d = document.createElement('div');
+    d.className = 'mx-q';
+    d.innerHTML = '<h4>' + (i + 1) + '. ' + q.q + '</h4>' +
+      '<div class="mx-choices">' +
+      q.c.map((c, j) => '<button type="button" class="mx-choice" data-q="' + i + '" data-j="' + j + '">' +
+        TH[j] + '. ' + c + '</button>').join('') +
+      '</div><div class="mx-fb"></div>';
+    qsBox.appendChild(d);
+  });
+
+  qsBox.addEventListener('click', e => {
+    const b = e.target.closest('.mx-choice');
+    if (!b || !started || submitted) return;
+    ans[+b.dataset.q] = +b.dataset.j;
+    b.parentNode.querySelectorAll('.mx-choice').forEach(x => x.classList.toggle('mx-picked', x === b));
+  });
+
+  const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  // นับเวลาจาก Date.now เทียบเส้นตาย — สลับแท็บ/ย่อหน้าต่างแล้วเวลาไม่เพี้ยน
+  function step() {
+    const rem = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    clock.textContent = rem <= 0 ? '0:00' : fmt(rem);
+    clock.classList.toggle('mx-low', rem > 0 && rem <= 60);
+    if (rem <= 0) { clearInterval(tick); if (!submitted) grade(true); }
+  }
+  startB.addEventListener('click', () => {
+    if (started) return;
+    started = true;
+    deadline = Date.now() + 600 * 1000;
+    qsBox.classList.remove('mx-off');
+    subB.style.display = '';
+    startB.disabled = true;
+    startB.textContent = '⏳ กำลังสอบ…';
+    state.textContent = 'ตอบครบแล้วกดส่ง — หมดเวลาระบบส่งให้เอง';
+    tick = setInterval(step, 250);
+    step();
+  });
+  subB.addEventListener('click', () => grade(false));
+
+  function grade(auto) {
+    if (submitted) return;
+    submitted = true;
+    clearInterval(tick);
+    subB.style.display = 'none';
+    clock.classList.remove('mx-low');
+    const r = mxScore(MXQ, ans);
+    MXQ.forEach((q, i) => {
+      const box = qsBox.children[i];
+      box.querySelectorAll('.mx-choice').forEach((b, j) => {
+        b.disabled = true;
+        if (j === q.k) b.classList.add('mx-right');
+        if (ans[i] === j && j !== q.k) b.classList.add('mx-wrong');
+      });
+      const fb = box.querySelector('.mx-fb');
+      const head = ans[i] === q.k ? '✅ ถูก' :
+        (ans[i] === undefined ? '⬜ ไม่ได้ตอบ' : '❌ ผิด') + ' — เฉลย: ' + TH[q.k];
+      fb.innerHTML = '<strong>' + head + '.</strong> ' + q.why +
+        ' <a class="mx-wk" href="week0' + q.w + '.html">ส.' + q.w + ' →</a>';
+      fb.style.display = 'block';
+    });
+    const weeks = Object.keys(r.perWeek).map(Number).sort((a, b) => a - b);
+    const redo = weeks.filter(w => r.perWeek[w].correct < r.perWeek[w].total);
+    res.innerHTML =
+      '<h4 style="margin:0 0 6px">' + (auto ? '⏰ หมดเวลา — ส่งคำตอบอัตโนมัติ' : '📊 ผลสอบเสมือนจริง') + '</h4>' +
+      '<div style="font-size:1.4rem;font-weight:800;color:var(--accent)">ได้ ' + r.score + ' / ' + MXQ.length + ' ข้อ</div>' +
+      '<div class="mx-bars">' + weeks.map(w => {
+        const p = r.perWeek[w], pc = p.correct / p.total * 100;
+        return '<div class="row"><span class="lbl">ส.' + w + '</span>' +
+          '<div class="track"><div class="fill" style="width:' + pc + '%;background:' +
+          (pc === 100 ? 'var(--green)' : pc > 0 ? 'var(--amber)' : '#d13c4b') + '"></div></div>' +
+          '<span>' + p.correct + '/' + p.total + '</span></div>';
+      }).join('') + '</div>' +
+      (redo.length ?
+        '<p style="margin:10px 0 0">📌 สัปดาห์ที่ควรกลับไปทบทวน: ' +
+        redo.map(w => '<a href="week0' + w + '.html">ส.' + w + '</a>').join(' · ') + '</p>' :
+        '<p style="margin:10px 0 0">🎉 เต็มทุกสัปดาห์ — พร้อมลงสนามจริงแล้ว</p>') +
+      '<div style="margin-top:10px"><button type="button" id="mxReset">↺ ทำใหม่อีกรอบ</button></div>';
+    res.style.display = 'block';
+    res.querySelector('#mxReset').onclick = resetAll;
+    state.textContent = 'ส่งแล้ว — อ่านคำอธิบายรายข้อด้านบน';
+  }
+  function resetAll() {
+    ans = {}; started = false; submitted = false;
+    clearInterval(tick);
+    clock.textContent = '10:00';
+    clock.classList.remove('mx-low');
+    res.style.display = 'none'; res.innerHTML = '';
+    startB.disabled = false; startB.textContent = '▶ เริ่มสอบ';
+    qsBox.classList.add('mx-off');
+    state.textContent = 'ยังไม่เริ่ม — กดปุ่มเมื่อพร้อม แล้วห้ามเปิดโน้ต';
+    qsBox.querySelectorAll('.mx-choice').forEach(b => {
+      b.disabled = false;
+      b.classList.remove('mx-picked', 'mx-right', 'mx-wrong');
+    });
+    qsBox.querySelectorAll('.mx-fb').forEach(f => { f.style.display = 'none'; f.innerHTML = ''; });
+  }
+})();
+</script>
+
+</body>
+</html>

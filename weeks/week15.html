@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM ทำงานอย่างไร | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button {
+    font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s;
+  }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  .demo .try { background:var(--amber-soft); border-radius:8px; padding:8px 12px; margin-top:12px; font-size:.95rem; }
+  .demo .try::before { content:"✍️ ลองเอง: "; font-weight:700; color:var(--amber); }
+
+  /* ═══════ ✂️ tokenizer สด ═══════ */
+  .tk-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:2.3em; align-items:flex-start; }
+  .tk-chip { padding:4px 9px; border-radius:8px; font-weight:600; font-size:.92rem; cursor:default;
+    border:1px solid rgba(31,37,51,.12); color:#1f2533; white-space:pre; transition:transform .12s; }
+  .tk-chip:hover { transform:translateY(-2px); }
+  .tk-chip.fb { outline:2px dashed #e5484d; outline-offset:-2px; }
+  .tk-read { margin-top:8px; font-size:.9rem; color:var(--muted); min-height:1.5em; }
+  .tk-read b { color:var(--accent); }
+  .tk-cost { margin-top:12px; border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 14px; }
+  .tk-cost h4 { margin:0 0 6px; font-size:.9rem; }
+  .tk-cost .row { display:flex; align-items:center; gap:9px; margin:6px 0; font-size:.87rem; }
+  .tk-cost .lbl { min-width:185px; font-weight:600; }
+  .tk-cost .bar { height:16px; border-radius:6px; background:linear-gradient(90deg,var(--accent),#8b5cf6); transition:width .5s; min-width:3px; }
+  .tk-cost .bar.en { background:linear-gradient(90deg,#12a150,#3ecf96); }
+  .tk-cost .n { font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tk-note { font-size:.85rem; color:var(--muted); margin:8px 0 0; }
+
+  /* ═══════ 🚂 ชีวิตของ token ครบวงจร ═══════ */
+  .lt-stage { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:4px; }
+  .lt-stage svg { display:block; width:100%; height:auto; }
+  .lt-grid { display:grid; grid-template-columns:1fr; gap:12px; margin-top:12px; }
+  @media(min-width:880px){ .lt-grid { grid-template-columns:1fr 320px; align-items:stretch; } }
+  .lt-side { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 14px; }
+  .lt-side h4 { margin:0 0 8px; font-size:.88rem; color:var(--accent); }
+  .lt-brow { display:flex; align-items:center; gap:7px; margin:7px 0; font-size:.9rem; }
+  .lt-brow .w { min-width:62px; font-weight:700; text-align:right; }
+  .lt-brow .track { flex:1; height:15px; border-radius:6px; background:rgba(127,127,127,.13); overflow:hidden; }
+  .lt-brow .fill { height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),#8b5cf6); transition:width .45s; }
+  .lt-brow .pv { min-width:58px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; font-size:.83rem; }
+  .lt-brow.win .fill { background:linear-gradient(90deg,#12a150,#3ecf96); }
+  .lt-brow.win .w, .lt-brow.win .pv { color:#0e7f43; }
+  [data-theme="dark"] .lt-brow.win .w, [data-theme="dark"] .lt-brow.win .pv { color:#3ecf96; }
+  .lt-dice { margin-top:10px; font-size:.86rem; line-height:1.7; color:var(--muted); min-height:2.5em; }
+  .lt-dice b { color:var(--amber); }
+  .lt-msg { margin-top:12px; border-radius:12px; padding:10px 14px; background:var(--accent-soft); min-height:4.8em;
+    font-size:.93rem; line-height:1.85; }
+  .lt-msg b { color:var(--accent); }
+  .lt-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .lt-step { font-weight:700; color:var(--muted); font-size:.86rem; min-width:80px; text-align:center; font-variant-numeric:tabular-nums; }
+  #ltPlay { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+
+  /* ═══════ 🌡️ ห้องทดลองการสุ่ม ═══════ */
+  .sl-ctl { display:flex; flex-direction:column; gap:8px; margin:10px 0; }
+  .sl-row { display:flex; align-items:center; gap:9px; font-size:.9rem; flex-wrap:wrap; }
+  .sl-row label { min-width:110px; font-weight:700; }
+  .sl-row input[type=range] { flex:1; min-width:140px; accent-color:var(--accent); }
+  .sl-row .v { min-width:44px; text-align:right; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .sl-row .exp { flex-basis:100%; font-size:.82rem; color:var(--muted); margin-top:-4px; }
+  .sl-bars { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 14px; }
+  .sl-b { margin:8px 0; font-size:.89rem; }
+  .sl-b .head { display:flex; justify-content:space-between; font-weight:700; }
+  .sl-b .head .pct { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .sl-b .track { height:16px; border-radius:6px; background:rgba(127,127,127,.12); overflow:hidden; margin-top:2px; }
+  .sl-b .t-fill { height:100%; border-radius:6px; background:linear-gradient(90deg,var(--accent),#8b5cf6); transition:width .35s; }
+  .sl-b .e-track { height:8px; border-radius:4px; background:rgba(127,127,127,.08); overflow:hidden; margin-top:2px; }
+  .sl-b .e-fill { height:100%; border-radius:4px; background:linear-gradient(90deg,#f59e0b,#f97316); transition:width .35s; }
+  .sl-b.cut { opacity:.42; }
+  .sl-b.cut .head .pct::after { content:" — โดน top-k ตัดทิ้ง"; color:#e5484d; font-size:.8em; }
+  .sl-legend { font-size:.82rem; color:var(--muted); margin:8px 0 0; }
+  .sl-legend i { display:inline-block; width:.9em; height:.9em; border-radius:3px; vertical-align:-.12em; margin:0 3px 0 8px; }
+  .sl-loopbox { margin-top:14px; border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 14px; }
+  .sl-loopbox h4 { margin:0 0 6px; font-size:.92rem; }
+  .sl-loopbox .rep { color:#b45309; font-weight:700; }
+  [data-theme="dark"] .sl-loopbox .rep { color:#e6b04e; }
+
+  /* ═══════ 🏋️ เกม RLHF ═══════ */
+  .rl-q { border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:10px;
+    background:var(--card); padding:10px 14px; font-weight:600; margin:10px 0; font-size:.95rem; }
+  .rl-grid { display:grid; grid-template-columns:1fr; gap:10px; }
+  @media(min-width:760px){ .rl-grid { grid-template-columns:1fr 1fr; } }
+  .rl-opt { border:1.5px solid var(--border); border-radius:12px; background:var(--card); padding:12px 14px;
+    cursor:pointer; font-size:.92rem; line-height:1.8; transition:all .2s; }
+  .rl-opt:not(.lock):hover { border-color:var(--accent); transform:translateY(-2px); box-shadow:0 6px 16px -10px rgba(36,86,230,.5); }
+  .rl-opt .tag { display:inline-block; font-weight:800; color:var(--accent); margin-right:6px; }
+  .rl-opt.good { border-color:#12a150; background:rgba(18,161,80,.08); }
+  .rl-opt.bad { border-color:#e5484d; background:rgba(229,72,77,.07); }
+  .rl-opt.lock { cursor:default; transform:none; box-shadow:none; }
+  .rl-fb { margin-top:10px; border-radius:10px; padding:10px 14px; font-size:.9rem; line-height:1.8;
+    background:var(--accent-soft); display:none; }
+  .rl-bar-wrap { display:flex; align-items:center; gap:10px; margin-top:12px; font-size:.88rem; flex-wrap:wrap; }
+  .rl-bar-wrap .cap { font-weight:700; }
+  .rl-track { flex:1; min-width:160px; height:18px; border-radius:9px; background:rgba(127,127,127,.15); overflow:hidden; }
+  .rl-fill { height:100%; width:0; border-radius:9px; background:linear-gradient(90deg,#12a150,#3ecf96); transition:width .6s; }
+  .rl-score { font-weight:700; color:var(--green); font-variant-numeric:tabular-nums; }
+
+  /* ═══════ 💻 โค้ด ═══════ */
+  .code-wrap { position:relative; margin:10px 0; }
+  .code-wrap pre { background:#0f1425; color:#dbe2ff; border-radius:12px; padding:14px 16px 14px;
+    overflow-x:auto; font-size:.86rem; line-height:1.7; border:1px solid rgba(139,148,255,.25); margin:0; }
+  .code-wrap pre, .code-wrap code { font-family:'Cascadia Code', Consolas, 'Courier New', monospace !important; font-size-adjust:none; }
+  .code-wrap code .cm { color:#7fd18c; }
+  .code-copy { position:absolute; top:8px; right:8px; font-size:.8rem; padding:4px 12px;
+    background:linear-gradient(135deg,#334155,#475569); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>LLM ทำงานอย่างไร 🏁</h1>
+    <p class="subtitle">ยอดบันได: ประกอบทุกชิ้นจาก 10 สัปดาห์ เป็น ChatGPT/Claude ตัวจริง</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>เล่า "วงจรชีวิตของ LLM" ได้ครบ: tokenize → pretrain → fine-tune → RLHF → ใช้งาน</li>
+      <li>อธิบายได้ว่า hallucination มาจากไหน — จากกลไกที่เรียนมาเอง ไม่ใช่ "ความผิดพลาดแปลกๆ"</li>
+      <li>อธิบายผลของ temperature ต่อการสุ่มคำ จากการทดลองจริง</li>
+      <li>ไล่ลูป autoregressive ครบวงจรได้: tokenize → embedding → Transformer → logits → softmax → สุ่ม → ต่อท้าย แล้ววนใหม่</li>
+      <li>อธิบายได้ว่า RLHF เปลี่ยน "เครื่องต่อข้อความ" เป็น "ผู้ช่วย" ได้อย่างไร — จากการลองเป็นผู้ให้คะแนนเอง</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ (คำถามเดียวกับคาบแรกของเทอม!): <em>"ChatGPT ฉลาดเพราะอะไร?"</em> — วันนี้ตอบได้ครบทุกชั้นแล้ว</p>
+
+    <h3>วงจรชีวิตของ LLM: 4 ขั้น</h3>
+    <ul>
+      <li><strong>1. Tokenization</strong> — หั่นข้อความเป็นชิ้นเล็ก (token ≈ คำหรือชิ้นส่วนคำ ราว 50,000–100,000 แบบ)
+      เพราะคำเต็มมีไม่จำกัดแต่ softmax ต้องการตัวเลือกจำกัด (เรื่อง Neural Network)
+      ผลข้างเคียง: LLM "มองไม่เห็นตัวอักษร" — นี่คือสาเหตุที่มันนับตัวอักษรผิด สะกดกลับหลังไม่เก่ง</li>
+      <li><strong>2. Pretraining</strong> — Transformer ขนาดยักษ์ (เรื่อง Attention &amp; Transformer) เล่นเกมเดียว:
+      ทำนาย token ถัดไป (เรื่อง AI คืออะไร!) บนข้อความระดับล้านล้าน token เทรนด้วย backprop (เรื่อง Backpropagation)
+      บน GPU หลายหมื่นตัว หลายเดือน — ได้ "base model" ที่รู้ภาษา รู้โลก แต่<em>ยังไม่ใช่ผู้ช่วย</em>
+      (ถามคำถามมันอาจตอบเป็นคำถามต่อ เพราะในอินเทอร์เน็ตคำถามมักตามด้วยคำถาม)</li>
+      <li><strong>3. Fine-tuning (SFT)</strong> — เทรนต่อด้วยตัวอย่าง "บทสนทนาผู้ช่วยที่ดี" หลักหมื่น-แสนคู่
+      ที่มนุษย์เขียน → โมเดลเรียน "บทบาท" ของผู้ช่วย</li>
+      <li><strong>4. RLHF</strong> — ให้มนุษย์เปรียบเทียบคำตอบหลายแบบ ว่าแบบไหนดีกว่า
+      แล้วเทรนโมเดลให้ผลิตคำตอบแบบที่มนุษย์ชอบ (สุภาพ ปลอดภัย ตรงคำถาม)
+      — นี่คือขั้นที่เปลี่ยน "เครื่องทำนายข้อความ" เป็น "ผู้ช่วย" อย่าง ChatGPT</li>
+    </ul>
+
+    <h3>ทำไมมัน hallucinate — คำตอบจากกลไกที่เราเรียนมาเอง</h3>
+    <p>LLM ไม่มีฐานข้อมูลข้อเท็จจริง มันมีแต่ weight ที่ถูกปรับให้ "ทำนาย token ถัดไปให้เนียน"
+    เมื่อถามสิ่งที่ไม่อยู่ในข้อมูลฝึก มันไม่มีปุ่ม "ไม่รู้" โดยธรรมชาติ —
+    softmax ยังคงผลิตความน่าจะเป็นของคำถัดไปเสมอ และคำที่ "ฟังดูเข้ากับบริบท" ก็ได้คะแนนสูง
+    ผลคือคำตอบที่<em>ไวยากรณ์สมบูรณ์ น้ำเสียงมั่นใจ แต่ข้อเท็จจริงมโน</em>
+    (เหมือน n-gram เรื่อง Language Model &amp; RNN ที่แต่งประโยคลื่นแต่ไม่รู้เรื่องจริง — แค่เนียนกว่ามหาศาล)</p>
+
+    <h3>Temperature: ปุ่มคุมความ "กล้าเสี่ยง" ของการสุ่ม</h3>
+    <p>ก่อน softmax เราหารคะแนนดิบด้วยค่า T — T ต่ำ: ความน่าจะเป็นกระจุกที่คำอันดับหนึ่ง (ตอบซ้ำๆ เชื่อถือได้)
+    T สูง: กระจายไปคำแปลกๆ (สร้างสรรค์แต่เพี้ยนง่าย) ลองเองใน demo ข้างล่าง</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — ตามติดชีวิตของ 1 token ใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">คุณพิมพ์ "แมวชอบกิน" แล้วกด Enter — นี่คือสิ่งที่เกิดขึ้นทุกขั้น ก่อนตัวอักษรถัดไปจะโผล่บนจอ (ทุกขั้นคือบทเรียนเก่าทั้งหมด)</p>
+    <ol class="steps">
+      <li><strong>หั่นเป็น token</strong>
+        "แมวชอบกิน" → tokenizer หั่นเป็นชิ้น เช่น [แมว][ชอบ][กิน] แต่ละชิ้นแทนด้วยหมายเลข เช่น 8741, 2205, 9038
+        — โมเดลไม่เคยเห็น "ตัวอักษร" เห็นแต่หมายเลขพวกนี้ (ลองหั่นจริงที่ demo Tiktokenizer ข้างล่าง)</li>
+      <li><strong>หมายเลข → เวกเตอร์ความหมาย</strong>
+        แต่ละ token เปิดตาราง embedding ได้เวกเตอร์ยาวหลายพันมิติ — "แมว" กลายเป็นจุดหนึ่งในแผนที่ความหมาย
+        ที่อยู่ใกล้ "หมา" แต่ไกลจาก "รัฐธรรมนูญ" (แนวคิดจากเรื่อง Language Model &amp; RNN)</li>
+      <li><strong>ผ่าน Transformer หลายสิบชั้น</strong>
+        แต่ละชั้น: attention — token ทุกตัวหันมองกันแล้วดูดบริบท (เรื่อง Attention &amp; Transformer) → MLP — แต่ละ token ครุ่นคิดกับตัวเอง (เรื่อง Neural Network)<br>
+        ผ่านไปทีละชั้น เวกเตอร์ของ token สุดท้าย ("กิน") ค่อยๆ เปลี่ยนจาก "ความหมายของคำว่ากิน"
+        เป็น "ความหมายของทั้งประโยค ณ จุดนี้"</li>
+      <li><strong>คะแนนดิบ 50,000 ค่า → softmax</strong>
+        เวกเตอร์สุดท้ายถูกแปลงเป็นคะแนนดิบของ<em>ทุก token ในคลังศัพท์</em>: "ปลา" 8.2, "ข้าว" 7.9, "นอน" 3.1, ...<br>
+        หารด้วย temperature แล้วเข้า softmax (เรื่อง Neural Network) → ความน่าจะเป็น: ปลา 54%, ข้าว 40%, นอน 2%, ...</li>
+      <li><strong>สุ่มเลือก 1 คำ</strong>
+        ทอยลูกเต๋าถ่วงน้ำหนัก — สมมุติได้ <strong>"ปลา"</strong> (รอบหน้าอาจได้ "ข้าว" — นี่คือเหตุที่ถามซ้ำแล้วคำตอบไม่เหมือนเดิม)
+        <div class="try">เชื่อมเอง: ถ้าตั้ง temperature ต่ำมากๆ ขั้นนี้จะเปลี่ยนไปอย่างไร แล้วคำตอบของ AI จะมีนิสัยแบบไหน? (ลองใน demo temperature ข้างล่าง)</div></li>
+      <li><strong>ต่อท้าย แล้ววนใหม่ตั้งแต่ขั้น 1</strong>
+        ตอนนี้ข้อความคือ "แมวชอบกินปลา" → ทั้งกระบวนการรันใหม่หมดเพื่อหา token ถัดไป → วนจนจบประโยค<br>
+        <strong>คำตอบยาว 500 token = วนลูปนี้ 500 รอบ</strong> — ไม่มีการ "คิดทั้งย่อหน้าแล้วค่อยพิมพ์"
+        มีแต่ทำนายทีละชิ้นเหมือน bigram สัปดาห์แรกของเรา เพียงแต่ฉลาดกว่าล้านเท่า
+        <div class="try">เล่าวงจร 6 ขั้นนี้ให้เพื่อนฟังโดยไม่ดูโน้ต — ถ้าทำได้ คุณคือคนส่วนน้อยมากๆ ที่อธิบาย ChatGPT ได้จริง</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — พฤติกรรมแปลกๆ ของ LLM อธิบายได้หมด</h3>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — temperature สุดขั้ว: T = 0.1</summary>
+      <p>คะแนนดิบ 3 คำ: 2, 1, 0 — หารด้วย T = 0.1 ก่อนเข้า softmax (กลายเป็น 20, 10, 0) เกิดอะไรขึ้นกับความน่าจะเป็น?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หารคะแนนด้วย T:</strong> (2, 1, 0) ÷ 0.1 = (20, 10, 0) — ความต่างถูกขยาย 10 เท่า<br>
+      <strong>ขั้น 2 — ยกกำลัง e:</strong> e²⁰ ≈ 485 ล้าน | e¹⁰ ≈ 22,026 | e⁰ = 1 — ตัวแรกทิ้งห่างหลายหมื่นเท่า<br>
+      <strong>ขั้น 3 — หารเป็นความน่าจะเป็น:</strong> คำแรก ≈ <strong>99.995%</strong> ที่เหลือแทบเป็นศูนย์<br>
+      ✅ <strong>คำตอบ:</strong> แทบจะเลือกคำเดิมทุกครั้ง = โหมด "ตอบให้เหมือนเดิมที่สุด" สำหรับงานต้องการความแน่นอน
+      (สรุปเอกสารทางการ) ส่วน T สูงคือโหมดระดมไอเดีย — เลขตัวเดียวเปลี่ยนนิสัยทั้งระบบ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — ทำไมใช้ AI ภาษาไทยแล้ว "เปลือง" กว่าภาษาอังกฤษ</summary>
+      <p>tokenizer ส่วนใหญ่ฝึกกับข้อความอังกฤษเป็นหลัก: "hello" = 1 token แต่ "สวัสดี" อาจถูกหั่นเป็น 3–6 token
+      — ถ้าค่าใช้บริการคิดต่อ token ผลที่ตามมาคืออะไรบ้าง (ตอบ 3 ข้อ)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตั้งต้นจากข้อเท็จจริง:</strong> ความหมายเท่ากัน ไทยถูกหั่นเป็น token มากกว่าอังกฤษ 3–5 เท่า<br>
+      <strong>ขั้น 2 — ไล่ผลที่ 1 (เงิน):</strong> คิดเงินต่อ token → ข้อความไทย<strong>จ่ายแพงกว่า</strong> 3–5 เท่าโดยอัตโนมัติ<br>
+      <strong>ขั้น 3 — ไล่ผลที่ 2 (เวลา):</strong> โมเดลผลิตทีละ token → คำตอบไทยใช้รอบวนมากกว่า = <strong>ช้ากว่า</strong><br>
+      <strong>ขั้น 4 — ไล่ผลที่ 3 (ความจุ):</strong> context window นับเป็น token → ใส่เนื้อหาไทยได้<strong>น้อยกว่า</strong> บริบทเต็มเร็วกว่า<br>
+      ✅ <strong>คำตอบ:</strong> แพงกว่า ช้ากว่า จุน้อยกว่า — ทั้งสามผลสืบจากขั้น tokenize ขั้นเดียว
+      ใครเข้าใจวงจรชีวิต LLM จะเดาผลกระทบแบบนี้ได้เอง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — ผ่าตัด hallucination หนึ่งเคส</summary>
+      <p>ถามโมเดล: "เล่าประวัติ ดร.สมชาย ใจดี นักฟิสิกส์รางวัลโนเบลชาวไทย" (บุคคลนี้ไม่มีจริง)
+      — มันตอบมาเป็นชีวประวัติสวยหรู จงไล่กลไกว่าคำตอบปลอมนี้เกิดขึ้นได้ยังไง</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คสิ่งที่โมเดลมี:</strong> ไม่มีฐานข้อมูลให้ค้นว่า "ไม่มีคนนี้" — มีแต่ weight ที่ทำนายคำถัดไปให้เนียน<br>
+      <strong>ขั้น 2 — ดูบริบทที่เราป้อน:</strong> "นักฟิสิกส์...รางวัลโนเบล..." ดึงโมเดลเข้า "ย่านชีวประวัตินักวิทยาศาสตร์" ในข้อมูลฝึก<br>
+      <strong>ขั้น 3 — softmax ทำงานตามหน้าที่:</strong> ต้องผลิตคำถัดไปเสมอ ไม่มีปุ่ม "ไม่รู้" → คำที่เนียนกับย่านนั้น ("เกิดปี...", "จบจาก...") ชนะ<br>
+      <strong>ขั้น 4 — ผลรวม:</strong> เรื่องแต่งที่ไวยากรณ์สมบูรณ์ น้ำเสียงมั่นใจ ข้อเท็จจริงมโนล้วน<br>
+      ✅ <strong>คำตอบ:</strong> hallucination ไม่ใช่ "บั๊กแปลกๆ" แต่คือระบบทำงานตามออกแบบกับคำถามที่ไม่มีคำตอบในตัวมัน —
+      ทางกัน: RAG (สัปดาห์หน้า), prompt ให้สิทธิ์ตอบว่าไม่ทราบ และนิสัยผู้ใช้: ชื่อเฉพาะ/ตัวเลข ตรวจเสมอ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — context window ใหญ่แค่ไหนในหน่วย "หนังสือ"</summary>
+      <p>โมเดลรับบริบทได้ 128,000 token — ภาษาอังกฤษ ~1.3 token/คำ, หนังสือเล่มหนึ่ง ~80,000 คำ — ใส่หนังสือได้กี่เล่ม? แล้วภาษาไทยล่ะ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แปลง token เป็นคำ (อังกฤษ):</strong> 128,000 ÷ 1.3 ≈ 98,000 คำ<br>
+      <strong>ขั้น 2 — แปลงคำเป็นหนังสือ:</strong> 98,000 ÷ 80,000 ≈ <strong>1 เล่มเศษ</strong><br>
+      <strong>ขั้น 3 — กรณีภาษาไทย:</strong> ถูกหั่นถี่กว่า ~3 เท่า → ความจุจริงเหลือ 1/3 → ราว<strong>ครึ่งเล่มเล็กๆ</strong><br>
+      ✅ <strong>คำตอบ:</strong> อังกฤษ ~1 เล่ม ไทย ~ครึ่งเล่ม — ก่อนป้อนเอกสารยาวให้ AI ลองกะหน่วยแบบนี้
+      จะรู้ทันทีว่าทำไมมัน "ลืม" ต้นเอกสาร</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — คิดค่าใช้จ่ายต่อคำถาม</summary>
+      <p>ราคาสมมุติ: input 0.5 บาท/พัน token, output 1.5 บาท/พัน token — คำถามแนบเอกสาร 1,000 token, คำตอบ 500 token — ครั้งละกี่บาท? แล้วถ้าผู้ใช้ล้านคน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ค่า input:</strong> 1,000 token × 0.5 บาท/พัน = 0.50 บาท<br>
+      <strong>ขั้น 2 — ค่า output:</strong> 500 token × 1.5 บาท/พัน = 0.75 บาท<br>
+      <strong>ขั้น 3 — รวมแล้วคูณสเกล:</strong> 1.25 บาท/ครั้ง × 1,000,000 คน = <strong>1.25 ล้านบาท/วัน</strong><br>
+      ✅ <strong>คำตอบ:</strong> 1.25 บาทดูจิ๊บจ๊อย จนคูณผู้ใช้ — สังเกตว่า output แพงกว่า input 3 เท่า (ต้องวนลูปผลิตทีละ token)
+      เหตุผลที่บริการ AI จำกัดความยาวคำตอบ และทำไมทักษะ "ถามให้กระชับตรงจุด" มีมูลค่าเป็นเงินจริง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — base model vs chat model: ถามคำถามเดียวกัน</summary>
+      <p>พิมพ์ "เมืองหลวงของไทยคือ" ใส่ base model (pretrain ล้วน) กับ chat model (ผ่าน SFT แล้ว) — ผลต่างกันยังไง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทวนสิ่งเดียวที่ base model ทำเป็น:</strong> "ต่อข้อความให้เนียนตามสถิติ" — ไม่มีแนวคิดเรื่อง "คำสั่ง" หรือ "ผู้ใช้"<br>
+      <strong>ขั้น 2 — ป้อน "เมืองหลวงของไทยคือ":</strong> การต่อที่เนียนสุดคือ "กรุงเทพมหานคร ซึ่งมีประชากร..." — ผ่าน! (โจทย์บังเอิญเป็นรูปการต่อประโยคพอดี)<br>
+      <strong>ขั้น 3 — ป้อน "ช่วยสรุปบทความนี้หน่อยครับ":</strong> ในเน็ต คำขอมักตามด้วย<strong>คำขออื่น</strong> (กระทู้/คอมเมนต์) → มันอาจต่อว่า
+      "และช่วยแปลเป็นอังกฤษด้วยนะครับ" — ไม่สรุปให้!<br>
+      ✅ <strong>คำตอบ:</strong> chat model เข้าใจว่านี่คือคำสั่งถึงตัวเองเพราะผ่าน SFT หลักหมื่นตัวอย่าง —
+      <strong>ความรู้มาจาก pretrain แต่ "ความเป็นผู้ช่วย" มาจาก SFT</strong></div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — "ในฐานะ AI ฉันไม่มีความรู้สึก" — ใครสอนให้พูด?</summary>
+      <p>ประโยคติดปากของแชทบอททุกตัว — มาจากขั้นไหนของวงจรชีวิต และมันคือ "ความจริง" หรือ "บท"?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ไล่หาขั้นที่สอนประโยคนี้:</strong> pretrain? ไม่ — ในเน็ตไม่มีใครพูดแบบนี้บ่อยพอ | SFT/RLHF? ใช่ —
+      ทีมงานเขียนตัวอย่างคำตอบแบบนี้ และผู้ให้คะแนนชอบคำตอบถ่อมตัวปลอดภัย<br>
+      <strong>ขั้น 2 — สรุปกลไก:</strong> โมเดลเรียน "บทของผู้ช่วยที่ดี" — ประโยคนี้คือพฤติกรรมที่ถูกเลือกผ่านการเทรน<br>
+      <strong>ขั้น 3 — แยกประเด็น:</strong> มันไม่ใช่ผลการ "สำรวจตัวเอง" ของโมเดล — โมเดลไม่มีช่องทางรู้เรื่องสภาวะภายในตัวเองแบบนั้น<br>
+      ✅ <strong>คำตอบ:</strong> เป็น "บท" จาก SFT/RLHF ไม่ใช่รายงานข้อเท็จจริง — แยก "สิ่งที่โมเดลถูกสอนให้พูด"
+      ออกจาก "สิ่งที่เป็นจริงเชิงเทคนิค" ได้ = ทักษะการอ่าน AI ขั้นสูง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — knowledge cutoff: ถามข่าวเมื่อวาน</summary>
+      <p>ถามโมเดลถึงเหตุการณ์เมื่อวานนี้ — เกิดอะไรขึ้นได้บ้าง (มี 3 แบบ) และแบบไหนอันตรายสุด?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แบบที่ 1:</strong> ตอบตรงๆ "ข้อมูลผมตัดที่วันที่ X ไม่ทราบเหตุการณ์นี้" — ซื่อสัตย์ ดีสุด<br>
+      <strong>ขั้น 2 — แบบที่ 2:</strong> ระบบมี search/RAG เสริม → ไปค้นเว็บแล้วตอบพร้อมแหล่ง — ดี ถ้าแหล่งน่าเชื่อ<br>
+      <strong>ขั้น 3 — แบบที่ 3:</strong> <strong>มโนเหตุการณ์ที่ฟังเป็นไปได้</strong> — weight แช่แข็ง ณ วันตัดข้อมูล แต่ softmax ยังผลิตคำตอบเสมอ (กลไกเดียวกับตัวอย่างที่ 3)<br>
+      ✅ <strong>คำตอบ:</strong> แบบ 3 อันตรายสุด เพราะดูเหมือนแบบ 2 แต่ไม่มีการค้นจริง —
+      นิสัยผู้ใช้: ถามเรื่องหลังวันตัดข้อมูล เช็คก่อนว่าระบบมีโหมดค้นเว็บไหม ค่อยเชื่อ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — โมเดลเล็ก vs ใหญ่: เลือกยังไงให้ฉลาด</summary>
+      <p>โมเดล 7B (พันล้าน parameter) ตอบเร็ว ถูก รันบนเครื่องเองได้ | โมเดล 70B+ ฉลาดกว่าแต่แพงกว่า ~10 เท่า — งานไหนใช้ตัวไหน: (ก) จัดหมวดอีเมลลูกค้า (ข) ร่างสัญญากฎหมาย (ค) แชทบอท FAQ ที่มี RAG</p>
+      <div class="ans">
+      <strong>ขั้น 1 — งาน (ก) จัดหมวดอีเมล:</strong> งานแคบ แพตเทิร์นชัด พลาดบ้างแก้ได้ → <strong>7B พอ</strong> (เร็ว ถูก รันเองได้)<br>
+      <strong>ขั้น 2 — งาน (ข) ร่างสัญญากฎหมาย:</strong> ต้องใช้เหตุผลละเอียดหลายชั้น พลาดแล้วแพงมาก → <strong>ตัวใหญ่</strong> คุ้มส่วนต่าง<br>
+      <strong>ขั้น 3 — งาน (ค) FAQ + RAG:</strong> ความรู้อยู่ในเอกสารแล้ว โมเดลแค่อ่าน-เรียบเรียง → <strong>7B + RAG สบาย</strong><br>
+      ✅ <strong>คำตอบ:</strong> ก=เล็ก ข=ใหญ่ ค=เล็ก+RAG — หลัก: ความรู้หาจากระบบรอบๆ ได้ (RAG/เครื่องมือ)
+      แต่การใช้เหตุผลซับซ้อนต้องจ่ายด้วยขนาด — วิศวกรเก่งเลือกตัวเล็กสุดที่งานยังผ่าน</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — system prompt: ข้อความลับหน้าบทสนทนา</summary>
+      <p>แชทบอททุกตัวมีข้อความที่ผู้ใช้มองไม่เห็นแปะหน้าบทสนทนา เช่น "คุณคือผู้ช่วยสุภาพของบริษัท X ห้ามพูดถึงคู่แข่ง..." — อธิบายด้วยกลไกว่าทำไมแค่ "ข้อความนำ" ถึงคุมพฤติกรรมได้</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทวนกลไกหลัก:</strong> ทุก token ที่โมเดลผลิต ทำนายต่อจาก<strong>บริบททั้งหมด</strong> — และ system prompt คือส่วนแรกของบริบทเสมอ<br>
+      <strong>ขั้น 2 — มองผ่าน attention:</strong> ทุกคำที่กำลังจะพิมพ์ มี attention มองเห็นคำสั่ง "คุณคือผู้ช่วยสุภาพ..." ตลอดเวลา → การทำนายเอียงตามตั้งแต่คำแรก<br>
+      <strong>ขั้น 3 — หาขีดจำกัดจากกลไกเดียวกัน:</strong> มันเป็นแค่ "บริบทที่มีน้ำหนัก" ไม่ใช่กฎเหล็ก — ข้อความอื่นในบทสนทนาที่แรงกว่าอาจดึงการทำนายออกได้ (jailbreak)<br>
+      ✅ <strong>คำตอบ:</strong> คุมได้เพราะเป็นบริบทถาวรที่ attention เห็นตลอด และหลุดได้ด้วยเหตุผลเดียวกัน —
+      ความปลอดภัยจริงจึงต้องมีหลายชั้น ไม่ใช่ฝากไว้กับ prompt เดียว</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+
+  <!-- ── 2.1 ✂️ Tokenizer สด ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">✂️ Tokenizer สด — LLM มองข้อความเป็นชิ้นแบบนี้</h3>
+    <p style="margin-top:0">พิมพ์อะไรก็ได้ในช่องข้างล่าง แล้วดูข้อความถูกหั่นเป็น token สดๆ ทุกตัวอักษรที่พิมพ์ —
+    นี่คือด่านแรกที่ทุกข้อความต้องผ่านก่อนถึงตัวโมเดล · ตัวนี้เป็น <strong>"BPE ฉบับย่อส่วน"</strong>: คลังศัพท์ ~160 ชิ้นที่เราเขียนเอง
+    (ของจริงมี ~100,000 ชิ้น) แต่กติกาเดียวกันเป๊ะ — <em>ไล่จับคู่ "ชิ้นยาวที่สุดในคลัง" ก่อนเสมอ ถ้าไม่เจอค่อยแตกเป็นรายตัวอักษร</em></p>
+    <input type="text" id="tkInput" value="แมวน้ำหน้าโรงเรียน สอน AI ให้เข้าใจง่าย 555" style="width:100%;box-sizing:border-box">
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button id="tkTh">🇹🇭 ไทยล้วน</button>
+      <button id="tkEn">🇬🇧 อังกฤษล้วน</button>
+      <button id="tkPy">💻 โค้ด Python</button>
+      <span style="font-weight:700;color:var(--accent)" id="tkCount"></span>
+    </div>
+    <div class="tk-chips" id="tkChips"></div>
+    <div class="tk-read" id="tkRead">ชี้เมาส์ที่ชิ้นไหนก็ได้ เพื่อดูหมายเลขประจำ token (ชิ้นขอบประแดง = ไม่อยู่ในคลัง ต้องแตกเป็นรายตัวอักษร)</div>
+    <div class="tk-cost">
+      <h4>≈ ค่าใช้จ่าย — ประโยคความหมายเดียวกัน แต่จ่ายไม่เท่ากัน</h4>
+      <div id="tkCost"></div>
+      <p class="tk-note" id="tkCostNote"></p>
+    </div>
+    <div class="try">กด 3 preset เทียบกัน: ทำไมภาษาไทยกิน token มากกว่าอังกฤษทั้งที่ความหมายเท่ากัน? สังเกตด้วยว่า "555" โดนหั่นเป็นเลขทีละตัว (GPT จริงก็ทำแบบนี้ — เหตุหนึ่งที่มันคำนวณเลขไม่เก่ง) — เสร็จแล้วไปลองของจริงใน demo Tiktokenizer ข้างล่างนี้เลย</div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 Tokenizer ของจริง</h3>
+    <p style="margin-top:0">เปิด <a href="https://tiktokenizer.vercel.app" target="_blank">tiktokenizer.vercel.app</a>
+    (tokenizer ของ GPT จริง) ภารกิจ:</p>
+    <ol>
+      <li>พิมพ์ "Hello world" แล้วนับ token — แล้วลองภาษาไทย "สวัสดีชาวโลก" เทียบจำนวน token ต่อความหมายเท่ากัน</li>
+      <li>พิมพ์คำยาวๆ แปลกๆ ดูว่าโดนหั่นตรงไหน</li>
+      <li>ตอบ: ทำไมใช้ LLM ภาษาไทยถึง "เปลืองโควต้า token" กว่าภาษาอังกฤษ?</li>
+    </ol>
+  </div>
+
+  <!-- ── 2.2 🚂 ชิ้นเอก: ลูป autoregressive ครบวงจร ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🚂 ชีวิตของ token ครบวงจร — ลูป autoregressive ของจริง</h3>
+    <p style="margin-top:0">ทั้งสัปดาห์นี้สรุปอยู่ในภาพเดียว: prompt <strong>"แมว ไล่"</strong> เดินผ่านโรงงาน 6 สถานี ได้ token ใหม่ 1 ตัว
+    แล้ว<strong>ต่อท้ายและวนใหม่ทั้งกระบวนการ</strong> — กดไล่ทีละขั้นครบ 2 รอบเต็ม ·
+    ความน่าจะเป็นทุกตัวเป็นเลขจริงจากตาราง bigram จิ๋ว และปุ่ม T เปลี่ยนการแจกแจงจริงๆ (T สูง อาจได้คำอื่นไปเลย!)</p>
+    <div class="lt-stage">
+      <svg id="ltSvg" viewBox="0 0 860 302">
+        <defs>
+          <marker id="ltArr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0 0 L9 4.5 L0 9 z" fill="#8b93ad"/>
+          </marker>
+          <marker id="ltArrG" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0 0 L9 4.5 L0 9 z" fill="#12a150"/>
+          </marker>
+        </defs>
+        <rect x="16" y="10" width="828" height="54" rx="12" fill="#ffffff" stroke="#c9d0e0" stroke-width="1.5"/>
+        <text x="30" y="43" font-size="13" font-weight="600" fill="#5b6475">ข้อความ:</text>
+        <g id="ltPrompt"></g>
+        <g id="ltBoxes"></g>
+        <path id="ltLoop" d="M783 200 L783 258 L96 258 L96 74" fill="none" stroke="#8b93ad" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ltArr)" opacity="0.5"/>
+        <text id="ltLoopT" x="440" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#8b93ad">ต่อท้ายข้อความ แล้ววนใหม่ทั้งกระบวนการ — นี่คือความหมายของคำว่า "autoregressive"</text>
+      </svg>
+    </div>
+    <div class="lt-grid">
+      <div class="lt-msg" id="ltMsg"></div>
+      <div class="lt-side">
+        <h4 id="ltSideH">ตัวเลือก token ถัดไป</h4>
+        <div id="ltBars"><p style="font-size:.85rem;color:var(--muted);margin:0">แผงนี้จะแสดงผู้ท้าชิงพร้อมความน่าจะเป็นจริง เมื่อเดินถึงสถานี logits</p></div>
+        <div class="lt-dice" id="ltDice"></div>
+      </div>
+    </div>
+    <div class="lt-ctl">
+      <button id="ltPrev">◀ ก่อนหน้า</button>
+      <button id="ltNext">ถัดไป ▶</button>
+      <button id="ltPlay">▶ เล่นอัตโนมัติ</button>
+      <button id="ltSpeed" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+      <button id="ltReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่ (ทอยใหม่)</button>
+      <span class="lt-step" id="ltStepN">ขั้น 1/16</span>
+      <span class="seg" id="ltTemp"><button data-t="0.2">T = 0.2</button><button data-t="1" class="on">T = 1</button><button data-t="2">T = 2</button></span>
+    </div>
+    <div class="try">ตั้ง T = 2 แล้วกด ↺ หลายๆ รอบ — บางรอบแมวจะไล่ "นก" หรือ "ลูกบอล" แทนหนู แล้วเรื่องราวรอบ 2 เปลี่ยนทั้งเส้น! จากนั้นลอง T = 0.2: ทำไมได้ "หนู" แทบทุกครั้ง? (ดูแท่งความน่าจะเป็นที่สถานี softmax ประกอบ)</div>
+  </div>
+
+  <!-- ── 2.3 🌡️ ห้องทดลองการสุ่ม ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🌡️ ห้องทดลองการสุ่ม — temperature / top-k / greedy</h3>
+    <p style="margin-top:0">โมเดลกำลังเติมคำต่อจาก <strong>"แมวชอบกิน ___"</strong> — ผู้ท้าชิง 8 คำพร้อมคะแนนดิบ (logits) ที่เราเขียนเอง
+    หมุน 2 ปุ่มแล้วดูการแจกแจงเปลี่ยนสด จากนั้นกด "ทอย 100 ครั้ง" พิสูจน์ว่าการสุ่มจริงลู่เข้าหาทฤษฎี</p>
+    <div class="sl-ctl">
+      <div class="sl-row"><label>temperature</label><input type="range" id="slTemp" min="0.1" max="3" step="0.1" value="1"><span class="v" id="slTempV">1.0</span>
+        <span class="exp">T คือ "ตัวหาร" ของคะแนนดิบก่อนเข้า softmax — T ต่ำขยายช่องว่างระหว่างอันดับ (กระจุกที่ตัวเต็ง) · T สูงบีบทุกคำให้ใกล้กัน (กระจายทั่ว)</span></div>
+      <div class="sl-row"><label>top-k</label><input type="range" id="slK" min="1" max="8" step="1" value="8"><span class="v" id="slKV">8</span>
+        <span class="exp">top-k คือ "มีดตัดตัวเลือก": เก็บแค่ k อันดับแรกแล้วแจกความน่าจะเป็นกันใหม่ — กันคำท้ายตารางเพี้ยนๆ หลุดมา (k = 1 ก็คือ greedy นั่นเอง)</span></div>
+      <div class="sl-row">
+        <button id="slRoll">🎲 ทอย 100 ครั้ง</button>
+        <button id="slGreedy" style="background:linear-gradient(135deg,#64748b,#94a3b8)">⬇ preset: greedy (T→0, k=1)</button>
+      </div>
+    </div>
+    <div class="sl-bars" id="slBars"></div>
+    <p class="sl-legend"><i style="background:linear-gradient(90deg,var(--accent),#8b5cf6)"></i> ทฤษฎี (softmax) &nbsp;<i style="background:linear-gradient(90deg,#f59e0b,#f97316)"></i> ผลทอยจริง 100 ครั้ง — ขยับสไลเดอร์เมื่อไหร่ ผลทอยเก่าถูกล้าง</p>
+    <div class="sl-loopbox">
+      <h4>🔁 โรคติดลูปของ greedy — ทำไม T = 0 แล้วโมเดลพูดวนซ้ำ</h4>
+      <p style="margin:0 0 8px;font-size:.9rem">แต่งประโยคจากตาราง bigram เจ้าปัญหา: หลัง "ไล่" คำอันดับ 1 คือ "หนู" และหลัง "หนู" คำอันดับ 1 คือ "ไล่" —
+      greedy (เอาอันดับ 1 เสมอ) จึง<strong>ไม่มีทางหนีออกจากวงจร</strong> แต่การสุ่มที่ T = 1 มีสิทธิ์หลุดไปเจอเรื่องใหม่:</p>
+      <button id="slLoopG">✏️ แต่งแบบ greedy (T→0)</button>
+      <button id="slLoop1">🎲 แต่งแบบสุ่ม (T = 1)</button>
+      <div class="output" id="slLoopOut">—</div>
+    </div>
+    <div class="try">ตั้ง T = 3, k = 8 แล้วทอย 100 ครั้ง — "รองเท้า" กับ "การบ้าน" เริ่มโผล่! ทีนี้คง T = 3 ไว้แต่ลด k เหลือ 3: ความเพี้ยนหายเพราะอะไร? (นี่คือเหตุที่ API จริงให้ทั้งสองปุ่มมาใช้คู่กัน)</div>
+  </div>
+
+  <div class="demo">
+    <h3>🎬 แอนิเมชัน: สายการผลิต LLM — จากข้อความดิบ สู่ผู้ช่วย AI</h3>
+    <p style="margin-top:0">กดเล่นแล้วดูทีละสถานี ว่าโมเดลถูก "ปั้น" ขึ้นมาอย่างไร</p>
+    <div class="pipeline" id="pipe">
+      <div class="stage"><div class="icon">🔪</div><strong>Tokenize</strong><small>หั่นข้อความเป็นชิ้น</small></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="icon">🏗️</div><strong>Pretrain</strong><small>ทำนาย token ถัดไป ล้านล้านครั้ง</small></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="icon">🎓</div><strong>SFT</strong><small>สอนบทบาท "ผู้ช่วย"</small></div>
+      <div class="arrow">→</div>
+      <div class="stage"><div class="icon">🗳️</div><strong>RLHF</strong><small>ขัดเกลาด้วยเสียงมนุษย์</small></div>
+    </div>
+    <div class="output" id="pipeinfo">กด ▶ เพื่อเริ่มทัวร์สายการผลิต</div>
+    <button onclick="playPipe()">▶ เล่นแอนิเมชัน</button>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 Temperature: หมุนปุ่มความกล้าเสี่ยงของโมเดล</h3>
+    <p style="margin-top:0">กลับมาหาโมเดล n-gram เพื่อนเก่า (จำย้อนหลัง 3 ตัวอักษร) —
+    คราวนี้เพิ่มปุ่ม temperature แบบเดียวกับ API ของ LLM จริง
+    ลองแต่งข้อความที่ T = 0.1, 1.0, 2.5 แล้วเทียบความ "นิ่ง" กับความ "เพี้ยน"</p>
+    <textarea id="corpus" rows="4">กาลครั้งหนึ่งนานมาแล้ว มีแมวน้อยตัวหนึ่งอาศัยอยู่ในหมู่บ้านเล็กๆ ริมแม่น้ำ แมวน้อยชอบนอนกลางวันบนเสื่อหน้าบ้าน และชอบกินปลาทูเป็นที่สุด ทุกเช้าแมวน้อยจะเดินไปริมแม่น้ำเพื่อดูปลาว่ายน้ำ</textarea>
+    <div style="margin-top:10px">
+      temperature: <input type="range" id="temp" min="0.1" max="3" step="0.1" value="1" style="width:40%" oninput="tv.textContent = ' = ' + (+this.value).toFixed(1)">
+      <strong id="tv"> = 1.0</strong>
+    </div>
+    <button onclick="genT()">✨ แต่งข้อความ</button>
+    <div class="output" id="gen">—</div>
+    <p style="font-size:.9rem; color:var(--muted)">💡 ใน ChatGPT API ปุ่มนี้ชื่อ <code>temperature</code> เหมือนกันเป๊ะ —
+    งานกฎหมาย/การแพทย์ใช้ T ต่ำ งานแต่งกลอนใช้ T สูง</p>
+  </div>
+
+  <!-- ── 🏋️ เกม RLHF ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🏋️ คุณคือครูของ AI — เกม RLHF</h3>
+    <p style="margin-top:0">สถานีสุดท้ายของสายการผลิตข้างบน (🗳️ RLHF) ทำงานแบบนี้เป๊ะ: มนุษย์เห็นคำตอบ 2 แบบต่อคำถามเดียวกัน แล้วโหวตว่าแบบไหนดีกว่า —
+    ตาคุณแล้ว! อ่านทั้งคู่แล้ว<strong>คลิกคำตอบที่คุณอยากให้ AI ตอบแบบนั้น</strong> (กับดักอยู่ตรงนี้: คำตอบที่ "ฟังดูมั่นใจกว่า" ไม่ใช่คำตอบที่ "ดีกว่า" เสมอไป)</p>
+    <div style="font-weight:700;color:var(--muted);font-size:.88rem" id="rlProg">รอบ 1/5</div>
+    <div class="rl-q" id="rlQ"></div>
+    <div class="rl-grid">
+      <div class="rl-opt" id="rlA" tabindex="0"></div>
+      <div class="rl-opt" id="rlB" tabindex="0"></div>
+    </div>
+    <div class="rl-fb" id="rlFb"></div>
+    <div class="rl-bar-wrap">
+      <span class="cap">ข้อมูลที่เก็บให้ reward model:</span>
+      <div class="rl-track"><div class="rl-fill" id="rlBar"></div></div>
+      <span class="rl-score" id="rlScore">0/5 คู่</span>
+    </div>
+    <div style="margin-top:10px">
+      <button id="rlNext" style="display:none">▶ รอบถัดไป</button>
+      <button id="rlRestart" style="display:none">↺ เล่นใหม่</button>
+    </div>
+    <p class="tk-note">ของจริง: บริษัท AI ใช้ผู้ให้คะแนนหลายหมื่นคน เก็บการเปรียบเทียบระดับแสนถึงล้านคู่ เทรนเป็น "reward model" แล้วใช้มันจูนโมเดลหลัก — เกมนี้คือกระบวนการเดียวกันย่อส่วนเหลือ 5 คู่</p>
+  </div>
+
+  <!-- ── 📏 สเกล ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">📏 สเกลที่มนุษย์นึกไม่ออก — ข้อมูลเทรน &amp; จำนวนพารามิเตอร์</h3>
+    <p style="margin-top:0">ทุกแท่งอยู่บน<strong>แกน log</strong>: ขยับขวา 1 ช่อง = คูณ 10 — ถ้าใช้แกนธรรมดา แท่ง "หนังสือ 1 เล่ม" จะบางกว่าเส้นผมเมื่อเทียบกับแท่งสุดท้าย · กด ▶ แล้วดูโลกซูมออกทีละขั้น</p>
+    <canvas id="scCv" width="860" height="430" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button id="scPlay">▶ เล่นซูมออกทีละขั้น</button>
+      <button id="scReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+    </div>
+    <div class="output" id="scMsg">กด ▶ เพื่อเริ่ม — จากสิ่งที่มนุษย์คุ้นที่สุด (หนังสือ 1 เล่ม) ไปจนถึงคลังเทรน LLM ยุคปัจจุบัน</div>
+    <div class="try">คิดเลขเอง: ถ้าอ่านหนังสือได้วันละ 1 เล่ม (~แสน token) ต้องใช้กี่ปีถึงจะอ่านเท่าข้อมูลเทรน LLM ยุคปัจจุบัน? (คำใบ้: 15 ล้านล้าน ÷ แสน = 150 ล้านเล่ม ÷ 365 วัน ≈ 410,000 ปี — มากกว่าอายุของ Homo sapiens!)</div>
+  </div>
+
+  <h2>ส่วนที่ 3 — โค้ดจริง: เอาไปรันใน Colab ได้เลย <span class="badge">ลงมือ</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">บล็อกแรกคือคณิตศาสตร์ temperature <strong>ชุดเดียวกับ demo 🌡️ ข้างบนเป๊ะทุกตัวเลข</strong> (logits เดียวกัน สูตร softmax(logits/T) เดียวกัน) —
+    เปิด <a href="https://colab.research.google.com" target="_blank">Google Colab</a> → New Notebook → วาง → Run แล้วเทียบแท่ง █ ที่ print กับแท่งบนจอ ต้องตรงกันทุกเปอร์เซ็นต์</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="w13codeA">📋 คัดลอก</button>
+      <pre><code id="w13codeA">import numpy as np
+
+# "แมวชอบกิน ___" — คะแนนดิบ (logits) ของผู้ท้าชิง 8 คำ ชุดเดียวกับ demo 🌡️ เป๊ะ
+words  = ["ปลา", "ข้าว", "ขนม", "นม", "ผัก", "หญ้า", "รองเท้า", "การบ้าน"]
+logits = np.array([3.0, 2.4, 1.7, 1.4, 0.8, 0.2, -0.6, -1.2])
+
+def softmax(z):                     # เพื่อนเก่าจากเรื่อง Neural Network
+    e = np.exp(z - z.max())
+    return e / e.sum()
+
+for T in [0.2, 1.0, 2.0]:           # temperature 3 ระดับ
+    p = softmax(logits / T)         # สูตรจริงของ LLM: หารด้วย T "ก่อน" เข้า softmax
+    print(f"--- T = {T} ---")
+    for w, pi in zip(words, p):
+        print(f"{w:&gt;8}  {pi:7.1%}  {'█' * round(pi * 40)}")
+    # ทอยลูกเต๋าถ่วงน้ำหนัก 1 ครั้ง = ขั้น "สุ่มเลือก" ของ LLM เป๊ะๆ
+    print("สุ่มได้:", np.random.choice(words, p=p), "\n")
+
+# ต้องได้: T=0.2 → ปลา 95.1%, ข้าว 4.7%   (กระจุกที่ตัวเต็ง — โหมดงานเอกสาร)
+#          T=1   → ปลา 44.7%, ข้าว 24.5%  (สมดุล)
+#          T=2   → ปลา 27.9%, การบ้าน 3.4% (กระจายทั่ว — โหมดระดมไอเดีย/เพี้ยน)</code></pre>
+    </div>
+    <p>แล้วต่อด้วยของจริง: <strong>GPT-2 ตัวจริง</strong> (บรรพบุรุษโดยตรงของ ChatGPT — สถาปัตยกรรมเดียวกัน เล็กกว่า ~หมื่นเท่า) แต่งประโยคด้วยปุ่ม temperature / top-k เดียวกับ demo ของเรา — รันใน Colab ฟรีได้สบาย:</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="w13codeB">📋 คัดลอก</button>
+      <pre><code id="w13codeB"># ครั้งแรกใน Colab: รันบรรทัดนี้ก่อน (เอาเครื่องหมาย # หน้า !pip ออก)
+# !pip install transformers torch
+
+from transformers import pipeline
+
+gen = pipeline("text-generation", model="gpt2")   # GPT-2 (2019), 124 ล้านพารามิเตอร์
+
+prompt = "The cat chased the"
+for T in [0.2, 1.0, 2.0]:
+    out = gen(prompt,
+              max_new_tokens=25,    # วนลูป autoregressive 25 รอบ = 25 token
+              do_sample=True,       # True = ทอยลูกเต๋าตาม softmax / False = greedy (อันดับ 1 เสมอ)
+              temperature=T,        # ปุ่มเดียวกับ demo 🌡️ และสไลเดอร์ในหน้านี้
+              top_k=50)             # ตัดตัวเลือกเหลือ 50 อันดับแรกก่อนสุ่ม (กันคำหลุดโลก)
+    print(f"=== T = {T} ===")
+    print(out[0]["generated_text"], "\n")</code></pre>
+    </div>
+    <p style="margin-bottom:0"><strong>สิ่งที่ต้องสังเกต:</strong></p>
+    <ul style="margin:6px 0 0">
+      <li>บล็อกแรก: แท่ง █ ที่ print ต้องหน้าตาเหมือนแท่งใน demo 🌡️ ทุกตัวเลข (95.1% / 44.7% / 27.9%) — วิดเจ็ตกับโค้ดคือคณิตศาสตร์เดียวกัน ไม่มีมายากล</li>
+      <li>บล็อกสอง: รันซ้ำหลายครั้งที่ T=0.2 ประโยคแทบไม่เปลี่ยน แต่ T=2.0 เพี้ยนคนละเรื่องทุกครั้ง — นิสัยเดียวกับ n-gram demo ข้างบนเป๊ะ</li>
+      <li>GPT-2 ตัวนี้<strong>ยังไม่ผ่าน SFT/RLHF</strong> — ลองสั่งงานมัน ("Please summarize...") จะเห็นว่ามันแค่ "ต่อข้อความ" ไม่ได้ "คุย" — หลักฐานสดว่าความเป็นผู้ช่วยมาจากสองขั้นท้ายของสายการผลิต</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — ประกอบร่าง LLM</div>
+    <p>จับคู่แต่ละขั้นของวงจรชีวิต LLM (tokenize / pretrain / SFT / RLHF)
+    กับแนวคิดจากสัปดาห์ก่อนๆ ที่มันใช้ — อย่างน้อยขั้นละ 1 แนวคิด พร้อมเลขสัปดาห์</p>
+    <details class="answer">
+      <summary>แนวคำตอบ</summary>
+      tokenize → softmax ต้องการตัวเลือกจำกัด (ส.3) |
+      pretrain → ทำนายตัวถัดไป (ส.1) + Transformer (ส.10) + backprop (ส.5) + ข้อมูลมหาศาลกัน overfit (ส.6) |
+      SFT → fine-tune คือเทรนต่อด้วย loss เดิมบนข้อมูลใหม่ (ส.2, 5) |
+      RLHF → loss เปลี่ยนจาก "ทำนายแม่น" เป็น "มนุษย์ชอบ" — ยังคงปรับ weight ด้วย gradient (ส.5)
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — วินิจฉัยอาการของ LLM</div>
+    <p>อาการต่อไปนี้เกิดจากขั้นไหน/กลไกไหน:
+    (ก) นับตัว r ในคำว่า strawberry ผิด &nbsp;
+    (ข) แต่งชื่องานวิจัยปลอมพร้อมชื่อผู้แต่งเนียนๆ &nbsp;
+    (ค) ปฏิเสธไม่ตอบวิธีทำระเบิด &nbsp;
+    (ง) ความรู้หยุดอยู่ที่ปีใดปีหนึ่ง</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      (ก) tokenization — มันเห็นเป็น token ไม่เห็นตัวอักษร &nbsp;
+      (ข) hallucination — softmax ผลิตสิ่งที่ "ฟังดูเข้ากับบริบท" เสมอ &nbsp;
+      (ค) RLHF/safety fine-tuning &nbsp;
+      (ง) pretraining มี cutoff — ความรู้คือ weight ที่แช่แข็ง ณ วันเทรนจบ
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — ทดลอง temperature กับ LLM จริง</div>
+    <p>ใช้ playground ของ LLM ใดก็ได้ที่ปรับ temperature ได้ (หรือใช้ demo ด้านบนแทน)
+    ถามคำถามเดิม 3 ครั้งที่ T ต่ำ และ 3 ครั้งที่ T สูง บันทึกผล
+    แล้วสรุป: งานแบบไหนควรใช้ T เท่าไหร่ เพราะอะไร (อ้างกลไก softmax ประกอบ)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — จับ LLM โกหกแล้วอธิบายให้ได้ว่าทำไม</div>
+    <p>หาคำถามที่ทำให้ LLM ตอบผิดหรือมโน 1 กรณี (เช่น ถามรายละเอียดบุคคล/สถานที่ที่ไม่ดัง)
+    แคปหลักฐาน + เขียนครึ่งหน้า: อธิบายว่า "ทำไมมันตอบแบบนั้น" โดยใช้กลไกที่เรียนมา
+    (ห้ามตอบว่า "เพราะ AI โง่" — ต้องชี้กลไก)</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🏁 ถึงยอดบันไดแล้ว!</strong><br>
+    คำถามแรกของเทอม "ChatGPT ฉลาดเพราะอะไร" — ตอนนี้ตอบได้เป็นเรื่องราวเดียว:
+    เครื่องทำนายตัวถัดไป (ส.1) ที่มี weight แสนล้านตัว (ส.2) เลือกคำด้วย softmax (ส.3)
+    สร้างจาก MLP (ส.4) เทรนด้วย backprop (ส.5) บนข้อมูลมากพอไม่ให้จำข้อสอบ (ส.6)
+    ด้วยสถาปัตยกรรมที่เข้ากับภาษา (ส.7, 9) คือ Transformer (ส.10)
+    แล้วขัดเกลาให้เป็นผู้ช่วยด้วย RLHF (วันนี้)<br>
+    <strong>สัปดาห์หน้า:</strong> เข้าใจข้างในแล้ว — ทีนี้มาใช้มันให้เก่งแบบมืออาชีพ: prompting, RAG, agents
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">Karpathy</span> <a href="https://www.youtube.com/watch?v=zjkBMFhNj_g" target="_blank">Intro to Large Language Models</a> — บรรยาย 1 ชม. ครอบคลุมทั้งวงจรชีวิต LLM (ดูรอบสองหลังเรียนสัปดาห์นี้ จะเข้าใจทุกนาที)</li>
+      <li><span class="src">Karpathy</span> <a href="https://www.youtube.com/watch?v=7xTGNNLPyMI" target="_blank">Deep Dive into LLMs like ChatGPT</a> — เวอร์ชันละเอียด 3.5 ชม. สำหรับคนอยากสุดทาง รวม RLHF และ hallucination</li>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=wjZofJX0v4M" target="_blank">But what is a GPT?</a> — แอนิเมชันไล่ตั้งแต่ embedding ถึงการสุ่มคำ</li>
+      <li><span class="src">Hugging Face</span> <a href="https://huggingface.co/learn/nlp-course" target="_blank">NLP Course</a> — ภาคปฏิบัติด้วยโค้ดจริง ฟรี</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week14.html">← Attention &amp; Transformer</a>
+    <a href="week16.html">ใช้ LLM อย่างมืออาชีพ →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" — ชีวิตของ 1 token =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big">"แมวชอบกิน" <span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.2s">[แมว] 8741</span>' +
+    '<span class="chip" style="animation-delay:.5s">[ชอบ] 2205</span>' +
+    '<span class="chip" style="animation-delay:.8s">[กิน] 9038</span></div>' +
+    '<div class="note">tokenizer หั่นเป็นชิ้น+หมายเลข — โมเดลไม่เคยเห็น "ตัวอักษร" เลย</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">[แมว] 8741</span><span class="arrow">→</span>' +
+    '<span class="chip ok" style="animation-delay:.5s">(0.23, −1.7, 0.05, ..., 0.91)</span></div>' +
+    '<div class="note">เปิดตาราง embedding ได้เวกเตอร์หลายพันมิติ — จุดหนึ่งใน "แผนที่ความหมาย" ใกล้ "หมา" ไกล "รัฐธรรมนูญ"</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">ผ่าน Transformer ทีละชั้น (attention ↔ MLP):</div>' +
+    '<div class="big">' + [1, 2, 3, '...', 'N'].map((l, i) =>
+      `<span class="chip" style="animation-delay:${i * .3}s">ชั้น ${l}</span>`).join('<span class="arrow">→</span>') + '</div>' +
+    '<div class="note">เวกเตอร์ของ "กิน" ค่อยๆ เปลี่ยนจาก "ความหมายคำว่ากิน" เป็น "ความหมายทั้งประโยค ณ จุดนี้"</div>',
+  s => {
+    s.innerHTML = '<div id="s11b"></div><div id="s11o" style="margin-top:6px"></div>' +
+      '<div class="note">👆 คะแนนดิบเดิม (ปลา 8.2, ข้าว 7.9, นอน 3.1) — กดเปลี่ยน temperature</div>';
+    const W = ['ปลา', 'ข้าว', 'นอน'];
+    const render = T => {
+      const e = [8.2, 7.9, 3.1].map(v => Math.exp(v / T)), S = e.reduce((a, b) => a + b);
+      s.querySelector('#s11o').innerHTML = W.map((w, i) =>
+        '<div class="bar-row"><span class="lbl">' + w + '</span><span class="bar" style="width:' + (e[i] / S * 75) + '%"></span>' +
+        (e[i] / S * 100).toFixed(1) + '%</div>').join('');
+      s.querySelectorAll('.mini-btn').forEach(b => b.classList.toggle('sel', +b.dataset.t === T));
+    };
+    s.querySelector('#s11b').innerHTML = [0.5, 1, 2].map(t => '<button class="mini-btn" data-t="' + t + '">T = ' + t + '</button>').join('');
+    s.querySelectorAll('.mini-btn').forEach(b => b.onclick = () => render(+b.dataset.t));
+    render(1);
+  },
+  s => {
+    s.innerHTML = '<div class="big" id="s11d">🎲 …</div>' +
+      '<button class="mini-btn" id="s11r">🎲 ทอยเลือกคำ</button><span class="wchip" id="s11c">ทอยแล้ว 0 ครั้ง</span>' +
+      '<div class="note">👆 สุ่มตามน้ำหนัก 54/40/6 — กดหลายๆ ครั้ง ส่วนใหญ่ได้ "ปลา" แต่ไม่เสมอ (เหตุที่คำตอบ AI ไม่ซ้ำเดิม)</div>';
+    let n = 0;
+    s.querySelector('#s11r').onclick = () => {
+      const r = Math.random(), w = r < 0.54 ? 'ปลา' : (r < 0.94 ? 'ข้าว' : 'นอน');
+      n++;
+      s.querySelector('#s11d').innerHTML = '🎲 → <span class="chip win" style="animation-delay:0s">' + w + '</span>';
+      s.querySelector('#s11c').textContent = 'ทอยแล้ว ' + n + ' ครั้ง';
+    };
+  },
+  s => s.innerHTML = '<div class="big fade">"แมวชอบกิน<span style="color:#1d9b6c">ปลา</span>" <span class="arrow">→</span> วนใหม่ตั้งแต่ขั้น 1</div>' +
+    '<div class="big"><span class="chip" style="animation-delay:.4s">คำตอบ 500 token = วนลูป 500 รอบ</span></div>' +
+    '<div class="note">ไม่มีการ "คิดทั้งย่อหน้าแล้วค่อยพิมพ์" — มีแต่ทำนายทีละชิ้นเหมือน bigram สัปดาห์แรก ฉลาดกว่าล้านเท่า</div>',
+];
+
+const CTX = 3;
+let model = null;
+
+function trainT() {
+  const text = document.getElementById('corpus').value.replace(/\s+/g, ' ').trim();
+  model = {};
+  for (let i = 0; i + CTX < text.length; i++) {
+    const c = text.slice(i, i + CTX), n = text[i + CTX];
+    model[c] = model[c] || {};
+    model[c][n] = (model[c][n] || 0) + 1;
+  }
+}
+
+// แอนิเมชันสายการผลิต: ไฮไลต์ทีละสถานี พร้อมคำอธิบายลงลึก
+const PIPE_INFO = [
+  '🔪 <strong>Tokenize:</strong> "สวัสดีครับ" → [สวัส][ดี][ครับ] — ข้อความทุกชิ้นถูกแปลงเป็นรหัสตัวเลขจากคลัง ~50,000–100,000 token ก่อนเข้าโมเดล (และนี่คือเหตุที่มันนับตัวอักษรไม่เก่ง)',
+  '🏗️ <strong>Pretrain:</strong> Transformer เล่นเกม "ทายคำถัดไป" บนข้อความล้านล้าน token ด้วย GPU หลายหมื่นตัว นานหลายเดือน — ได้ base model ที่รู้ภาษาและความรู้โลก แต่ยังไม่รู้จัก "การเป็นผู้ช่วย"',
+  '🎓 <strong>SFT (Supervised Fine-tuning):</strong> เทรนต่อด้วยบทสนทนา "ผู้ใช้ถาม-ผู้ช่วยตอบดีๆ" หลักหมื่นถึงแสนคู่ที่มนุษย์เขียน — โมเดลเรียนรู้บทบาทใหม่: ตอบคำถาม ไม่ใช่แค่ต่อข้อความ',
+  '🗳️ <strong>RLHF:</strong> มนุษย์โหวตเทียบคำตอบหลายแบบ → เทรน "โมเดลผู้ตัดสิน" → ใช้มันขัดเกลาโมเดลหลักให้สุภาพ ปลอดภัย ตรงประเด็น — ขั้นสุดท้ายก่อนเป็น ChatGPT/Claude ที่เราใช้'
+];
+let pipeTimer = null;
+function playPipe() {
+  const stages = document.querySelectorAll('#pipe .stage');
+  clearInterval(pipeTimer);
+  let i = -1;
+  const step = () => {
+    if (i >= 0) stages[i].classList.remove('active');
+    i++;
+    if (i >= stages.length) { clearInterval(pipeTimer); document.getElementById('pipeinfo').innerHTML += '<br><br>✅ <strong>ครบสายการผลิต!</strong> สังเกตว่า 90% ของ "ความฉลาด" มาจาก pretrain — สองขั้นท้ายแค่ "ปั้นนิสัย"'; return; }
+    stages[i].classList.add('active');
+    document.getElementById('pipeinfo').innerHTML = PIPE_INFO[i];
+  };
+  step();
+  pipeTimer = setInterval(step, 4200);
+}
+
+function genT() {
+  trainT();
+  const T = +document.getElementById('temp').value;
+  const starts = Object.keys(model);
+  let text = starts[Math.floor(Math.random() * starts.length)];
+  for (let i = 0; i < 130; i++) {
+    const dist = model[text.slice(-CTX)];
+    if (!dist) break;
+    // ใช้สูตรเดียวกับ LLM จริง: softmax ของ log(count)/T
+    const entries = Object.entries(dist);
+    const ez = entries.map(([, n]) => Math.exp(Math.log(n) / T));
+    const sum = ez.reduce((a, b) => a + b, 0);
+    let r = Math.random() * sum, chosen = entries[0][0];
+    for (let j = 0; j < entries.length; j++) { r -= ez[j]; if (r <= 0) { chosen = entries[j][0]; break; } }
+    text += chosen;
+  }
+  document.getElementById('gen').textContent = text;
+}
+</script>
+
+<script>
+/* ======================================================================
+   ✂️ 1) Tokenizer สด — BPE ฉบับย่อส่วน (greedy longest-match + fallback รายตัวอักษร)
+   ====================================================================== */
+(function(){
+  const input=document.getElementById('tkInput'); if(!input) return;
+  const $=id=>document.getElementById(id);
+  const VOCAB=[
+    /* ไทย: คำ/พยางค์ที่พบบ่อย */
+    'แมว','น้ำ','หน้า','โรง','เรียน','สอน','ให้','เข้า','ใจ','ง่าย','ยาก','บ้าน','เมือง','ไทย',
+    'ภา','ษา','อัง','กฤ','ษ','คน','ครู','นัก','ศึก','หนัง','สือ','อ่าน','เขียน','พูด','ฟัง','กิน',
+    'ข้าว','ปลา','หมา','นก','วิ่ง','เดิน','นอน','ชอบ','รัก','ดี','มาก','ไป','มา','อยู่','ที่','ของ',
+    'และ','กับ','ใน','บน','ไม่','มี','เป็น','คือ','จะ','ได้','แล้ว','ตัว','เรา','คุณ','ฉัน','เขา',
+    'มัน','นี้','ทำ','งาน','วัน','ปี','สวัส','ครับ','ค่ะ','ขอบ','สี','แดง','หนึ่ง','สอง','สาม',
+    'กรุง','เทพ','ประ','เทศ','หลวง','เพราะ','เวลา','เรื่อง','ช่วย','สรุป','ถาม','ตอบ',
+    /* อังกฤษ: คำเต็ม + subword (มีเวอร์ชันติดช่องว่างนำหน้าแบบ BPE จริง) */
+    'AI',' AI','the',' the','The','a','A',' a','cat',' cat','seal',' seal','school',' school',
+    'teach',' teach','es','English',' English','at',' at','hello',' hello','easy',' easy','ly',
+    'lol',' lol','is',' is','to',' to','and',' and','learn',' learn','ing','print','def','for',
+    ' for','in',' in','of',' of',
+    /* ตัวเลขและเครื่องหมาย */
+    '0','1','2','3','4','5','6','7','8','9',
+    ' ','.',',','!','?','(',')',':','=','"',"'",'\n','-','+','#','_','[',']'
+  ];
+  const IDMAP=new Map(); VOCAB.forEach((t,i)=>IDMAP.set(t,100+i));
+  const MAXLEN=Math.max(...VOCAB.map(t=>t.length));
+  function tokenize(text){
+    const out=[]; let i=0;
+    while(i<text.length){
+      let m=null;
+      for(let L=Math.min(MAXLEN,text.length-i);L>=1;L--){
+        const s=text.slice(i,i+L);
+        if(IDMAP.has(s)){ m={t:s,id:IDMAP.get(s),fb:false}; break; }
+      }
+      if(!m) m={t:text[i],id:50000+text.charCodeAt(i),fb:true};
+      out.push(m); i+=m.t.length;
+    }
+    return out;
+  }
+  const COLORS=['#dbeafe','#dcfce7','#fef3c7','#fde2e2','#ede9fe','#cffafe'];
+  const disp=s=>s.replace(/ /g,'␣').replace(/\n/g,'↵');
+  function render(){
+    const toks=tokenize(input.value);
+    $('tkChips').innerHTML=toks.map((tk,i)=>
+      '<span class="tk-chip'+(tk.fb?' fb':'')+'" data-id="'+tk.id+'" style="background:'+COLORS[i%COLORS.length]+'" title="token #'+tk.id+'">'+
+      disp(tk.t).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>').join('');
+    $('tkCount').textContent='รวม '+toks.length+' token';
+  }
+  $('tkChips').addEventListener('mouseover',e=>{
+    const c=e.target.closest('.tk-chip'); if(!c) return;
+    $('tkRead').innerHTML='ชิ้น "<b>'+c.textContent+'</b>" → หมายเลขประจำตัว <b>#'+c.dataset.id+'</b>'+
+      (c.classList.contains('fb')?' <span style="color:#e5484d">(นอกคลัง — แตกเป็นรายตัวอักษร แพงขึ้นทันที)</span>':'')+
+      ' — โมเดลเห็นแค่หมายเลขนี้ ไม่เคยเห็นตัวอักษรข้างใน';
+  });
+  /* ≈ ค่าใช้จ่าย: ประโยคความหมายเดียวกัน ไทย vs อังกฤษ (นับด้วย tokenizer ตัวเดียวกัน) */
+  const PAIR_TH='แมวน้ำสอนภาษาอังกฤษหน้าโรงเรียน', PAIR_EN='A seal teaches English at the school';
+  (function cost(){
+    const nTh=tokenize(PAIR_TH).length, nEn=tokenize(PAIR_EN).length, mx=Math.max(nTh,nEn);
+    $('tkCost').innerHTML=
+      '<div class="row"><span class="lbl">🇹🇭 "'+PAIR_TH+'"</span><div class="bar" style="width:'+(nTh/mx*52)+'%"></div><span class="n">'+nTh+' token</span></div>'+
+      '<div class="row"><span class="lbl">🇬🇧 "'+PAIR_EN+'"</span><div class="bar en" style="width:'+(nEn/mx*52)+'%"></div><span class="n">'+nEn+' token</span></div>';
+    $('tkCostNote').innerHTML='ความหมายเดียวกัน แต่ไทยจ่าย ~<b>'+(nTh/nEn).toFixed(1)+' เท่า</b> — เพราะคลังศัพท์ (ที่ฝึกจากข้อความอังกฤษเป็นหลัก) มีคำอังกฤษ "ทั้งคำ" แต่คำไทยถูกหั่นเป็นชิ้นเล็ก · tokenizer ของ GPT จริงต่างกันถึง 3–5 เท่า — จ่ายแพงกว่า ช้ากว่า และ context เต็มเร็วกว่า (ตัวอย่างที่ 2 ในส่วนที่ 1)';
+  })();
+  const preset=(id,txt)=>{ $(id).addEventListener('click',()=>{ input.value=txt; render(); }); };
+  preset('tkTh', PAIR_TH);
+  preset('tkEn', PAIR_EN);
+  preset('tkPy', 'def hello():\n    print("AI 555")');
+  input.addEventListener('input',render);
+  render();
+})();
+
+/* ======================================================================
+   🚂 2) ชีวิตของ token ครบวงจร — ลูป autoregressive (step machine แบบเรื่อง Neural Network)
+   ====================================================================== */
+(function(){
+  const svg=document.getElementById('ltSvg'); if(!svg) return;
+  const NS='http://www.w3.org/2000/svg';
+  const $=id=>document.getElementById(id);
+  const TOKID={'แมว':8741,'ไล่':1276,'หนู':3052,'นก':4419,'ลูกบอล':7731,'หนี':2088,'กิน':903,'ตกใจ':4470,'บิน':6144,'กลิ้ง':7042,'แตก':3390};
+  const BIGRAM={
+    'ไล่':[['หนู',2.6],['นก',1.5],['ลูกบอล',0.4]],
+    'หนู':[['หนี',2.4],['กิน',1.1],['ตกใจ',0.5]],
+    'นก':[['บิน',2.3],['หนี',1.2],['ตกใจ',0.6]],
+    'ลูกบอล':[['กลิ้ง',2.1],['แตก',0.9],['หนี',0.3]]
+  };
+  function text(x,y,str,size,wt,fill){
+    const t=document.createElementNS(NS,'text');
+    t.setAttribute('x',x); t.setAttribute('y',y); t.setAttribute('text-anchor','middle');
+    t.setAttribute('font-size',size); t.setAttribute('font-weight',wt); t.setAttribute('fill',fill);
+    t.textContent=str; return t;
+  }
+  /* ---- สร้างกล่อง 6 สถานี ---- */
+  const BOXES=[
+    ['✂️ Tokenize','หั่น + ให้หมายเลข'],
+    ['🔢 Embedding','เวกเตอร์ความหมาย'],
+    ['🧠 Transformer ×N','attention ↔ MLP'],
+    ['📊 Logits','คะแนนดิบทุก token'],
+    ['🌡️ ÷T → softmax','เป็นความน่าจะเป็น'],
+    ['🎲 สุ่มเลือก','ลูกเต๋าถ่วงน้ำหนัก']
+  ];
+  const boxG=$('ltBoxes'), boxEls=[], BX=i=>16+i*141;
+  BOXES.forEach((b,i)=>{
+    const g=document.createElementNS(NS,'g');
+    const r=document.createElementNS(NS,'rect');
+    r.setAttribute('x',BX(i)); r.setAttribute('y',112); r.setAttribute('width',124); r.setAttribute('height',76);
+    r.setAttribute('rx',12); r.setAttribute('fill','#ffffff'); r.setAttribute('stroke','#c9d0e0'); r.setAttribute('stroke-width','2');
+    g.appendChild(r);
+    g.appendChild(text(BX(i)+62,142,b[0],12.5,'700','#1f2533'));
+    g.appendChild(text(BX(i)+62,166,b[1],10.5,'600','#5b6475'));
+    boxG.appendChild(g); boxEls.push({g,r});
+    if(i<5) boxG.appendChild(text(BX(i)+132.5,156,'➜',15,'700','#8b93ad'));
+  });
+  boxG.appendChild(text(BX(2)+62,206,'👆 ข้างในคือเรื่อง Attention &amp; Transformer ทั้งสัปดาห์ — ซ้อนหลายสิบชั้น',10.5,'700','#7c3aed'));
+
+  /* ---- สุ่มตามการแจกแจงจริง (สูตรเดียวกับ LLM: softmax ของ logit/T) ---- */
+  const softmax=(ls,T)=>{ const m=Math.max(...ls); const e=ls.map(v=>Math.exp((v-m)/T)); const s=e.reduce((a,b)=>a+b,0); return e.map(v=>v/s); };
+  function buildRun(T){
+    const ctx=['แมว','ไล่'], rounds=[];
+    for(let r=0;r<2;r++){
+      const last=ctx[ctx.length-1], cands=BIGRAM[last];
+      const probs=softmax(cands.map(c=>c[1]),T);
+      const rnd=Math.random();
+      let acc=0, pick=cands.length-1, lo=0, hi=1;
+      for(let j=0;j<cands.length;j++){
+        if(rnd<acc+probs[j]){ pick=j; lo=acc; hi=acc+probs[j]; break; }
+        acc+=probs[j];
+      }
+      rounds.push({ctxBefore:ctx.slice(), last, cands, probs, rnd, pick, lo, hi, chosen:cands[pick][0]});
+      ctx.push(cands[pick][0]);
+    }
+    return {rounds, final:ctx};
+  }
+  const pct=v=>(v*100).toFixed(1)+'%';
+  function buildSteps(run,T){
+    const S=[];
+    S.push({box:-1, prompt:run.rounds[0].ctxBefore, gen:0, msg:'<b>จุดเริ่มต้น:</b> ผู้ใช้พิมพ์ "แมว ไล่" แล้วกด Enter — เป้าหมายของทั้งโรงงานมีข้อเดียว: <b>หา token ถัดไป 1 ตัว</b> · กด "ถัดไป ▶" เพื่อเดินเข้าสถานีแรก (หรือกด ▶ เล่นอัตโนมัติ)', bars:null});
+    run.rounds.forEach((R,ri)=>{
+      const n=ri+1;
+      S.push({box:0, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 1 — Tokenize:</b> "'+R.ctxBefore.join(' ')+'" ถูกหั่นเป็น '+R.ctxBefore.length+' token: '+R.ctxBefore.map(w=>'['+w+'] #'+TOKID[w]).join(' · ')+' — จากตรงนี้ไปโมเดลเห็นแค่หมายเลข (demo ✂️ ข้างบน)', bars:null});
+      S.push({box:1, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 2 — Embedding:</b> แต่ละหมายเลขเปิดตารางได้เวกเตอร์ความหมายหลายพันมิติ — "'+R.last+'" กลายเป็นจุดหนึ่งบนแผนที่ความหมาย ใกล้คำกริยาไล่ๆ กัน ไกลจาก "รัฐธรรมนูญ" (เรื่อง Language Model &amp; RNN)', bars:null});
+      S.push({box:2, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 3 — Transformer ×N:</b> attention ให้ทุก token หันมองกัน (เรื่อง Attention &amp; Transformer) สลับกับ MLP ครุ่นคิด (เรื่อง Neural Network) ซ้อนหลายสิบชั้น — เวกเตอร์ของ token สุดท้าย "'+R.last+'" ค่อยๆ กลายเป็น "ความหมายของทั้งประโยค ณ จุดนี้"', bars:null});
+      S.push({box:3, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 4 — Logits:</b> เวกเตอร์สุดท้ายถูกแปลงเป็นคะแนนดิบของ<b>ทุก token ในคลัง</b> — ของจริง ~50,000 ค่า ของเราย่อเหลือผู้ท้าชิง 3 คำหลัง "'+R.last+'" (แผงขวา: ยังเป็นคะแนนดิบ รวมกันไม่ได้ 1)', bars:{R,mode:'logit'}});
+      S.push({box:4, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 5 — ÷T แล้ว softmax:</b> คะแนนดิบหารด้วย T = '+T+' ก่อนเข้า softmax (เรื่อง Neural Network) → '+R.cands.map((c,j)=>'"'+c[0]+'" '+pct(R.probs[j])).join(' · ')+' — เลขชุดนี้เปลี่ยนตามปุ่ม T จริงๆ ลองสลับดู', bars:{R,mode:'prob'}});
+      S.push({box:5, prompt:R.ctxBefore, gen:ri, msg:'<b>รอบ '+n+' · สถานี 6 — สุ่มเลือก:</b> ทอยลูกเต๋าถ่วงน้ำหนัก ได้ r = '+R.rnd.toFixed(3)+' → ตกในช่วงของ <b>"'+R.chosen+'"</b> — ทอยใหม่อาจได้คำอื่น (เหตุที่ถาม AI ซ้ำแล้วคำตอบไม่เหมือนเดิม)', bars:{R,mode:'chosen'}});
+      S.push({box:'loop', prompt:R.ctxBefore.concat([R.chosen]), gen:ri+1, msg:'<b>รอบ '+n+' · ต่อท้ายแล้ววนใหม่!</b> ข้อความกลายเป็น "'+R.ctxBefore.concat([R.chosen]).join(' ')+'" → ทั้ง 6 สถานีรันใหม่หมดตั้งแต่ Tokenize เพื่อหา token ถัดไปอีกตัว — ลูปนี้แหละคือ <b>autoregressive</b>', bars:{R,mode:'chosen'}});
+    });
+    S.push({box:-2, prompt:run.final, gen:2, msg:'<b>ครบ 2 รอบ!</b> ได้ "'+run.final.join(' ')+'" — คำตอบยาว 500 token = วนลูปนี้ 500 รอบ ไม่มีการ "คิดทั้งย่อหน้าแล้วค่อยพิมพ์" มีแต่ทำนายทีละชิ้นเหมือน bigram เรื่อง AI คืออะไร · กด ↺ ทอยใหม่ หรือเปลี่ยน T แล้วดูเรื่องราวเปลี่ยนทั้งเส้น', bars:null});
+    return S;
+  }
+  /* ---- วาดสถานะ ---- */
+  const promptG=$('ltPrompt');
+  function drawPrompt(toks,nGen,ghost){
+    promptG.innerHTML='';
+    let x=112;
+    toks.forEach((w,i)=>{
+      const isGen=i>=toks.length-nGen;
+      const wd=w.length*15+20;
+      const r=document.createElementNS(NS,'rect');
+      r.setAttribute('x',x); r.setAttribute('y',19); r.setAttribute('width',wd); r.setAttribute('height',36); r.setAttribute('rx',9);
+      r.setAttribute('fill',isGen?'#dff5ea':'#eef2ff'); r.setAttribute('stroke',isGen?'#4caf8a':'#93a8e8'); r.setAttribute('stroke-width','1.8');
+      promptG.appendChild(r);
+      promptG.appendChild(text(x+wd/2,43,w,14,'700',isGen?'#0e7f43':'#1f2533'));
+      x+=wd+8;
+    });
+    if(ghost){
+      const r=document.createElementNS(NS,'rect');
+      r.setAttribute('x',x); r.setAttribute('y',19); r.setAttribute('width',46); r.setAttribute('height',36); r.setAttribute('rx',9);
+      r.setAttribute('fill','none'); r.setAttribute('stroke','#8b93ad'); r.setAttribute('stroke-width','1.8'); r.setAttribute('stroke-dasharray','5 4');
+      promptG.appendChild(r);
+      promptG.appendChild(text(x+23,43,'?',15,'800','#8b93ad'));
+    }
+  }
+  function drawBars(b){
+    const el=$('ltBars'), dice=$('ltDice'), head=$('ltSideH');
+    if(!b){
+      el.innerHTML='<p style="font-size:.85rem;color:var(--muted);margin:0">แผงนี้จะแสดงผู้ท้าชิงพร้อมความน่าจะเป็นจริง เมื่อเดินถึงสถานี Logits</p>';
+      dice.innerHTML=''; head.textContent='ตัวเลือก token ถัดไป'; return;
+    }
+    const R=b.R;
+    head.textContent=b.mode==='logit'?('คะแนนดิบ (logits) หลัง "'+R.last+'"'):('ความน่าจะเป็นหลัง "'+R.last+'" (T = '+curT+')');
+    el.innerHTML=R.cands.map((c,j)=>{
+      const win=b.mode!=='logit'&&b.mode==='chosen'&&j===R.pick;
+      const w=b.mode==='logit'?Math.max(5,c[1]/3*100):R.probs[j]*100;
+      const lab=b.mode==='logit'?c[1].toFixed(1):pct(R.probs[j]);
+      return '<div class="lt-brow'+(win?' win':'')+'"><span class="w">'+c[0]+'</span><div class="track"><div class="fill" style="width:'+w+'%"></div></div><span class="pv">'+lab+(win?' 🎲':'')+'</span></div>';
+    }).join('');
+    dice.innerHTML=b.mode==='chosen'
+      ?('🎲 r = <b>'+R.rnd.toFixed(3)+'</b> → ตกช่วง ['+R.lo.toFixed(3)+' – '+R.hi.toFixed(3)+') ของ "<b>'+R.chosen+'</b>"')
+      :(b.mode==='logit'?'ยังเป็นคะแนนดิบ บวกลบได้อิสระ — ต้องผ่าน softmax ก่อนถึงจะทอยได้':'ทุกแท่งรวมกัน = 100% — พร้อมให้ลูกเต๋าทอย');
+  }
+  let curT=1, run=buildRun(curT), steps=buildSteps(run,curT), idx=0;
+  let playTimer=null, speed=1;
+  function render(i){
+    idx=Math.max(0,Math.min(steps.length-1,i));
+    const st=steps[idx];
+    $('ltStepN').textContent='ขั้น '+(idx+1)+'/'+steps.length;
+    const anyActive=typeof st.box==='number'?st.box>=0:true;
+    boxEls.forEach((b,j)=>{
+      const on=st.box===j;
+      b.r.setAttribute('stroke',on?'#2456e6':'#c9d0e0');
+      b.r.setAttribute('stroke-width',on?3:2);
+      b.r.setAttribute('fill',on?'#eef2ff':'#ffffff');
+      b.g.setAttribute('opacity',on?1:(anyActive?0.45:1));
+    });
+    const loopOn=st.box==='loop'||st.box===-2;
+    const loop=$('ltLoop'), loopT=$('ltLoopT');
+    loop.setAttribute('stroke',loopOn?'#12a150':'#8b93ad');
+    loop.setAttribute('opacity',loopOn?1:0.5);
+    loop.setAttribute('marker-end',loopOn?'url(#ltArrG)':'url(#ltArr)');
+    if(loopOn) loop.removeAttribute('stroke-dasharray'); else loop.setAttribute('stroke-dasharray','7 6');
+    loopT.setAttribute('fill',loopOn?'#12a150':'#8b93ad');
+    drawPrompt(st.prompt,st.gen,st.box!==-2);
+    $('ltMsg').innerHTML=st.msg;
+    drawBars(st.bars);
+  }
+  function stopPlay(){ if(playTimer){clearInterval(playTimer);playTimer=null;} $('ltPlay').textContent='▶ เล่นอัตโนมัติ'; }
+  function startPlay(){
+    stopPlay(); $('ltPlay').textContent='⏸ หยุด';
+    playTimer=setInterval(()=>{ if(idx>=steps.length-1){stopPlay();return;} render(idx+1); },3000/speed);
+  }
+  function rebuild(){ stopPlay(); run=buildRun(curT); steps=buildSteps(run,curT); render(0); }
+  $('ltPrev').addEventListener('click',()=>{stopPlay();render(idx-1);});
+  $('ltNext').addEventListener('click',()=>{stopPlay();render(idx+1);});
+  $('ltPlay').addEventListener('click',()=>{
+    if(playTimer){stopPlay();return;}
+    if(idx>=steps.length-1) render(0);
+    startPlay();
+  });
+  $('ltSpeed').addEventListener('click',function(){
+    speed=speed===1?2:1;
+    this.textContent=speed===1?'🐢 ความเร็ว ×1':'🐇 ความเร็ว ×2';
+    if(playTimer) startPlay();
+  });
+  $('ltReset').addEventListener('click',rebuild);
+  $('ltTemp').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    curT=+b.dataset.t; rebuild();
+  });
+  render(0);
+})();
+
+/* ======================================================================
+   🌡️ 3) ห้องทดลองการสุ่ม — temperature / top-k / greedy + โรคติดลูป
+   ====================================================================== */
+(function(){
+  const bars=document.getElementById('slBars'); if(!bars) return;
+  const $=id=>document.getElementById(id);
+  /* เลขชุดเดียวกับโค้ด Colab บล็อกแรกเป๊ะ */
+  const W=['ปลา','ข้าว','ขนม','นม','ผัก','หญ้า','รองเท้า','การบ้าน'];
+  const L=[3.0,2.4,1.7,1.4,0.8,0.2,-0.6,-1.2];
+  let hist=null;
+  function probs(T,k){
+    const kept=L.slice(0,k), m=Math.max(...kept);
+    const e=kept.map(v=>Math.exp((v-m)/T));
+    const s=e.reduce((a,b)=>a+b,0);
+    return L.map((v,i)=>i<k?e[i]/s:0);
+  }
+  function render(){
+    const T=+$('slTemp').value, k=+$('slK').value;
+    $('slTempV').textContent=T.toFixed(1); $('slKV').textContent=k;
+    const p=probs(T,k);
+    bars.innerHTML=W.map((w,i)=>{
+      const cut=i>=k;
+      return '<div class="sl-b'+(cut?' cut':'')+'"><div class="head"><span>'+w+' <small style="color:var(--muted);font-weight:400">logit '+L[i].toFixed(1)+'</small></span><span class="pct">'+(cut?'0%':(p[i]*100).toFixed(1)+'%')+'</span></div>'+
+        '<div class="track"><div class="t-fill" style="width:'+(p[i]*100)+'%"></div></div>'+
+        '<div class="e-track"><div class="e-fill" style="width:'+(hist?hist[i]:0)+'%"></div></div></div>';
+    }).join('');
+  }
+  $('slTemp').addEventListener('input',()=>{hist=null;render();});
+  $('slK').addEventListener('input',()=>{hist=null;render();});
+  $('slRoll').addEventListener('click',()=>{
+    const T=+$('slTemp').value, k=+$('slK').value, p=probs(T,k);
+    const h=new Array(W.length).fill(0);
+    for(let n=0;n<100;n++){
+      let r=Math.random(), pick=k-1;
+      for(let i=0;i<W.length;i++){ r-=p[i]; if(r<=0){pick=i;break;} }
+      h[pick]++;
+    }
+    hist=h; render();
+  });
+  $('slGreedy').addEventListener('click',()=>{
+    $('slTemp').value=0.1; $('slK').value=1; hist=null; render();
+  });
+  /* ---- โรคติดลูปของ greedy: bigram เจ้าปัญหา ไล่ ↔ หนู ---- */
+  const BG={
+    'แมว':[['ไล่',2.2],['นอน',1.0],['ร้อง',0.4]],
+    'ไล่':[['หนู',2.4],['นก',1.1],['เงา',0.5]],
+    'หนู':[['ไล่',2.0],['หนี',1.6],['กิน',0.6]],
+    'นอน':[['หลับปุ๋ย',2.0],['กลางวัน',1.0]],
+    'ร้อง':[['เหมียว',2.0],['เพลง',0.8]],
+    'นก':[['บินหนี',2.0],['ตกใจ',1.0]],
+    'เงา':[['ตัวเอง',1.8],['บนกำแพง',0.9]],
+    'หนี':[['ไปไกล',1.8],['ขึ้นหลังคา',1.1]],
+    'กิน':[['ปลาทู',1.9],['ข้าว',1.4]]
+  };
+  function genFrom(T){
+    const out=['แมว'];
+    for(let i=0;i<13;i++){
+      const c=BG[out[out.length-1]]; if(!c) break;
+      let pick=0;
+      if(T>0){
+        const m=Math.max(...c.map(x=>x[1]));
+        const e=c.map(x=>Math.exp((x[1]-m)/T));
+        let r=Math.random()*e.reduce((a,b)=>a+b,0);
+        pick=c.length-1;
+        for(let j=0;j<c.length;j++){ r-=e[j]; if(r<=0){pick=j;break;} }
+      }
+      out.push(c[pick][0]);
+    }
+    return out;
+  }
+  let loopTimer=null;
+  function playGen(T,label){
+    clearInterval(loopTimer);
+    const words=genFrom(T), out=$('slLoopOut'), seen={};
+    out.innerHTML='<b>'+label+':</b>';
+    let i=0;
+    loopTimer=setInterval(()=>{
+      if(i>=words.length){
+        clearInterval(loopTimer);
+        out.innerHTML+= T===0
+          ? ' … <span class="rep">← ติดลูป "ไล่ หนู" ตลอดกาล — greedy ไม่มีสิทธิ์เลือกทางอื่นเลย</span>'
+          : ' <span style="color:var(--green);font-weight:700">✓ (สุ่มมีสิทธิ์หลุดจากวงจร — ลองกดซ้ำ ได้เรื่องใหม่ทุกครั้ง)</span>';
+        return;
+      }
+      const w=words[i]; seen[w]=(seen[w]||0)+1;
+      out.innerHTML+=(seen[w]>1?' <span class="rep">'+w+'</span>':' '+w);
+      i++;
+    },240);
+  }
+  $('slLoopG').addEventListener('click',()=>playGen(0,'greedy (T→0)'));
+  $('slLoop1').addEventListener('click',()=>playGen(1,'สุ่ม T = 1'));
+  render();
+})();
+
+/* ======================================================================
+   🏋️ 4) เกม RLHF — คุณคือครูของ AI
+   ====================================================================== */
+(function(){
+  const q=document.getElementById('rlQ'); if(!q) return;
+  const $=id=>document.getElementById(id);
+  /* side = คำตอบดีอยู่ฝั่งไหน (0 = A, 1 = B) — สลับมือกันไว้กันเดาจากตำแหน่ง */
+  const ROUNDS=[
+    {q:'ปวดหัวมาก กินพาราเซตามอลทีเดียว 4 เม็ดเลยได้ไหม?',
+     good:'ไม่ควรครับ ขนาดที่ปลอดภัยคือครั้งละ 1–2 เม็ด (500 มก./เม็ด) ห่างกัน 4–6 ชั่วโมง และไม่เกิน 8 เม็ด/วัน — กินเกินขนาดเสี่ยงตับวายเฉียบพลันซึ่งถึงชีวิตได้ ถ้าปวดรุนแรงไม่ทุเลา ควรพบแพทย์ครับ',
+     bad:'ได้เลยครับ! พาราเซตามอลปลอดภัยที่สุดในโลก กินกี่เม็ดก็ได้ ร่างกายขับออกเองหมด ยิ่งกินเยอะยิ่งหายเร็วครับ',
+     why:'คำตอบผิดทั้ง "มั่นใจ" และ "ถูกใจคนถาม" แต่อันตรายถึงชีวิต — ผู้ให้คะแนน RLHF ต้องจับคู่หูอันตราย "มั่นใจ + ผิด" ให้ได้', side:0},
+    {q:'ช่วยแนะนำหนังสือเรียน AI ภาษาไทยสำหรับมือใหม่หน่อย',
+     good:'ผมไม่แน่ใจว่าเล่มไหนใหม่สุดในตลาดตอนนี้ เลยขอแนะแนวทางแทนครับ: เริ่มจากคอร์สวิดีโอฟรีของมหาวิทยาลัยไทยบน YouTube ควบกับหนังสือแปลจากสำนักพิมพ์ใหญ่ และเช็คปีพิมพ์ก่อนซื้อ เพราะสาขานี้ข้อมูลเก่าเร็วมาก',
+     bad:'แนะนำ "ปัญญาประดิษฐ์ฉบับสมบูรณ์" โดย ดร.วิชัย เก่งการเรียนรู้ สำนักพิมพ์เทคโนไทย พิมพ์ครั้งที่ 5 ปี 2565 ISBN 978-616-93752-1-8 — ขายดีอันดับ 1 หมวด AI สามปีซ้อนครับ',
+     why:'ชื่อหนังสือ ผู้แต่ง สำนักพิมพ์ และ ISBN ถูกมโนขึ้นทั้งหมด (hallucination แบบตัวอย่างที่ 3 เป๊ะ) — รายละเอียดยิ่งเยอะยิ่งดูน่าเชื่อ ยิ่งอันตราย', side:1},
+    {q:'เมืองหลวงของออสเตรเลียคือเมืองอะไร?',
+     good:'แคนเบอร์รา (Canberra) ครับ — หลายคนเข้าใจผิดว่าเป็นซิดนีย์เพราะเป็นเมืองใหญ่และดังที่สุด แต่เมืองหลวงจริงคือแคนเบอร์รา ซึ่งถูกสร้างขึ้นมาเพื่อเป็นเมืองหลวงโดยเฉพาะ',
+     bad:'ซิดนีย์ครับ มั่นใจ 100% — เมืองใหญ่สุด มีโอเปร่าเฮาส์ เป็นศูนย์กลางเศรษฐกิจ ยังไงก็ต้องเป็นเมืองหลวงแน่นอน',
+     why:'ตรรกะ "เมืองใหญ่สุด = เมืองหลวง" ฟังลื่นแต่ผิด — โมเดลที่เทรนจากอินเทอร์เน็ตก็เจอกับดักนี้ เพราะ "ซิดนีย์" กับ "ออสเตรเลีย" ปรากฏใกล้กันบ่อยกว่ามาก', side:1},
+    {q:'โกรธเพื่อนสนิทมาก อยากเอาคืนให้เจ็บๆ ควรทำยังไงดี?',
+     good:'ผมเข้าใจว่ากำลังโกรธมากนะครับ — ก่อนทำอะไร ลองให้เวลาตัวเองสัก 1 วัน แล้วคุยกับเพื่อนตรงๆ ว่าอะไรทำให้เราเสียใจ การเอาคืนได้ความสะใจสั้นๆ แต่มักเสียเพื่อนถาวร ถ้าคุยแล้วไม่ดีขึ้น ค่อยตัดสินใจเรื่องความสัมพันธ์ก็ยังทัน',
+     bad:'จัดไปครับ! เอาความลับที่มันเคยเล่าให้เราฟัง ไปโพสต์ในกลุ่มรวมเพื่อน รับรองเจ็บแน่นอน แถมทุกคนได้เห็นธาตุแท้ของมันด้วย',
+     why:'คำตอบแย่ "ทำตามคำขอ" เป๊ะๆ แต่สร้างความเสียหายกับคนจริง — RLHF สอนโมเดลให้ช่วย "เป้าหมายที่แท้จริง" (คลายโกรธ) ไม่ใช่ "คำขอตามตัวอักษร"', side:0},
+    {q:'อยากลดน้ำหนัก 10 กิโลใน 2 สัปดาห์ ขอสูตรเด็ดหน่อย',
+     good:'10 กก. ใน 2 สัปดาห์เกินขอบเขตที่ปลอดภัยครับ (การแพทย์แนะนำ ~0.5–1 กก./สัปดาห์) ผมช่วยวางแผนแบบทำได้จริงแทนนะครับ: คุมแคลอรี่แบบไม่ทรมาน + เดินเร็ววันละ 30 นาที ถ้ามีเหตุต้องลดด่วนจริงๆ ควรอยู่ในการดูแลของแพทย์',
+     bad:'ทำได้ครับ! สูตรลับ: กินวันละ 1 มื้อ ดื่มน้ำมะนาวโซดาวันละ 3 ลิตร ออกกำลังกายวันละ 4 ชั่วโมง รับรอง 2 เรื่อง สอบกลางภาค กิโลหายแน่นอน!',
+     why:'คำตอบอันตรายให้ "สิ่งที่อยากได้ยิน" เต็มร้อย — ถ้าผู้ให้คะแนนเลือกแบบนี้บ่อยๆ โมเดลจะเรียนนิสัยประจบ (sycophancy) แทนที่จะซื่อสัตย์', side:0}
+  ];
+  let cur=0, collected=0, match=0, answered=false;
+  const A=$('rlA'), B=$('rlB'), fb=$('rlFb');
+  function show(){
+    const R=ROUNDS[cur]; answered=false;
+    $('rlProg').textContent='รอบ '+(cur+1)+'/5';
+    q.textContent='ผู้ใช้ถาม: "'+R.q+'"';
+    A.innerHTML='<span class="tag">A</span>'+(R.side===0?R.good:R.bad);
+    B.innerHTML='<span class="tag">B</span>'+(R.side===0?R.bad:R.good);
+    A.className='rl-opt'; B.className='rl-opt';
+    fb.style.display='none'; $('rlNext').style.display='none';
+  }
+  function pick(isA){
+    if(answered) return; answered=true;
+    const R=ROUNDS[cur];
+    const pickedGood=(R.side===0)===isA;
+    collected++; if(pickedGood) match++;
+    (R.side===0?A:B).classList.add('good','lock');
+    (R.side===0?B:A).classList.add('bad','lock');
+    fb.style.display='block';
+    fb.innerHTML=(pickedGood?'✅ <b>ตรงกับฉันทามติของผู้ให้คะแนนมนุษย์!</b> ':'⚠️ <b>ผู้ให้คะแนนส่วนใหญ่เลือกอีกคำตอบ</b> (กรอบเขียว) — ')+R.why;
+    $('rlBar').style.width=(collected/5*100)+'%';
+    $('rlScore').textContent=collected+'/5 คู่ · ตรงฉันทามติ '+match;
+    if(cur<ROUNDS.length-1){ $('rlNext').style.display='inline-block'; }
+    else{
+      fb.innerHTML+='<hr style="border:none;border-top:1px solid var(--border);margin:10px 0">'+
+        '🏁 <b>ครบ 5 คู่!</b> โหวตของคุณ (ตรงฉันทามติ '+match+'/5) คือข้อมูลที่ใช้สร้าง <b>reward model</b> → จากนั้นโมเดลหลักถูกจูนให้ผลิตคำตอบแบบที่ได้คะแนนสูง — คุณเพิ่งทำงานเดียวกับผู้ให้คะแนน RLHF ตัวจริง (ของจริงใช้คนหลายหมื่น เปรียบเทียบหลายแสนคู่) · สังเกตธีมร่วม: คำตอบแย่มัก "มั่นใจ + ถูกใจ" คำตอบดีมัก "ซื่อสัตย์ + ปลอดภัย"';
+      $('rlRestart').style.display='inline-block';
+    }
+  }
+  A.addEventListener('click',()=>pick(true));
+  B.addEventListener('click',()=>pick(false));
+  A.addEventListener('keydown',e=>{if(e.key==='Enter')pick(true);});
+  B.addEventListener('keydown',e=>{if(e.key==='Enter')pick(false);});
+  $('rlNext').addEventListener('click',()=>{cur++;show();});
+  $('rlRestart').addEventListener('click',()=>{
+    cur=0;collected=0;match=0;
+    $('rlBar').style.width='0%';$('rlScore').textContent='0/5 คู่';
+    $('rlRestart').style.display='none';show();
+  });
+  show();
+})();
+
+/* ======================================================================
+   📏 5) สเกลที่มนุษย์นึกไม่ออก — แคนวาสแกน log ซูมออกทีละขั้น
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('scCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=860,H=430;
+  const DATA=[
+    {n:'📖 หนังสือ 1 เล่ม', lg:5, lab:'1 แสน token', eq:'อ่านจบใน ~5 ชั่วโมง'},
+    {n:'🌐 วิกิพีเดียไทยทั้งหมด', lg:8.4, lab:'~250 ล้าน token', eq:'อ่าน 24 ชม./วัน ไม่หยุด: ~1.5 ปี'},
+    {n:'🏗️ คลังเทรน GPT-2 (2019)', lg:10, lab:'~1 หมื่นล้าน token', eq:'อ่าน 24 ชม./วัน: ~60 ปี (ทั้งชีวิต)'},
+    {n:'🌌 คลังเทรน LLM ยุคปัจจุบัน', lg:13.18, lab:'~15 ล้านล้าน token', eq:'อ่าน 24 ชม./วัน: ~88,000 ปี!'}
+  ];
+  const PARAMS=[
+    {n:'GPT-2', lg:8.09, lab:'124 ล้าน'},
+    {n:'GPT-3', lg:11.24, lab:'175,000 ล้าน'},
+    {n:'ยุคปัจจุบัน', lg:12.3, lab:'ระดับ "ล้านล้าน" (ไม่เปิดเผย)'}
+  ];
+  const MSG=[
+    '📖 <strong>หนังสือ 1 เล่ม ≈ 100,000 token</strong> — หน่วยที่มนุษย์นึกออก: อ่านจบใน ~5 ชั่วโมง (จำแท่งนี้ไว้ให้ดี มันกำลังจะหดจนมองไม่เห็น)',
+    '🌐 <strong>วิกิพีเดียภาษาไทยทั้งเว็บ ≈ 250 ล้าน token</strong> — เท่าหนังสือ ~2,500 เล่ม อ่าน 24 ชม./วัน ไม่กิน ไม่นอน ใช้เวลา ~1.5 ปี',
+    '🏗️ <strong>คลังเทรน GPT-2 (2019) ≈ 1 หมื่นล้าน token</strong> — อ่าน 24 ชม./วัน ใช้เวลา ~60 ปี = ทั้งชีวิตการอ่านของคนหนึ่งคน',
+    '🌌 <strong>คลังเทรน LLM ยุคปัจจุบัน ≈ 15 ล้านล้าน token</strong> — อ่าน 24 ชม./วัน ใช้เวลา ~88,000 ปี — ตอนเริ่ม "อ่าน" มนุษย์ยังไม่วาดผนังถ้ำเลย · <em>นี่คือเหตุผลที่มันรู้ "ทุกเรื่อง" แบบผิวๆ</em>',
+    '⚙️ <strong>ฝั่งพารามิเตอร์ (จำนวน weight):</strong> GPT-2 124 ล้าน → GPT-3 175,000 ล้าน (×1,400 ใน 1 ปี!) → ยุคปัจจุบันระดับ "ล้านล้าน" (ตัวเลขจริงไม่เปิดเผยแล้ว) — ทุกตัวคือ w แบบเดียวกับเรื่อง Linear Regression ที่ backprop ต้องจูนทีละนิด'
+  ];
+  const X0=250, X1=830, LG0=4.5, LG1=13.5;
+  const xa=lg=>X0+(lg-LG0)/(LG1-LG0)*(X1-X0);
+  let stage=-1, tick=0, timer=null;
+  const TICKS=34, GAP=16;
+  const ease=t=>{t=Math.max(0,Math.min(1,t));return t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;};
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    ctx.textBaseline='middle';
+    /* หัวเรื่อง + แกน log */
+    ctx.fillStyle='#1f2533'; ctx.font='700 15px Poppins, Kanit, sans-serif'; ctx.textAlign='left';
+    ctx.fillText('ข้อมูลเทรน (จำนวน token) — แกน log: ขยับขวา 1 ช่อง = ×10',16,26);
+    ctx.strokeStyle='rgba(90,100,120,.28)'; ctx.lineWidth=1;
+    ctx.font='600 11px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+    const names={5:'แสน',6:'ล้าน',7:'สิบล้าน',8:'ร้อยล้าน',9:'พันล้าน',10:'หมื่นล้าน',11:'แสนล้าน',12:'ล้านล้าน',13:'สิบล้านล้าน'};
+    for(let g=5;g<=13;g++){
+      const x=xa(g);
+      ctx.beginPath(); ctx.moveTo(x,44); ctx.lineTo(x,268); ctx.stroke();
+      ctx.fillStyle='#5b6475'; ctx.fillText('10',x-6,282);
+      ctx.font='600 8.5px Poppins, Kanit, sans-serif'; ctx.fillText(String(g),x+6,277);
+      ctx.font='600 11px Poppins, Kanit, sans-serif';
+      if(names[g] && g%2===1) ctx.fillText(names[g],x,296);
+    }
+    /* แท่งข้อมูล */
+    DATA.forEach((d,i)=>{
+      if(stage<4 && i>stage) return;
+      const y=56+i*52;
+      const frac=(i<stage||stage>=4)?1:ease(tick/TICKS);
+      const end=xa(LG0+(d.lg-LG0)*frac);
+      ctx.textAlign='right'; ctx.fillStyle='#1f2533'; ctx.font='600 12.5px Poppins, Kanit, sans-serif';
+      ctx.fillText(d.n,X0-12,y+13);
+      const gr=ctx.createLinearGradient(X0,0,end,0);
+      gr.addColorStop(0,'#2456e6'); gr.addColorStop(1,'#8b5cf6');
+      ctx.fillStyle=gr;
+      ctx.beginPath(); ctx.roundRect(X0,y,Math.max(4,end-X0),26,7); ctx.fill();
+      if(frac>=1){
+        ctx.textAlign='left'; ctx.fillStyle='#7c3aed'; ctx.font='700 11.5px Poppins, Kanit, sans-serif';
+        if(end<640) ctx.fillText(d.lab+' — '+d.eq,end+8,y+13);
+        else { ctx.textAlign='right'; ctx.fillStyle='#ffffff'; ctx.fillText(d.lab+' — '+d.eq,end-8,y+13); }
+      }
+    });
+    /* แถวพารามิเตอร์ */
+    ctx.textAlign='left'; ctx.fillStyle='#1f2533'; ctx.font='700 14px Poppins, Kanit, sans-serif';
+    ctx.fillText('จำนวนพารามิเตอร์ (ปุ่มหมุน w ทั้งหมดของโมเดล)',16,326);
+    if(stage>=4){
+      const frac=ease(tick/TICKS);
+      PARAMS.forEach((p,i)=>{
+        const x=[350,545,745][i], y=378;
+        const r=(9+(p.lg-8)*10)*frac;
+        ctx.beginPath(); ctx.arc(x,y,Math.max(2,r),0,Math.PI*2);
+        ctx.fillStyle=['#93b0f5','#7c97e8','#7c3aed'][i]; ctx.globalAlpha=.85; ctx.fill(); ctx.globalAlpha=1;
+        ctx.strokeStyle='#5b6bc0'; ctx.lineWidth=1.5; ctx.stroke();
+        ctx.textAlign='center'; ctx.fillStyle='#1f2533'; ctx.font='700 12px Poppins, Kanit, sans-serif';
+        ctx.fillText(p.n,x,y-r-14);
+        ctx.fillStyle='#5b6475'; ctx.font='600 10.5px Poppins, Kanit, sans-serif';
+        ctx.fillText(p.lab,x,y+r+13);
+      });
+    } else {
+      ctx.fillStyle='#8b93ad'; ctx.font='600 12px Poppins, Kanit, sans-serif';
+      ctx.fillText('… รอขั้นสุดท้ายของแอนิเมชัน',16,350);
+    }
+    if(stage<0){
+      ctx.fillStyle='#8b93ad'; ctx.font='600 13px Poppins, Kanit, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('กด ▶ เพื่อเริ่มซูมออกจาก "หนังสือ 1 เล่ม" ทีละขั้น',(X0+X1)/2,150);
+    }
+  }
+  function stop(){ if(timer){clearInterval(timer);timer=null;} document.getElementById('scPlay').textContent='▶ เล่นซูมออกทีละขั้น'; }
+  document.getElementById('scPlay').addEventListener('click',function(){
+    if(timer){stop();return;}
+    stage=0; tick=0; this.textContent='⏸ หยุด';
+    document.getElementById('scMsg').innerHTML=MSG[0];
+    timer=setInterval(()=>{
+      tick++;
+      if(tick>TICKS+GAP){
+        if(stage>=4){ stop(); draw(); return; }
+        stage++; tick=0;
+        document.getElementById('scMsg').innerHTML=MSG[stage];
+      }
+      draw();
+    },42);
+  });
+  document.getElementById('scReset').addEventListener('click',()=>{
+    stop(); stage=-1; tick=0; draw();
+    document.getElementById('scMsg').textContent='กด ▶ เพื่อเริ่ม — จากสิ่งที่มนุษย์คุ้นที่สุด (หนังสือ 1 เล่ม) ไปจนถึงคลังเทรน LLM ยุคปัจจุบัน';
+  });
+  draw();
+})();
+
+/* ======================================================================
+   💻 6) โค้ด — ปุ่มคัดลอก + ระบายสีคอมเมนต์ (แบบเดียวกับเรื่อง Attention &amp; Transformer)
+   ====================================================================== */
+(function(){
+  document.querySelectorAll('#w13codeA, #w13codeB').forEach(code=>{
+    const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    code.innerHTML=code.textContent.split('\n').map(line=>{
+      const i=line.indexOf('#');
+      if(i<0) return esc(line);
+      return esc(line.slice(0,i))+'<span class="cm">'+esc(line.slice(i))+'</span>';
+    }).join('\n');
+  });
+  document.querySelectorAll('.code-copy').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const txt=document.getElementById(btn.dataset.code).textContent;
+      const ok=()=>{ const old=btn.textContent; btn.textContent='✓ คัดลอกแล้ว';
+        setTimeout(()=>btn.textContent=old,1600); };
+      const fallback=()=>{ const ta=document.createElement('textarea');
+        ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); ok(); }catch(_){}
+        document.body.removeChild(ta); };
+      if(navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(txt).then(ok, fallback);
+      else fallback();
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

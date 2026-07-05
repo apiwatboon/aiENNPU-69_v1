@@ -1,0 +1,7 @@
+# build artifact
+ai-lecture-offline.zip
+*.zip
+
+# local / dev config (not for public repo)
+.claude/
+CLAUDE.md

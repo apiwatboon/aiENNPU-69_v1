@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SVM: เส้นแบ่งที่กว้างที่สุด | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+
+  /* ── หัวข้อ widget = แถบ banner ไล่สี ── */
+  .demo > h3 {
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+    font-size:1.14rem; font-weight:700; letter-spacing:.2px; color:#fff;
+    background:linear-gradient(135deg,#7c3aed 0%, #4f46e5 55%, #2456e6 100%);
+    border-radius:11px; padding:11px 16px; margin:0 0 14px;
+    box-shadow:0 6px 18px -9px rgba(79,70,229,.75);
+  }
+  .demo > h3 .ico { color:#fff; flex:none; width:1.25em; height:1.25em; }
+  .demo > h3 b, .demo > h3 strong { color:#fff; }
+
+  .wsec { margin-bottom: 8px; }
+
+  /* ── เวทีสแคตเตอร์จัตุรัส (light canvas เสมอ) ── */
+  .svm-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:#f7f8fb; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5); touch-action:none; max-width:480px; margin:0 auto; }
+  .svm-stage canvas { display:block; width:100%; height:auto; cursor:grab; }
+  .svm-stage.dragging canvas { cursor:grabbing; }
+
+  /* แผงตัวเลขสด */
+  .svm-read { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:12px 0 2px; }
+  .svm-chip { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    padding:8px 14px; font-size:.9rem; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:104px; }
+  .svm-chip .lab { font-size:.76rem; color:var(--muted); font-weight:600; }
+  .svm-chip .val { font-weight:800; font-size:1.12rem; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .svm-chip.green .val { color:#12a150; } .svm-chip.red .val { color:#e5484d; } .svm-chip.amber .val { color:#b45309; }
+
+  .svm-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; justify-content:center; }
+  .svm-ctl .hint { font-size:.85rem; color:var(--muted); }
+
+  /* ปุ่มเลือก candidate (ส่วน 1) */
+  .cand-seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); flex-wrap:wrap; }
+  .cand-seg button { font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:7px 15px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s; }
+  .cand-seg button.on { background:linear-gradient(135deg,#2456e6,#7c3aed); color:#fff; }
+  .cand-seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* slider C */
+  .cfield { display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center; margin-top:12px; }
+  .cfield input[type=range]{ flex:1 1 210px; accent-color:var(--accent); min-width:180px; }
+  .cbadge { font-weight:800; font-size:1.05rem; color:#fff; border-radius:10px; padding:3px 14px;
+    background:linear-gradient(135deg,#2456e6,#7c3aed); min-width:78px; text-align:center; }
+
+  /* เวที 3D kernel (canvas พื้นสว่างเสมอ ตาม convention) */
+  .ker-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:#f7f8fb; touch-action:none; }
+  .ker-stage canvas { display:block; width:100%; height:auto; cursor:grab; }
+  .ker-stage.dragging canvas { cursor:grabbing; }
+  .ker-msg { position:absolute; left:12px; right:12px; bottom:12px; z-index:3; pointer-events:none;
+    background:rgba(255,255,255,.9); border:1px solid rgba(90,110,175,.28); backdrop-filter:blur(4px);
+    color:#1f2533; border-radius:12px; padding:9px 14px; font-size:.94rem; line-height:1.55; box-shadow:0 4px 14px -6px rgba(15,23,42,.3); }
+  .ker-msg b { color:#6d28d9; }
+  .ker-scene { position:absolute; top:10px; left:10px; z-index:3; display:flex; gap:6px; }
+  .ker-scene .sc { width:30px; height:30px; border-radius:50%; border:1.5px solid rgba(90,110,175,.4);
+    background:rgba(255,255,255,.92); color:#3a4a7a; font-weight:700; font-size:.9rem; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; margin:0; padding:0; box-shadow:0 2px 6px -2px rgba(15,23,42,.25); font-family:inherit; transition:all .2s; pointer-events:auto; }
+  .ker-scene .sc.on { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; border-color:transparent; transform:scale(1.12); box-shadow:0 0 14px rgba(124,58,237,.5); }
+  .ker-hint { position:absolute; top:12px; right:12px; z-index:3; color:#5566a0; font-size:.78rem;
+    background:rgba(255,255,255,.8); border:1px solid rgba(90,110,175,.22); border-radius:999px; padding:4px 11px; pointer-events:none; }
+  .ker-ctl { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+  #kerPlay { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+
+  /* กล่องกระบวนการ (boxes+arrows) */
+  .flow { display:flex; align-items:stretch; gap:12px; flex-wrap:wrap; margin:14px 0; }
+  .flow-step { flex:1 1 210px; border:1.5px solid var(--border); border-radius:14px; padding:13px 16px; background:var(--card); position:relative; overflow:hidden; }
+  .flow-step::before { content:''; position:absolute; left:0; top:0; bottom:0; width:5px; }
+  .fs-a::before{background:#2456e6;} .fs-b::before{background:#7c3aed;} .fs-c::before{background:#12a150;}
+  .flow-step h5 { margin:0 0 6px; font-size:1rem; display:flex; align-items:center; gap:8px; }
+  .fs-a h5{color:#2456e6;} .fs-b h5{color:#7c3aed;} .fs-c h5{color:#0e7f43;}
+  .flow-step p { margin:0; font-size:.9rem; line-height:1.65; color:var(--ink); }
+  .flow-arrow { align-self:center; font-size:1.7rem; color:#94a3b8; font-weight:800; flex:none; }
+  @media(max-width:620px){ .flow-arrow{ transform:rotate(90deg); } }
+
+  /* timeline */
+  .tl { position:relative; margin:16px 0 6px; padding-left:6px; }
+  .tl-item { display:flex; gap:14px; align-items:flex-start; padding:0 0 16px; position:relative; }
+  .tl-item::before { content:''; position:absolute; left:15px; top:26px; bottom:-2px; width:2px; background:var(--border); }
+  .tl-item:last-child::before { display:none; }
+  .tl-dot { width:32px; height:32px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:.82rem; z-index:1; box-shadow:0 3px 9px -3px rgba(15,23,42,.5); }
+  .tl-body { padding-top:3px; }
+  .tl-body b { font-size:1rem; } .tl-body p { margin:3px 0 0; font-size:.9rem; color:var(--muted); line-height:1.6; }
+  .tl-year { font-weight:800; color:var(--accent); font-size:.86rem; }
+
+  /* โค้ด + ปุ่มคัดลอก */
+  .codewrap { position:relative; margin:12px 0; }
+  .codewrap pre { margin:0; background:#0f1426; color:#e6eaff; border-radius:12px; padding:16px 16px 16px;
+    overflow:auto; font-family:'Fira Code',ui-monospace,monospace !important; font-size:.83rem; line-height:1.7; border:1px solid #24304f; }
+  .codewrap pre * { font-family:'Fira Code',ui-monospace,monospace !important; }
+  .cd-key{color:#c4b5fd;} .cd-str{color:#86efac;} .cd-com{color:#6b7aa8; font-style:italic;} .cd-fn{color:#7dd3fc;} .cd-num{color:#fca5a5;}
+  .copybtn { position:absolute; top:10px; right:10px; z-index:2; font-family:inherit; font-size:.8rem; font-weight:600;
+    border:1px solid #3a466b; background:#1b2440; color:#c9d4ff; border-radius:8px; padding:5px 12px; cursor:pointer; box-shadow:none; margin:0; }
+  .copybtn:hover { background:#26335c; }
+  .copybtn.ok { background:#12a150; color:#fff; border-color:transparent; }
+
+  .eq { background:#fff; border:1px solid var(--border); border-radius:10px; padding:11px 15px; margin:11px 0; text-align:center;
+    font-size:1.02rem; font-variant-numeric:tabular-nums; }
+  [data-theme="dark"] .eq { background:var(--card); }
+
+  .cdot { display:inline-block; width:.72em; height:.72em; border-radius:50%; vertical-align:middle; margin:0 1px; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>SVM: หา "เส้นแบ่งที่กว้างที่สุด" (และเวทมนตร์ Kernel)</h1>
+    <p class="subtitle">สัปดาห์ก่อนต้นไม้แบ่งข้อมูลด้วยการถามทีละเงื่อนไข — สัปดาห์นี้เราถามคำถามใหม่ที่คมกว่า: ในบรรดา "เส้นแบ่ง" นับไม่ถ้วนที่แยกสองกลุ่มได้ <strong>เส้นไหนดีที่สุด?</strong> คำตอบของ SVM คือ "เส้นที่ทิ้งช่องว่างกว้างที่สุด" — แนวคิดที่ครองวงการก่อนยุค deep learning</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M4 18L20 6"/><path d="M4 13L15 5"/><path d="M9 21L20 12"/><circle class="f" cx="6" cy="20" r="1.6"/><circle class="f" cx="18" cy="4" r="1.6"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายได้ว่า SVM เลือกเส้นแบ่งด้วยหลัก <strong>margin สูงสุด</strong> — เส้นที่อยู่ "กลางถนน" ที่กว้างที่สุดระหว่างสองกลุ่ม เพราะมันเผื่อความคลาดเคลื่อนได้มากที่สุด</li>
+      <li>รู้จัก <strong>support vectors</strong> — จุดไม่กี่จุดที่แตะขอบถนน ซึ่ง <em>เพียงลำพัง</em> ก็กำหนดเส้นได้ทั้งเส้น (จุดอื่นถอดออกก็ไม่เปลี่ยน)</li>
+      <li>เข้าใจ <strong>soft margin (ปุ่ม C)</strong>: ยอมให้ผิดบ้างเพื่อถนนกว้าง (C น้อย) หรือดันให้ถูกทุกจุดแต่ถนนแคบ (C มาก)</li>
+      <li>เข้าใจ <strong>Kernel trick</strong>: ข้อมูลที่ 2 มิติแยกด้วยเส้นตรงไม่ได้ พอ "ยกขึ้นมิติที่สูงกว่า" กลับใช้ระนาบแบนตัดได้ทันที</li>
+      <li>วาง SVM ลงในไทม์ไลน์ AI ได้ — แชมป์ยุค ~1995–2010 ก่อน deep learning จะมาแทน แล้วเชื่อมสู่ Neural Network สัปดาห์หน้า</li>
+    </ol>
+  </div>
+
+  <!-- ═══════════ ส่วนที่ 1 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — เส้นไหน "ดีที่สุด"? <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">สองกลุ่มนี้แยกกันด้วยเส้นตรงได้สบาย — แต่ปัญหาคือ <strong>เส้นที่แยกได้มีนับไม่ถ้วน!</strong> เอียงนิด เลื่อนหน่อยก็ยังแยกถูก แล้วจะเลือกเส้นไหนดี? สัญชาตญาณของ SVM: เส้นที่ดีที่สุดคือเส้นที่วาง <strong>"ถนน" (margin) กว้างที่สุด</strong> คั่นกลาง — ยิ่งถนนกว้าง เจอจุดใหม่ที่เยื้องนิดหน่อยก็ยังทายถูก = <em>ทนทานที่สุด</em></p>
+
+    <div class="flow">
+      <div class="flow-step fs-a">
+        <h5><svg class="ico" viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M3 12l4-3M3 12l4 3"/></svg>เส้นชิดกลุ่ม = เสี่ยง</h5>
+        <p>เส้นที่เฉียดกลุ่มใดกลุ่มหนึ่ง เผลอขยับนิดเดียวก็ทายผิดทันที ถนนแคบ = ไม่ปลอดภัย</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step fs-b">
+        <h5><svg class="ico" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><path d="M4 12h16" stroke-dasharray="3 3"/></svg>เส้นกลางถนนกว้างสุด</h5>
+        <p>SVM เลือกเส้นที่ระยะถึงจุดใกล้สุดของ <em>ทั้งสองฝั่ง</em> เท่ากันและมากที่สุด — ถนนกว้างสุด</p>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-step fs-c">
+        <h5><svg class="ico" viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.4"/><circle cx="17" cy="16" r="2.4"/><path d="M9 9.5l6 5"/></svg>Support Vectors</h5>
+        <p>จุดที่ "แตะขอบถนน" คือ support vectors — มีแค่ไม่กี่จุด แต่กำหนดเส้นได้ทั้งเส้น</p>
+      </div>
+    </div>
+
+    <p style="margin-bottom:0"><b>ทดลองเอง:</b> กดสลับเส้นผู้ท้าชิงด้านล่าง — แต่ละเส้นแยกถูกหมด แต่ดู "ความกว้างถนน" ต่างกันชัดเจน เส้นสุดท้าย (SVM) กว้างที่สุด</p>
+  </div>
+
+  <div class="demo" id="cand">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M3 20L21 4"/><path d="M6 20L21 9"/><path d="M3 15L18 4"/></svg>เปรียบเทียบ "ความกว้างถนน" ของแต่ละเส้นแบ่ง</h3>
+    <p style="margin-top:0">ทั้ง 3 เส้นแยกจุด <span style="color:#2456e6;font-weight:700">น้ำเงิน</span> ออกจาก <span style="color:#e5484d;font-weight:700">แดง</span> ได้ถูกต้องหมด — แต่ตัวเลข <b>ความกว้างถนน</b> บอกเราว่าใคร "ปลอดภัย" กว่า</p>
+    <div class="cand-seg" id="candSeg" style="justify-content:center; display:flex; margin:0 auto 12px; width:fit-content">
+      <button data-c="0" class="on">เส้น A (ชิดแดง)</button>
+      <button data-c="1">เส้น B (ชิดน้ำเงิน)</button>
+      <button data-c="2">เส้น SVM (กว้างสุด)</button>
+    </div>
+    <div class="svm-stage" id="candStage"><canvas id="candCanvas" width="460" height="460"></canvas></div>
+    <div class="svm-read">
+      <div class="svm-chip green"><span class="lab">ความกว้างถนน (margin)</span><span class="val" id="candMargin">—</span></div>
+      <div class="svm-chip"><span class="lab">จุดที่แตะขอบ (SV)</span><span class="val" id="candSV">—</span></div>
+    </div>
+    <p class="svm-read" style="font-size:.85rem;color:var(--muted);justify-content:center;margin-top:6px">ถนน = แถบระหว่างเส้นประสองข้าง · จุดวงกลมสีทึบเรืองแสง = support vectors ที่แตะขอบถนนพอดี</p>
+  </div>
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 2 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: ลากจุดแล้วดู SVM หาเส้นกลางถนนเอง <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo" id="mm">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4v16h16"/><circle class="f" cx="8" cy="8" r="1.8"/><circle class="f" cx="10" cy="6" r="1.8"/><circle cx="16" cy="16" r="1.8"/><circle cx="18" cy="14" r="1.8"/><path d="M5 19L19 5" stroke-dasharray="3 3"/></svg>Max-Margin Playground — ลากจุดได้ทุกจุด</h3>
+    <p style="margin-top:0"><b>ลากจุดใดก็ได้</b>ด้วยเมาส์ — เครื่องจะคำนวณ <b>เส้นกลางถนนที่กว้างที่สุด</b> ใหม่ทันที (เส้นทึบ = เส้นตัดสิน, เส้นประสองข้าง = ขอบถนน) จุดที่แตะขอบถนนจะ <b>เรืองแสง</b> = support vectors · สังเกตว่าลากจุดที่อยู่ไกล ๆ (ไม่ใช่ SV) เส้นไม่ขยับเลย!</p>
+
+    <div class="svm-stage" id="mmStage"><canvas id="mmCanvas" width="460" height="460"></canvas></div>
+    <div class="svm-read">
+      <div class="svm-chip green"><span class="lab">ความกว้างถนน</span><span class="val" id="mmMargin">—</span></div>
+      <div class="svm-chip"><span class="lab">Support Vectors</span><span class="val" id="mmSV">—</span></div>
+      <div class="svm-chip amber"><span class="lab">จุดทั้งหมด</span><span class="val" id="mmN">—</span></div>
+    </div>
+    <div class="svm-ctl">
+      <button id="mmReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>รีเซ็ตตำแหน่ง</button>
+      <span class="hint">ลากจุด support vector (ที่เรืองแสง) เข้าหากันสิ — ถนนจะแคบลงทันที</span>
+    </div>
+  </div>
+
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 3 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — โลกจริงข้อมูลปนกัน: ปุ่ม C (soft margin) <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="card">
+    <p style="margin:0">ข้อมูลจริงมักไม่ได้แยกกันสวย ๆ — มีจุดหลงข้ามฝั่งปนอยู่ ถ้ายืนกรานหาเส้นที่แยกถูก <em>ทุกจุด</em> จะได้ถนนแคบเป็นเส้นด้ายและ overfit · SVM แก้ด้วย <strong>soft margin</strong>: ยอม "ปรับ" ให้บางจุดล้ำถนนหรือข้ามฝั่งได้ แลกกับถนนที่กว้างและมั่นคงกว่า — ปุ่มที่คุมการแลกเปลี่ยนนี้คือ <strong>C</strong></p>
+  </div>
+
+  <div class="demo" id="soft">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14"/><circle class="f" cx="9" cy="12" r="3"/><path d="M9 4v3M9 17v3"/></svg>เลื่อนปุ่ม C แล้วดูถนนกว้าง/แคบ กับจำนวนจุดที่ยอมให้ผิด</h3>
+    <p style="margin-top:0"><b>C น้อย</b> = ให้ความสำคัญกับ "ถนนกว้าง" มากกว่า ยอมมีจุดล้ำถนนเยอะ · <b>C มาก</b> = ดันสุดตัวให้ทุกจุดถูก ถนนแคบลงจนเสี่ยง overfit · ลองลากสุดสองข้างเทียบกัน</p>
+
+    <div class="svm-stage" id="softStage"><canvas id="softCanvas" width="460" height="460"></canvas></div>
+    <div class="svm-read">
+      <div class="svm-chip green"><span class="lab">ความกว้างถนน</span><span class="val" id="softMargin">—</span></div>
+      <div class="svm-chip red"><span class="lab">จุดล้ำถนน (violations)</span><span class="val" id="softViol">—</span></div>
+      <div class="svm-chip amber"><span class="lab">จุดข้ามฝั่ง (ทายผิด)</span><span class="val" id="softMiss">—</span></div>
+    </div>
+    <div class="cfield">
+      <span style="font-weight:700">C น้อย<br><small style="font-weight:500;color:var(--muted)">ถนนกว้าง ยอมผิด</small></span>
+      <input type="range" id="softC" min="0" max="4" step="1" value="2">
+      <span style="font-weight:700">C มาก<br><small style="font-weight:500;color:var(--muted)">ถนนแคบ ดันให้ถูก</small></span>
+    </div>
+    <p class="svm-read" style="justify-content:center;margin-top:8px"><span class="cbadge" id="softCval">C = 1</span></p>
+  </div>
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 4 — ชิ้นเอก ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — เวทมนตร์ Kernel: 2 มิติแยกไม่ได้ → ยกขึ้น 3 มิติ <span class="badge">ทีละขั้น</span></h2>
+
+  <div class="card">
+    <p style="margin:0">บางข้อมูล <strong>ไม่มีทาง</strong>ใช้เส้นตรงแยกได้ในระนาบ 2 มิติ เช่นกลุ่มในสุดถูกล้อมด้วยกลุ่มวงแหวนรอบนอก — ลากเส้นตรงยังไงก็ผ่ากลางกลุ่มใดกลุ่มหนึ่งเสมอ · แต่ SVM มีไพ่ตาย: <strong>"ยก" ข้อมูลขึ้นมิติที่สูงกว่า</strong> แล้วในมิติใหม่นั้น <strong>ระนาบแบน ๆ กลับตัดแยกได้พอดี</strong> นี่คือ Kernel Trick — กดไล่ 3 ฉากแล้วลากหมุนดูเองได้</p>
+  </div>
+
+  <div class="demo" id="ker">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/></svg>โอ้โหโมเมนต์: ยกวงแหวนขึ้น แล้วเฉือนด้วยระนาบเดียว</h3>
+    <p style="margin-top:0">ฉาก 1: มองจากบน — <span style="color:#2456e6;font-weight:700">แกนกลาง</span> ถูก <span style="color:#e5484d;font-weight:700">วงแหวน</span> ล้อม เส้นตรงแยกไม่ได้ · ฉาก 2: ยกความสูง <b>z = x²+y²</b> (จุดยิ่งไกลศูนย์ยิ่งลอยสูง) · ฉาก 3: ตอนนี้ <b>ระนาบแนวนอนแผ่นเดียว</b> เฉือนแยกได้สบาย!</p>
+
+    <div class="ker-stage" id="kerStage">
+      <div class="ker-scene" id="kerScenes">
+        <button class="sc on" data-sc="1">1</button><button class="sc" data-sc="2">2</button><button class="sc" data-sc="3">3</button>
+      </div>
+      <div class="ker-hint"><svg class="ico" viewBox="0 0 24 24" style="width:1em;height:1em;color:#7f8ac4"><path d="M6 9l6-6 6 6M6 15l6 6 6-6"/></svg> ลากเพื่อหมุน</div>
+      <canvas id="kerCanvas" width="780" height="470"></canvas>
+      <div class="ker-msg" id="kerMsg"></div>
+    </div>
+    <div class="ker-ctl">
+      <button id="kerPlay"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>เล่นทั้ง 3 ฉาก</button>
+      <span style="font-size:.85rem;color:var(--muted)">ฉาก 1 มองจากบน (แยกไม่ได้) · ฉาก 2 ยกมิติ z=x²+y² · ฉาก 3 ระนาบเฉือนแยก</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <p style="margin:0"><b>สรุปกลไก:</b> "ยกขึ้นมิติสูง → เฉือนด้วยระนาบแบน" คือหัวใจของ Kernel Trick · ความฉลาดจริงคือ SVM <strong>ไม่ต้องคำนวณพิกัด 3 มิติจริง ๆ</strong> เลย — มันใช้ <em>kernel function</em> (เช่น RBF) คำนวณ "ความคล้าย" ของคู่จุดในมิติสูงโดยตรง เหมือนได้ผลของการยกมิติมาฟรี ๆ · เส้นแบ่งโค้ง ๆ ที่เห็นตอนมองกลับ 2 มิติ = ร่องรอยของระนาบแบนในมิติที่สูงกว่า</p>
+  </div>
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 5 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — SVM ในไทม์ไลน์ AI + โค้ดจริง <span class="badge amber">ลงมือ</span></h2>
+
+  <div class="card">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12h18"/><circle class="f" cx="7" cy="12" r="2"/><circle class="f" cx="17" cy="12" r="2"/></svg>SVM เคยเป็นแชมป์ — แล้วถูก deep learning แซง</h3>
+    <div class="tl">
+      <div class="tl-item">
+        <div class="tl-dot" style="background:linear-gradient(135deg,#64748b,#94a3b8)">P</div>
+        <div class="tl-body"><span class="tl-year">1958</span> <b>Perceptron</b><p>เส้นแบ่งเชิงเส้นตัวแรก — แต่แก้ปัญหาที่เส้นตรงเดียวไม่พอ (เช่น XOR) ไม่ได้ ทำให้วงการซบเซาไปพัก</p></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:linear-gradient(135deg,#2456e6,#7c3aed)">S</div>
+        <div class="tl-body"><span class="tl-year">~1995–2010</span> <b>ยุคทองของ SVM</b><p>margin สูงสุด + kernel trick ทำให้ SVM แม่นและมีทฤษฎีรองรับสวยงาม — ครองงาน classification/ข้อความ/ตัวเลขจำนวนมาก เป็น <b>มาตรฐานทองก่อน deep learning</b></p></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:linear-gradient(135deg,#12a150,#0ea371)">D</div>
+        <div class="tl-body"><span class="tl-year">2012</span> <b>AlexNet — deep learning แซง</b><p>โครงข่ายประสาทเทียมเชิงลึกชนะ ImageNet ขาดลอย · จุดเปลี่ยนที่ deep learning เข้ามาแทน SVM ในงานภาพ/เสียง/ภาษาแทบทั้งหมด</p></div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot" style="background:linear-gradient(135deg,#b45309,#e8590c)">→</div>
+        <div class="tl-body"><span class="tl-year">สัปดาห์หน้า</span> <b>Neural Network</b><p>แทนที่จะให้เรา "ออกแบบการยกมิติ" เอง โครงข่ายประสาท <b>เรียนรู้ feature ของมันเอง</b> — นี่คือก้าวต่อไปที่เราจะเปิดในเรื่อง Neural Network</p></div>
+      </div>
+    </div>
+    <p style="margin-bottom:0;font-size:.9rem;color:var(--muted)">แม้จะไม่ใช่แชมป์แล้ว SVM ยังใช้ได้ดีมากกับข้อมูลขนาดเล็ก-กลาง มิติสูง และเวลาต้องการโมเดลที่เข้าใจง่าย เทรนเร็ว</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M8 6L2 12l6 6M16 6l6 6-6 6"/></svg>โค้ดจริง — เล่นบน Google Colab ได้เลย (scikit-learn)</h3>
+    <p style="margin-top:0">เปรียบเทียบ kernel เชิงเส้น (linear) กับ RBF บนข้อมูลวงแหวน <code>make_circles</code> แล้ววาดเส้นแบ่งพร้อมนับ support vectors · กด <b>คัดลอก</b> แล้ววางใน Colab</p>
+    <div class="codewrap">
+      <button class="copybtn" id="cpBtn">คัดลอก</button>
+      <pre id="codeBlock"><span class="cd-com"># SVM บน scikit-learn — เทียบ kernel linear กับ rbf บนข้อมูลวงแหวน</span>
+<span class="cd-key">import</span> numpy <span class="cd-key">as</span> np
+<span class="cd-key">import</span> matplotlib.pyplot <span class="cd-key">as</span> plt
+<span class="cd-key">from</span> sklearn.datasets <span class="cd-key">import</span> make_circles
+<span class="cd-key">from</span> sklearn.svm <span class="cd-key">import</span> SVC
+
+<span class="cd-com"># 1) สร้างข้อมูลวงแหวน: กลุ่มในสุด vs วงรอบนอก (แยกด้วยเส้นตรงไม่ได้)</span>
+X, y = <span class="cd-fn">make_circles</span>(n_samples=<span class="cd-num">200</span>, factor=<span class="cd-num">0.4</span>, noise=<span class="cd-num">0.10</span>, random_state=<span class="cd-num">0</span>)
+
+<span class="cd-com"># 2) เทรนสองโมเดล: เส้นตรง (linear) กับ ยกมิติด้วย kernel RBF</span>
+lin = <span class="cd-fn">SVC</span>(kernel=<span class="cd-str">'linear'</span>, C=<span class="cd-num">1.0</span>).<span class="cd-fn">fit</span>(X, y)
+rbf = <span class="cd-fn">SVC</span>(kernel=<span class="cd-str">'rbf'</span>, C=<span class="cd-num">1.0</span>, gamma=<span class="cd-num">1.0</span>).<span class="cd-fn">fit</span>(X, y)
+
+<span class="cd-fn">print</span>(<span class="cd-str">'linear  แม่นยำ:'</span>, lin.<span class="cd-fn">score</span>(X, y), <span class="cd-str">' | support vectors:'</span>, <span class="cd-fn">len</span>(lin.support_))
+<span class="cd-fn">print</span>(<span class="cd-str">'rbf     แม่นยำ:'</span>, rbf.<span class="cd-fn">score</span>(X, y), <span class="cd-str">' | support vectors:'</span>, <span class="cd-fn">len</span>(rbf.support_))
+<span class="cd-com"># linear จะได้ ~50% (แยกวงแหวนไม่ได้) ส่วน rbf จะเกือบ 100%</span>
+
+<span class="cd-com"># 3) วาดเส้นแบ่ง (decision boundary) ของแต่ละ kernel</span>
+<span class="cd-key">def</span> <span class="cd-fn">plot_boundary</span>(model, title):
+    xx, yy = np.<span class="cd-fn">meshgrid</span>(np.<span class="cd-fn">linspace</span>(-<span class="cd-num">1.5</span>, <span class="cd-num">1.5</span>, <span class="cd-num">300</span>),
+                         np.<span class="cd-fn">linspace</span>(-<span class="cd-num">1.5</span>, <span class="cd-num">1.5</span>, <span class="cd-num">300</span>))
+    Z = model.<span class="cd-fn">predict</span>(np.<span class="cd-fn">c_</span>[xx.<span class="cd-fn">ravel</span>(), yy.<span class="cd-fn">ravel</span>()]).<span class="cd-fn">reshape</span>(xx.shape)
+    plt.<span class="cd-fn">contourf</span>(xx, yy, Z, alpha=<span class="cd-num">0.25</span>, cmap=<span class="cd-str">'coolwarm'</span>)
+    plt.<span class="cd-fn">scatter</span>(X[:, <span class="cd-num">0</span>], X[:, <span class="cd-num">1</span>], c=y, cmap=<span class="cd-str">'coolwarm'</span>, edgecolors=<span class="cd-str">'k'</span>, s=<span class="cd-num">28</span>)
+    <span class="cd-com"># วงกลมรอบ support vectors</span>
+    sv = model.support_vectors_
+    plt.<span class="cd-fn">scatter</span>(sv[:, <span class="cd-num">0</span>], sv[:, <span class="cd-num">1</span>], s=<span class="cd-num">140</span>, facecolors=<span class="cd-str">'none'</span>, edgecolors=<span class="cd-str">'lime'</span>)
+    plt.<span class="cd-fn">title</span>(title); plt.<span class="cd-fn">gca</span>().<span class="cd-fn">set_aspect</span>(<span class="cd-str">'equal'</span>)
+
+plt.<span class="cd-fn">figure</span>(figsize=(<span class="cd-num">10</span>, <span class="cd-num">4</span>))
+plt.<span class="cd-fn">subplot</span>(<span class="cd-num">1</span>, <span class="cd-num">2</span>, <span class="cd-num">1</span>); <span class="cd-fn">plot_boundary</span>(lin, <span class="cd-str">'kernel = linear (แยกวงแหวนไม่ได้)'</span>)
+plt.<span class="cd-fn">subplot</span>(<span class="cd-num">1</span>, <span class="cd-num">2</span>, <span class="cd-num">2</span>); <span class="cd-fn">plot_boundary</span>(rbf, <span class="cd-str">'kernel = rbf (ยกมิติ → เฉือนได้)'</span>)
+plt.<span class="cd-fn">tight_layout</span>(); plt.<span class="cd-fn">show</span>()
+
+<span class="cd-com"># ลองปรับเล่น: C=100 (ถนนแคบ ดันให้ถูกทุกจุด) กับ gamma=5 (โค้งตามจุดมากขึ้น)</span>
+<span class="cd-com"># หรือเปลี่ยนเป็น make_moons เพื่อดูข้อมูลรูปพระจันทร์คู่</span></pre>
+    </div>
+  </div>
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 6 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — แบบฝึกหัด <span class="badge">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg> ข้อ 1 — support vectors คืออะไร</div>
+    <p>อธิบายด้วยคำพูดตัวเองว่า "support vectors" คือจุดแบบไหน และทำไมถ้าลบจุดที่ <em>ไม่ใช่</em> support vector ทิ้ง เส้นแบ่งของ SVM ถึงไม่เปลี่ยน</p>
+    <details class="example">
+      <summary>ดูเฉลย</summary>
+      <p><strong>ขั้น 1 —</strong> support vectors คือจุดที่อยู่ "แตะขอบถนน" พอดี (จุดที่ใกล้เส้นตัดสินที่สุดของแต่ละฝั่ง)</p>
+      <p><strong>ขั้น 2 —</strong> SVM หาเส้นที่กว้างสุดโดยดูแค่จุดที่ประชิดถนนสองข้าง — จุดที่อยู่ลึกในดินแดนตัวเองไม่มีผลต่อ "ความกว้างสุด"</p>
+      ✅ <strong>คำตอบ:</strong> เส้นถูกกำหนดโดย support vectors เท่านั้น ลบจุดอื่นทิ้งกี่จุดก็ได้ เส้นไม่ขยับ — นี่คือเหตุผลที่ SVM ประหยัดหน่วยความจำ (จำแค่ไม่กี่จุด)
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg> ข้อ 2 — ทำไมถนนกว้างถึง generalize ดีกว่า</div>
+    <p>มีเส้นแบ่งสองเส้นที่แยกข้อมูลฝึกถูกทั้งคู่ เส้น A ทิ้งถนนกว้าง เส้น B ทิ้งถนนแคบ — เส้นไหนน่าจะทายจุดใหม่ (ที่ยังไม่เคยเห็น) ได้แม่นกว่า เพราะอะไร</p>
+    <details class="example">
+      <summary>ดูเฉลย</summary>
+      <p><strong>ขั้น 1 —</strong> จุดใหม่มักเยื้องจากจุดฝึกไปนิดหน่อยเพราะ noise</p>
+      <p><strong>ขั้น 2 —</strong> ถ้าถนนแคบ (เส้น B) จุดที่เยื้องนิดเดียวก็ตกไปอีกฝั่งของเส้น = ทายผิดง่าย</p>
+      ✅ <strong>คำตอบ:</strong> เส้น A (ถนนกว้าง) ดีกว่า — margin กว้างทำหน้าที่เป็น "เขตกันชน" เผื่อความคลาดเคลื่อน จุดใหม่ต้องเยื้องเยอะมากถึงจะข้ามเส้น จึงทนต่อ noise และ generalize ดีกว่า
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg> ข้อ 3 — ปุ่ม C คุมอะไร</div>
+    <p>เพื่อนตั้ง C ไว้สูงมาก แล้วบ่นว่าโมเดลได้ accuracy บน training set 100% แต่พอใช้จริงกลับพลาดเยอะ — เกิดอะไรขึ้น และควรปรับ C ไปทางไหน</p>
+    <details class="example">
+      <summary>ดูเฉลย</summary>
+      <p><strong>ขั้น 1 —</strong> C สูง = ลงโทษการทายผิดหนัก → โมเดลดันหาเส้นที่แยกถูกทุกจุด ถนนแคบมาก</p>
+      <p><strong>ขั้น 2 —</strong> ถนนแคบ = เส้นบิดตามทุก noise ใน training set = overfitting (train ดีเลิศ test พัง)</p>
+      ✅ <strong>คำตอบ:</strong> ควร <strong>ลด C</strong> ลง — ยอมให้ผิดบ้างในข้อมูลฝึกเพื่อได้ถนนกว้างขึ้นและ generalize ดีขึ้น (C คือปุ่มแลกเปลี่ยนระหว่าง "ถนนกว้าง" กับ "แยกถูกทุกจุด")
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h5"/></svg> ข้อ 4 — เลือก linear หรือ rbf</div>
+    <p>งานสองแบบ: (ก) แยกอีเมลสแปม/ไม่สแปมด้วยฟีเจอร์นับคำหลายพันมิติ ที่มักแยกกันได้เกือบเป็นเส้นตรงอยู่แล้ว (ข) แยกข้อมูลรูปวงแหวนซ้อนกันใน 2 มิติ — แต่ละงานควรใช้ kernel อะไร เพราะอะไร</p>
+    <details class="example">
+      <summary>ดูเฉลย</summary>
+      <p><strong>ขั้น 1 —</strong> ข้อมูลมิติสูงมาก ๆ (เช่นนับคำ) มักแยกเชิงเส้นได้อยู่แล้ว → linear เร็วและพอเพียง ไม่ต้องยกมิติ</p>
+      <p><strong>ขั้น 2 —</strong> วงแหวนซ้อนกันแยกด้วยเส้นตรงไม่ได้เด็ดขาด → ต้องยกมิติด้วย rbf ให้ระนาบเฉือนได้</p>
+      ✅ <strong>คำตอบ:</strong> (ก) ใช้ <strong>linear</strong> (มิติสูง แยกเชิงเส้นได้ เทรนเร็ว) · (ข) ใช้ <strong>rbf</strong> (เส้นแบ่งต้องโค้ง ต้องพึ่ง kernel trick) — หลักคิด: เริ่มจาก linear ก่อนเสมอ ถ้าแยกไม่ได้ค่อยขยับไป rbf
+    </details>
+  </div>
+  </section>
+
+  <!-- ═══════════ ส่วนที่ 7 ═══════════ -->
+  <section class="wsec">
+  <h2>ส่วนที่ 7 — ขั้นบันได <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M6 20V8M6 8l-2 2M6 8l2 2M12 20V4M12 4l-2 2M12 4l2 2M18 20v-8M18 12l-2 2M18 12l2 2"/></svg> เรามาถึงไหนแล้ว:</strong>
+    <ul style="margin:8px 0 0;line-height:1.9">
+      <li><b>KNN / Decision Tree / Random Forest</b> (ส.4–6) — ตัวจำแนกคลาสสิก แบ่งข้อมูลด้วยเพื่อนบ้านหรือกฎเงื่อนไข</li>
+      <li><b>SVM (สัปดาห์นี้)</b> — ยกระดับด้วยหลัก <em>margin สูงสุด</em> + <em>kernel trick</em> แชมป์ก่อนยุค deep learning ที่มีทฤษฎีสวยงามรองรับ</li>
+      <li><b>Neural Network (เรื่อง Neural Network) →</b> — แทนที่เราจะออกแบบ "การยกมิติ/ฟีเจอร์" เอง โครงข่ายประสาท <em>เรียนรู้ feature ของมันเอง</em> จากข้อมูล เปิดประตูสู่ deep learning</li>
+    </ul>
+  </div>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 9h16M9 5v14"/></svg> แหล่งเรียนรู้เพิ่มเติม</h3>
+    <ul>
+      <li><span class="src">scikit-learn</span> <a href="https://scikit-learn.org/stable/modules/svm.html" target="_blank">User Guide: Support Vector Machines</a> — เอกสารทางการ ครบตั้งแต่ SVC/พารามิเตอร์ C, gamma ยัน kernel ต่าง ๆ</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=efR1C6CvhmE" target="_blank">Support Vector Machines, Clearly Explained!!!</a> — อธิบาย margin, soft margin และ kernel แบบเห็นภาพทีละขั้น</li>
+      <li><span class="src">Stanford CS229 (Andrew Ng)</span> <a href="https://www.youtube.com/watch?v=lDwow4aOrtg" target="_blank">Lecture: Support Vector Machines</a> — ที่มาเชิงคณิตศาสตร์ของ margin สูงสุดและ dual/kernel</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week06.html">← Decision Tree &amp; Random Forest</a>
+    <a href="week08.html">Neural Network →</a>
+  </div>
+
+  </section>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ═══════════ ตัวช่วยร่วม: solver max-margin (closest points of convex hulls) ═══════════ */
+function svmMaxMargin(A, B){
+  // A,B = อาเรย์ของ [x,y] (คลาส +1 กับ −1) · หา w,b,margin แบบ hard-margin
+  if(!A.length || !B.length) return null;
+  let p = A[0].slice(), q = B[0].slice();
+  for(let it=0; it<400; it++){
+    const d=[p[0]-q[0], p[1]-q[1]];
+    let ai=0, bestA=Infinity;
+    for(let i=0;i<A.length;i++){ const v=A[i][0]*d[0]+A[i][1]*d[1]; if(v<bestA){bestA=v;ai=i;} }
+    let bi=0, bestB=-Infinity;
+    for(let j=0;j<B.length;j++){ const v=B[j][0]*d[0]+B[j][1]*d[1]; if(v>bestB){bestB=v;bi=j;} }
+    const u=[A[ai][0]-p[0], A[ai][1]-p[1]], w=[B[bi][0]-q[0], B[bi][1]-q[1]];
+    const du=[u[0]-w[0], u[1]-w[1]];
+    const ddu=d[0]*du[0]+d[1]*du[1], dudu=du[0]*du[0]+du[1]*du[1];
+    let g = dudu>1e-12 ? -ddu/dudu : 0;
+    g = Math.max(0, Math.min(1, g));
+    p=[p[0]+g*u[0], p[1]+g*u[1]]; q=[q[0]+g*w[0], q[1]+g*w[1]];
+    if(g<1e-9) break;
+  }
+  const wv=[p[0]-q[0], p[1]-q[1]];
+  const nrm=Math.hypot(wv[0],wv[1]) || 1e-6;
+  const wn=[wv[0]/nrm, wv[1]/nrm];
+  const mid=[(p[0]+q[0])/2,(p[1]+q[1])/2];
+  const b = -(wn[0]*mid[0]+wn[1]*mid[1]);
+  return { wn, b, margin: nrm/2, p, q };
+}
+</script>
+
+<script>
+/* ═══════════ ส่วนที่ 1 — เปรียบเทียบเส้นผู้ท้าชิง ═══════════ */
+(function(){
+  const cv=document.getElementById('candCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'); const W=460,H=460, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const pad=34, sc=(W-2*pad)/10;
+  const mX=x=>pad+x*sc, mY=y=>(H-pad)-y*sc;
+  // ข้อมูลแยกได้ชัด (world 0..10)
+  const A=[[2.2,6.5],[3,8],[4,6.8],[3.2,7.4],[2,8.2],[4.6,7.8]];   // น้ำเงิน (+1) มุมบนซ้าย
+  const B=[[6.5,3],[7.6,2],[8.3,3.5],[6.8,1.8],[8,4.2],[7,3.2]];   // แดง (−1) มุมล่างขวา
+  const svm=svmMaxMargin(A,B);
+  // เส้นผู้ท้าชิง: กำหนดด้วย (wn,b) ให้แยกถูก แต่ margin แคบกว่า
+  function lineFrom(nx,ny,px,py){ const n=Math.hypot(nx,ny); const wn=[nx/n,ny/n]; return {wn, b:-(wn[0]*px+wn[1]*py)}; }
+  // A ควรได้ค่าบวก (อยู่บนซ้าย). ทิศ w ชี้จากแดงไปน้ำเงิน ~ (-1,+1)
+  const CANDS=[
+    lineFrom(-0.6,1, 5.9,4.6),  // เส้น A: เอียงชิดกลุ่มแดง (ถนนแคบ ~1.4)
+    lineFrom(-1,0.55, 4.7,6.0), // เส้น B: เอียงชิดกลุ่มน้ำเงิน (ถนนแคบสุด ~1.0)
+    { wn:svm.wn, b:svm.b }      // SVM (กว้างสุด ~2.3)
+  ];
+  function sd(L,pt){ return L.wn[0]*pt[0]+L.wn[1]*pt[1]+L.b; }
+  // margin ของเส้น = ระยะถึงจุดใกล้สุด (ต้องแยกถูก: A>0, B<0)
+  function marginOf(L){
+    let mA=Infinity, mB=Infinity;
+    A.forEach(a=>{ mA=Math.min(mA, sd(L,a)); });
+    B.forEach(b=>{ mB=Math.min(mB, -sd(L,b)); });
+    return Math.min(mA,mB);
+  }
+  let cur=0;
+  function drawGrid(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(127,127,127,.12)'; ctx.lineWidth=1;
+    for(let g=0;g<=10;g++){ ctx.beginPath(); ctx.moveTo(mX(g),mY(0)); ctx.lineTo(mX(g),mY(10)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mX(0),mY(g)); ctx.lineTo(mX(10),mY(g)); ctx.stroke(); }
+  }
+  // แปลงเส้น wn·x+b=off เป็นสองจุดตัดกรอบ [0,10]
+  function lineSeg(L, off){
+    // wn0*x+wn1*y + b - off = 0
+    const a=L.wn[0], bb=L.wn[1], c=L.b-off;
+    const pts=[];
+    // ตัดขอบ x=0,10 และ y=0,10
+    [[0,'x'],[10,'x'],[0,'y'],[10,'y']].forEach(([v,ax])=>{
+      if(ax==='x'){ if(Math.abs(bb)>1e-6){ const y=-(a*v+c)/bb; if(y>=-0.001&&y<=10.001) pts.push([v,y]); } }
+      else { if(Math.abs(a)>1e-6){ const x=-(bb*v+c)/a; if(x>=-0.001&&x<=10.001) pts.push([x,v]); } }
+    });
+    return pts.slice(0,2);
+  }
+  function draw(){
+    drawGrid();
+    const L=CANDS[cur]; const m=marginOf(L);
+    // ถนน (แถบ margin)
+    const s1=lineSeg(L, m), s2=lineSeg(L, -m);
+    if(s1.length===2 && s2.length===2){
+      ctx.fillStyle='rgba(18,161,80,.12)';
+      ctx.beginPath(); ctx.moveTo(mX(s1[0][0]),mY(s1[0][1])); ctx.lineTo(mX(s1[1][0]),mY(s1[1][1]));
+      ctx.lineTo(mX(s2[1][0]),mY(s2[1][1])); ctx.lineTo(mX(s2[0][0]),mY(s2[0][1])); ctx.closePath(); ctx.fill();
+      ctx.setLineDash([5,5]); ctx.strokeStyle='#12a150'; ctx.lineWidth=1.6;
+      [s1,s2].forEach(s=>{ ctx.beginPath(); ctx.moveTo(mX(s[0][0]),mY(s[0][1])); ctx.lineTo(mX(s[1][0]),mY(s[1][1])); ctx.stroke(); });
+      ctx.setLineDash([]);
+    }
+    // เส้นตัดสิน
+    const s0=lineSeg(L,0);
+    if(s0.length===2){ ctx.strokeStyle='#1f2533'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(mX(s0[0][0]),mY(s0[0][1])); ctx.lineTo(mX(s0[1][0]),mY(s0[1][1])); ctx.stroke(); }
+    // จุด — support vectors = |sd|≈margin
+    let svCount=0;
+    function dot(pt,col,cls){
+      const isSV = Math.abs(Math.abs(sd(L,pt))-m) < 0.12*Math.max(1,m);
+      if(isSV) svCount++;
+      const x=mX(pt[0]), y=mY(pt[1]);
+      if(isSV){ ctx.beginPath(); ctx.arc(x,y,10,0,7); ctx.fillStyle=(cls==='A'?'rgba(36,86,230,.22)':'rgba(229,72,77,.22)'); ctx.fill(); }
+      ctx.beginPath(); ctx.arc(x,y,6.5,0,7); ctx.fillStyle=col; ctx.fill();
+      ctx.lineWidth=isSV?2.4:1.4; ctx.strokeStyle=isSV?'#12a150':'rgba(255,255,255,.9)'; ctx.stroke();
+    }
+    A.forEach(a=>dot(a,'#2456e6','A')); B.forEach(b=>dot(b,'#e5484d','B'));
+    document.getElementById('candMargin').textContent = m.toFixed(2);
+    document.getElementById('candSV').textContent = svCount + ' จุด';
+  }
+  document.getElementById('candSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    cur=+b.dataset.c;
+    document.querySelectorAll('#candSeg button').forEach(x=>x.classList.toggle('on', x===b));
+    draw();
+  });
+  draw();
+})();
+</script>
+
+<script>
+/* ═══════════ ส่วนที่ 2 — Max-Margin Playground (ลากจุด) ═══════════ */
+(function(){
+  const cv=document.getElementById('mmCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'); const W=460,H=460, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const pad=34, sc=(W-2*pad)/10;
+  const mX=x=>pad+x*sc, mY=y=>(H-pad)-y*sc;
+  const iX=px=>(px/ (cv.clientWidth/W) - pad)/sc;   // pixel(client) → world
+  const iY=py=>(( H - py/(cv.clientHeight/H) ) - pad)/sc;
+  const DEF=()=>({
+    A:[[2,6.5],[3,8],[4,6.6],[2.6,7.6],[4.4,8.1],[1.8,8]],
+    B:[[6.5,3],[7.8,2],[8.4,3.6],[6.8,1.6],[8.1,4.4],[6,3.6]]
+  });
+  let data=DEF();
+  function sd(L,pt){ return L.wn[0]*pt[0]+L.wn[1]*pt[1]+L.b; }
+  function lineSeg(L, off){
+    const a=L.wn[0], bb=L.wn[1], c=L.b-off; const pts=[];
+    [[0,'x'],[10,'x'],[0,'y'],[10,'y']].forEach(([v,ax])=>{
+      if(ax==='x'){ if(Math.abs(bb)>1e-6){ const y=-(a*v+c)/bb; if(y>=-0.001&&y<=10.001) pts.push([v,y]); } }
+      else { if(Math.abs(a)>1e-6){ const x=-(bb*v+c)/a; if(x>=-0.001&&x<=10.001) pts.push([x,v]); } }
+    });
+    return pts.slice(0,2);
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(127,127,127,.12)'; ctx.lineWidth=1;
+    for(let g=0;g<=10;g++){ ctx.beginPath(); ctx.moveTo(mX(g),mY(0)); ctx.lineTo(mX(g),mY(10)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mX(0),mY(g)); ctx.lineTo(mX(10),mY(g)); ctx.stroke(); }
+    const svm=svmMaxMargin(data.A, data.B);
+    let svCount=0;
+    if(svm){
+      const m=svm.margin, L={wn:svm.wn,b:svm.b};
+      const s1=lineSeg(L,m), s2=lineSeg(L,-m), s0=lineSeg(L,0);
+      if(s1.length===2&&s2.length===2){
+        ctx.fillStyle='rgba(18,161,80,.12)';
+        ctx.beginPath(); ctx.moveTo(mX(s1[0][0]),mY(s1[0][1])); ctx.lineTo(mX(s1[1][0]),mY(s1[1][1]));
+        ctx.lineTo(mX(s2[1][0]),mY(s2[1][1])); ctx.lineTo(mX(s2[0][0]),mY(s2[0][1])); ctx.closePath(); ctx.fill();
+        ctx.setLineDash([5,5]); ctx.strokeStyle='#12a150'; ctx.lineWidth=1.6;
+        [s1,s2].forEach(s=>{ ctx.beginPath(); ctx.moveTo(mX(s[0][0]),mY(s[0][1])); ctx.lineTo(mX(s[1][0]),mY(s[1][1])); ctx.stroke(); });
+        ctx.setLineDash([]);
+      }
+      if(s0.length===2){ ctx.strokeStyle='#1f2533'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.moveTo(mX(s0[0][0]),mY(s0[0][1])); ctx.lineTo(mX(s0[1][0]),mY(s0[1][1])); ctx.stroke(); }
+      function dot(pt,col,cls){
+        const isSV = Math.abs(Math.abs(sd(L,pt))-m) < 0.1*Math.max(1,m);
+        if(isSV) svCount++;
+        const x=mX(pt[0]), y=mY(pt[1]);
+        if(isSV){ ctx.beginPath(); ctx.arc(x,y,11,0,7); ctx.fillStyle=(cls==='A'?'rgba(36,86,230,.22)':'rgba(229,72,77,.22)'); ctx.fill(); }
+        ctx.beginPath(); ctx.arc(x,y,7,0,7); ctx.fillStyle=col; ctx.fill();
+        ctx.lineWidth=isSV?2.6:1.5; ctx.strokeStyle=isSV?'#12a150':'rgba(255,255,255,.92)'; ctx.stroke();
+      }
+      data.A.forEach(a=>dot(a,'#2456e6','A')); data.B.forEach(b=>dot(b,'#e5484d','B'));
+      document.getElementById('mmMargin').textContent=m.toFixed(2);
+      document.getElementById('mmSV').textContent=svCount+' จุด';
+    }
+    document.getElementById('mmN').textContent=(data.A.length+data.B.length)+' จุด';
+  }
+  // ลากจุด
+  let drag=null;
+  function pick(px,py){
+    const wx=iX(px), wy=iY(py); let best=null, bd=0.55;
+    ['A','B'].forEach(cls=>data[cls].forEach((pt,i)=>{ const d=Math.hypot(pt[0]-wx,pt[1]-wy); if(d<bd){ bd=d; best={cls,i}; } }));
+    return best;
+  }
+  const stage=document.getElementById('mmStage');
+  cv.addEventListener('pointerdown', e=>{ const r=cv.getBoundingClientRect();
+    drag=pick(e.clientX-r.left, e.clientY-r.top);
+    if(drag){ stage.classList.add('dragging'); try{cv.setPointerCapture(e.pointerId);}catch(_){} } });
+  cv.addEventListener('pointermove', e=>{ if(!drag) return; const r=cv.getBoundingClientRect();
+    let wx=iX(e.clientX-r.left), wy=iY(e.clientY-r.top);
+    wx=Math.max(0.3,Math.min(9.7,wx)); wy=Math.max(0.3,Math.min(9.7,wy));
+    data[drag.cls][drag.i]=[wx,wy]; draw(); });
+  function end(){ drag=null; stage.classList.remove('dragging'); }
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  document.getElementById('mmReset').addEventListener('click', ()=>{ data=DEF(); draw(); });
+  draw();
+})();
+</script>
+
+<script>
+/* ═══════════ ส่วนที่ 3 — Soft margin ปุ่ม C (Pegasos-style subgradient) ═══════════ */
+(function(){
+  const cv=document.getElementById('softCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'); const W=460,H=460, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const pad=34, sc=(W-2*pad)/10;
+  const mX=x=>pad+x*sc, mY=y=>(H-pad)-y*sc;
+  // ข้อมูลปนกันเล็กน้อย (world coords) — เซนเตอร์รอบ (5,5)
+  const PTS=[], LAB=[];
+  const plus=[[3,7],[3.8,6.2],[2.6,6.6],[3.4,7.8],[4.4,6.6],[3.2,5.6],[5.6,6.2],[4.8,7.4],[5.9,7.6]];
+  const minus=[[7,3],[6.2,3.8],[7.8,2.6],[6.6,2.2],[7.4,4.2],[5.4,4.2],[4.4,3.4],[6.0,5.0],[4.6,4.8]];
+  plus.forEach(p=>{PTS.push(p);LAB.push(1);}); minus.forEach(p=>{PTS.push(p);LAB.push(-1);});
+  // ปรับสเกลรอบศูนย์เพื่อความเสถียรของ solver
+  const cxw=5, cyw=5;
+  const Xn = PTS.map(p=>[p[0]-cxw, p[1]-cyw]);
+  const Cvals=[0.05,0.2,1,5,30];
+  function train(C){
+    let w=[0,0], b=0; const n=Xn.length;
+    for(let t=1;t<=1500;t++){
+      const eta=1/t; let gw0=w[0], gw1=w[1], gb=0;
+      for(let i=0;i<n;i++){ const m=LAB[i]*(w[0]*Xn[i][0]+w[1]*Xn[i][1]+b);
+        if(m<1){ gw0-=C*LAB[i]*Xn[i][0]; gw1-=C*LAB[i]*Xn[i][1]; gb-=C*LAB[i]; } }
+      w=[w[0]-eta*gw0, w[1]-eta*gw1]; b-=eta*gb;
+    }
+    let viol=0, miss=0;
+    for(let i=0;i<n;i++){ const m=LAB[i]*(w[0]*Xn[i][0]+w[1]*Xn[i][1]+b); if(m<1) viol++; if(m<0) miss++; }
+    return {w,b,viol,miss,margin:1/(Math.hypot(w[0],w[1])||1e-6)};
+  }
+  // เส้นในพิกัด world: w·(x-c)+b=off  → หา y ที่ x ให้
+  function lineSeg(res, off){
+    const [a,bb]=res.w; const c=res.b-off; const pts=[];
+    // a*(X-cx)+bb*(Y-cy)+c=0
+    [[0,'x'],[10,'x'],[0,'y'],[10,'y']].forEach(([v,ax])=>{
+      if(ax==='x'){ if(Math.abs(bb)>1e-6){ const Y=cyw-(a*(v-cxw)+c)/bb; if(Y>=-0.001&&Y<=10.001) pts.push([v,Y]); } }
+      else { if(Math.abs(a)>1e-6){ const X=cxw-(bb*(v-cyw)+c)/a; if(X>=-0.001&&X<=10.001) pts.push([X,v]); } }
+    });
+    return pts.slice(0,2);
+  }
+  function draw(C){
+    const res=train(C);
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(127,127,127,.12)'; ctx.lineWidth=1;
+    for(let g=0;g<=10;g++){ ctx.beginPath(); ctx.moveTo(mX(g),mY(0)); ctx.lineTo(mX(g),mY(10)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(mX(0),mY(g)); ctx.lineTo(mX(10),mY(g)); ctx.stroke(); }
+    const s1=lineSeg(res,1), s2=lineSeg(res,-1), s0=lineSeg(res,0);
+    if(s1.length===2&&s2.length===2){
+      ctx.fillStyle='rgba(18,161,80,.1)';
+      ctx.beginPath(); ctx.moveTo(mX(s1[0][0]),mY(s1[0][1])); ctx.lineTo(mX(s1[1][0]),mY(s1[1][1]));
+      ctx.lineTo(mX(s2[1][0]),mY(s2[1][1])); ctx.lineTo(mX(s2[0][0]),mY(s2[0][1])); ctx.closePath(); ctx.fill();
+      ctx.setLineDash([5,5]); ctx.strokeStyle='#12a150'; ctx.lineWidth=1.5;
+      [s1,s2].forEach(s=>{ ctx.beginPath(); ctx.moveTo(mX(s[0][0]),mY(s[0][1])); ctx.lineTo(mX(s[1][0]),mY(s[1][1])); ctx.stroke(); });
+      ctx.setLineDash([]);
+    }
+    if(s0.length===2){ ctx.strokeStyle='#1f2533'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(mX(s0[0][0]),mY(s0[0][1])); ctx.lineTo(mX(s0[1][0]),mY(s0[1][1])); ctx.stroke(); }
+    // จุด — ทายผิด (ข้ามฝั่ง) วงแดง, ล้ำถนน (violation) วงส้ม
+    PTS.forEach((p,i)=>{
+      const m=LAB[i]*(res.w[0]*Xn[i][0]+res.w[1]*Xn[i][1]+res.b);
+      const col=LAB[i]>0?'#2456e6':'#e5484d';
+      const x=mX(p[0]), y=mY(p[1]);
+      if(m<0){ ctx.beginPath(); ctx.arc(x,y,11,0,7); ctx.fillStyle='rgba(229,72,77,.28)'; ctx.fill(); }
+      else if(m<1){ ctx.beginPath(); ctx.arc(x,y,11,0,7); ctx.fillStyle='rgba(180,83,9,.22)'; ctx.fill(); }
+      ctx.beginPath(); ctx.arc(x,y,6.5,0,7); ctx.fillStyle=col; ctx.fill();
+      ctx.lineWidth=1.5; ctx.strokeStyle=(m<0?'#e5484d':m<1?'#b45309':'rgba(255,255,255,.92)'); ctx.stroke();
+    });
+    document.getElementById('softMargin').textContent=res.margin.toFixed(2);
+    document.getElementById('softViol').textContent=res.viol+' จุด';
+    document.getElementById('softMiss').textContent=res.miss+' จุด';
+  }
+  const slider=document.getElementById('softC');
+  const labelC=document.getElementById('softCval');
+  function upd(){ const C=Cvals[+slider.value]; labelC.textContent='C = '+C; draw(C); }
+  slider.addEventListener('input', upd);
+  upd();
+})();
+</script>
+
+<script>
+/* ═══════════ ส่วนที่ 4 — Kernel 3D lift (ชิ้นเอก) ═══════════ */
+(function(){
+  const cv=document.getElementById('kerCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d'); const W=780,H=470, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  /* ข้อมูลวงแหวน: กลุ่มใน (+1) รัศมีเล็ก, วงนอก (−1) รัศมีใหญ่ */
+  let sd=7; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+  const IN=[], OUT=[];
+  for(let i=0;i<10;i++){ const a=i/10*6.283; const r=0.55+rnd()*0.35; IN.push([r*Math.cos(a), r*Math.sin(a)]); }
+  for(let i=0;i<18;i++){ const a=i/18*6.283; const r=2.05+rnd()*0.4; OUT.push([r*Math.cos(a), r*Math.sin(a)]); }
+  const HSCALE=0.62;                          // สเกลความสูง z=x²+y²
+  const height=(gx,gy)=> (gx*gx+gy*gy)*HSCALE;
+  const Z0 = 2.6*HSCALE + 0.5;                // ระดับระนาบเฉือน (อยู่ระหว่างในกับนอก)
+
+  /* ฉาก: t=ยกสูง(0..1), pitch=มุมก้ม(π/2=มองบน), plane=ระนาบ */
+  const SCENES={
+    1:{t:0, pitch:Math.PI/2-0.02, plane:0, spin:false,
+       msg:'<b>ฉาก 1 — มองจากด้านบน (2 มิติ):</b> <span style="color:#2456e6;font-weight:700">แกนกลาง</span>ถูก<span style="color:#e5484d;font-weight:700">วงแหวน</span>ล้อมรอบ — ลากเส้นตรงยังไงก็ต้องผ่ากลางกลุ่มใดกลุ่มหนึ่ง แยกไม่ได้!'},
+    2:{t:1, pitch:0.92, plane:0, spin:true,
+       msg:'<b>ฉาก 2 — ยกมิติ z = x²+y²:</b> จุดยิ่งไกลจากศูนย์ยิ่งลอยสูง — วงแหวนนอกลอยขึ้นเป็นปากแตร ส่วนแกนกลางยังอยู่ต่ำ (ลากหมุนดูได้)'},
+    3:{t:1, pitch:0.92, plane:1, spin:true,
+       msg:'<b>ฉาก 3 — เฉือนด้วยระนาบแบน:</b> ในโลก 3 มิติ ระนาบแนวนอนแผ่นเดียวก็แยก"กลุ่มต่ำ (กลาง)" ออกจาก "กลุ่มสูง (วงนอก)" ได้พอดี — นี่คือ kernel trick!'}
+  };
+  const S={t:0,pitch:Math.PI/2-0.02,plane:0,yaw:0,scene:1,spin:false,userSpin:false};
+  const T={t:0,pitch:Math.PI/2-0.02,plane:0};
+  const msgEl=document.getElementById('kerMsg');
+  function setScene(n){ S.scene=n; const s=SCENES[n]; T.t=s.t; T.pitch=s.pitch; T.plane=s.plane;
+    S.spin=s.spin; S.userSpin=false; msgEl.innerHTML=s.msg;
+    document.querySelectorAll('#kerScenes .sc').forEach(b=>b.classList.toggle('on', +b.dataset.sc===n)); }
+  setScene(1);
+  document.getElementById('kerScenes').addEventListener('click', e=>{ const b=e.target.closest('.sc'); if(b){ stopAuto(); setScene(+b.dataset.sc); } });
+
+  let auto=null; const playBtn=document.getElementById('kerPlay');
+  function stopAuto(){ if(auto){ clearInterval(auto); auto=null; playBtn.innerHTML='<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>เล่นทั้ง 3 ฉาก'; } }
+  playBtn.addEventListener('click', ()=>{ if(auto){ stopAuto(); return; }
+    setScene(1); let n=1; playBtn.innerHTML='<svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>หยุด';
+    auto=setInterval(()=>{ n++; if(n>3){ stopAuto(); return; } setScene(n); }, 3200); });
+
+  /* ลากหมุน */
+  let drag=null; const stage=document.getElementById('kerStage');
+  cv.addEventListener('pointerdown', e=>{ drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch}; S.userSpin=true;
+    stage.classList.add('dragging'); try{cv.setPointerCapture(e.pointerId);}catch(_){} });
+  cv.addEventListener('pointermove', e=>{ if(!drag) return;
+    S.yaw = drag.yaw + (e.clientX-drag.x)*0.008;
+    T.pitch = S.pitch = Math.max(0.35, Math.min(Math.PI/2, drag.pitch - (e.clientY-drag.y)*0.006)); });
+  function endDrag(){ drag=null; stage.classList.remove('dragging'); }
+  cv.addEventListener('pointerup', endDrag); cv.addEventListener('pointercancel', endDrag);
+
+  /* โปรเจกชัน: ground (gx,gy) + height h → หน้าจอ */
+  function proj(gx,gy,h){
+    const cy=Math.cos(S.yaw), sy=Math.sin(S.yaw);
+    const rx = gx*cy - gy*sy;
+    const ry = gx*sy + gy*cy;
+    const cp=Math.cos(S.pitch), sp=Math.sin(S.pitch);
+    const up    =  h*cp + ry*sp;      // แนวตั้งบนจอ
+    const depth = -h*sp + ry*cp;      // ลึกเข้าจอ
+    const f = 9.5/(9.5 + depth*0.42);
+    return { x: W/2 + rx*44*f, y: H*0.6 - up*44*f, z: depth, f };
+  }
+
+  const startTime=Date.now();
+  function frame(){
+    // lerp
+    S.t += (T.t-S.t)*0.06; S.pitch += (T.pitch-S.pitch)*0.08; S.plane += (T.plane-S.plane)*0.06;
+    if(S.spin && !drag) S.yaw += 0.012;
+
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);   // พื้นสว่างเสมอ (ตาม convention)
+
+    const t=S.t, is3d=t>0.02;
+    // พื้นกริดวงกลม (ground)
+    ctx.lineWidth=1;
+    for(let rr=1;rr<=3;rr++){ ctx.beginPath();
+      for(let k=0;k<=48;k++){ const a=k/48*6.283; const p=proj(rr*Math.cos(a), rr*Math.sin(a), 0);
+        k?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+      ctx.strokeStyle='rgba(90,110,175,'+(0.20+0.08*is3d)+')'; ctx.stroke(); }
+    // แกนรัศมี
+    for(let k=0;k<8;k++){ const a=k/8*6.283; const p0=proj(0,0,0), p1=proj(3*Math.cos(a),3*Math.sin(a),0);
+      ctx.beginPath(); ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.strokeStyle='rgba(90,110,175,.16)'; ctx.stroke(); }
+
+    // เส้นยกจุด (ระหว่างกำลังยก)
+    if(t>0.03 && t<0.98){
+      ctx.setLineDash([3,4]); ctx.lineWidth=1;
+      [...IN,...OUT].forEach(p=>{ const a=proj(p[0],p[1],0), b=proj(p[0],p[1],height(p[0],p[1])*t);
+        ctx.strokeStyle='rgba(124,58,237,.45)'; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); });
+      ctx.setLineDash([]);
+    }
+
+    // ระนาบเฉือน (โปร่งใส) — ตารางสี่เหลี่ยม เรียงลึก→ตื้น
+    const pa=S.plane;
+    if(pa>0.02){
+      const quads=[]; const N=6, R=2.8;
+      for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+        const xa=-R+2*R*i/N, xb=-R+2*R*(i+1)/N, ya=-R+2*R*j/N, yb=-R+2*R*(j+1)/N;
+        quads.push({xa,xb,ya,yb}); }
+      const zp = Z0*t;
+      const Q=quads.map(q=>{ const p1=proj(q.xa,q.ya,zp),p2=proj(q.xb,q.ya,zp),p3=proj(q.xb,q.yb,zp),p4=proj(q.xa,q.yb,zp);
+        return {pts:[p1,p2,p3,p4], depth:(p1.z+p2.z+p3.z+p4.z)/4}; }).sort((a,b)=>b.depth-a.depth);
+      Q.forEach(q=>{ ctx.beginPath(); ctx.moveTo(q.pts[0].x,q.pts[0].y);
+        for(let k=1;k<4;k++) ctx.lineTo(q.pts[k].x,q.pts[k].y); ctx.closePath();
+        ctx.fillStyle='rgba(18,161,80,'+(0.16*pa)+')'; ctx.fill();
+        ctx.strokeStyle='rgba(18,161,80,'+(0.55*pa)+')'; ctx.lineWidth=0.9; ctx.stroke(); });
+    }
+
+    // จุดข้อมูล (เรียงลึก→ตื้น รวมทั้งสองคลาส)
+    const all=[];
+    IN.forEach(p=>all.push({p, col:'#2456e6', ring:'rgba(36,86,230,.28)', h:height(p[0],p[1])*t}));
+    OUT.forEach(p=>all.push({p, col:'#e5484d', ring:'rgba(229,72,77,.28)', h:height(p[0],p[1])*t}));
+    all.map(o=>({o, pr:proj(o.p[0],o.p[1],o.h)})).sort((a,b)=>b.pr.z-a.pr.z).forEach(({o,pr})=>{
+      const r=Math.max(3.2, 6*pr.f);
+      ctx.beginPath(); ctx.arc(pr.x,pr.y,r+2.5,0,7); ctx.fillStyle=o.ring; ctx.fill();
+      ctx.beginPath(); ctx.arc(pr.x,pr.y,r,0,7); ctx.fillStyle=o.col; ctx.fill();
+      ctx.lineWidth=1.3; ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.stroke();
+    });
+
+  }
+  setInterval(frame, 33);   // ~30fps ด้วย setInterval (ไม่ใช้ rAF — วาดได้แม้ tab ไม่ active, ตาม convention)
+  frame();
+})();
+</script>
+
+<script>
+/* ═══════════ ปุ่มคัดลอกโค้ด ═══════════ */
+(function(){
+  const btn=document.getElementById('cpBtn'), pre=document.getElementById('codeBlock');
+  if(!btn||!pre) return;
+  btn.addEventListener('click', ()=>{
+    const text=pre.innerText;
+    const done=()=>{ btn.textContent='คัดลอกแล้ว ✓'; btn.classList.add('ok'); setTimeout(()=>{ btn.textContent='คัดลอก'; btn.classList.remove('ok'); },1600); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else fallback();
+    function fallback(){ const ta=document.createElement('textarea'); ta.value=text;
+      ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); done(); }catch(_){} document.body.removeChild(ta); }
+  });
+})();
+</script>
+
+</body>
+</html>

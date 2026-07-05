@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KNN การจำแนกด้วยเพื่อนบ้านใกล้ที่สุด | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  /* ทั้งหน้า: อังกฤษ/ตัวเลขใช้ Poppins · ไทยตกไปที่ Kanit · font-size-adjust ย่อ Poppins ให้ x-height เท่า Kanit */
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ===== เวทีเล่น KNN (ชิ้นเอกของสัปดาห์) ===== */
+  .knn { --cA:#2456e6; --cB:#e5484d; --cC:#12a150; }
+  .knn-stage {
+    position: relative; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border); background: #f7f8fb;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.5);
+    touch-action: none;
+  }
+  .knn-stage canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
+  .knn-stage.addmode canvas { cursor: copy; }
+
+  /* ป้ายผลลัพธ์ลอยมุมบนซ้ายของเวที */
+  .knn-verdict {
+    position: absolute; top: 10px; left: 10px; z-index: 3;
+    background: rgba(255,255,255,.92); border: 1px solid #d5dae6;
+    border-radius: 10px; padding: 6px 12px; font-size: .9rem; color: #1f2533;
+    box-shadow: 0 4px 14px -8px rgba(15,23,42,.5); backdrop-filter: blur(3px);
+    display: flex; align-items: center; gap: 8px; min-height: 30px;
+    transition: box-shadow .25s;
+  }
+  .knn-verdict .dot { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(255,255,255,.7); }
+  .knn-verdict b { font-weight: 700; }
+
+  /* แถงโหวต */
+  .knn-votes { margin-top: 4px; }
+  .kv-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: .92rem; }
+  .kv-row .kv-name { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; width: 92px; font-weight: 600; }
+  .kv-row .kv-name i { width: 13px; height: 13px; border-radius: 50%; display: inline-block; }
+  .kv-track { flex: 1 1 auto; height: 16px; background: rgba(127,127,127,.12); border-radius: 8px; overflow: hidden; }
+  .kv-fill { height: 100%; width: 0; border-radius: 8px; transition: width .35s cubic-bezier(.2,.8,.3,1); }
+  .kv-row .kv-num { flex: 0 0 auto; width: 34px; text-align: right; font-weight: 700; color: var(--muted); }
+  .kv-row.win .kv-num { color: var(--ink); }
+
+  /* แผงควบคุม */
+  .knn-ctl { margin-top: 14px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .knn-field { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .knn-field > label.cap { flex: 0 0 auto; font-weight: 600; min-width: 118px; }
+  .knn-field input[type="range"] { flex: 1 1 140px; accent-color: var(--accent); min-width: 120px; }
+  .knn-kval { flex: 0 0 auto; font-weight: 700; font-size: 1.05rem; color: var(--accent);
+    background: var(--accent-soft); border-radius: 8px; padding: 1px 12px; min-width: 42px; text-align: center; }
+
+  /* ปุ่มแบบ segmented / toggle */
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: var(--card); }
+  .seg button {
+    font-family: inherit; font-size: .85rem; font-weight: 600; border: none; background: transparent;
+    color: var(--ink); padding: 6px 14px; cursor: pointer; margin: 0; box-shadow: none; transition: background .2s, color .2s;
+  }
+  .seg button.on { background: linear-gradient(135deg, var(--accent), #8b5cf6); color: #fff; }
+  .seg button:not(.on):hover { background: rgba(127,127,127,.1); }
+
+  .knn-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .knn-toggle {
+    font-family: inherit; font-size: .85rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    border-radius: 999px; padding: 6px 14px; margin: 0; box-shadow: none;
+    display: inline-flex; align-items: center; gap: 6px; transition: all .2s;
+  }
+  .knn-toggle.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .knn-toggle .box { width: 14px; height: 14px; border-radius: 4px; border: 2px solid currentColor; position: relative; }
+  .knn-toggle.on .box::after { content: "✓"; position: absolute; inset: -4px 0 0; font-size: 11px; text-align: center; }
+
+  /* จานสีเลือกคลาสตอนโหมดวาดจุด */
+  .knn-pal { display: none; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .knn.addmode-ui .knn-pal { display: flex; }
+  .pal-dot {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 3px solid transparent;
+    transition: transform .15s, border-color .15s; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .pal-dot.on { transform: scale(1.18); border-color: rgba(127,127,127,.55); }
+
+  .knn-hint { font-size: .85rem; color: var(--muted); margin: 2px 0 0; }
+  .knn-hint b { color: var(--accent); }
+
+  /* ตัวเพิ่ม/ลดจำนวนคลาส */
+  .knn-count { display: inline-flex; align-items: center; gap: 4px; }
+  .knn-count button {
+    font-family: inherit; font-size: 1.15rem; font-weight: 700; line-height: 1; width: 32px; height: 32px;
+    border: 1px solid var(--border); background: var(--card); color: var(--accent); border-radius: 9px;
+    cursor: pointer; margin: 0; box-shadow: none; padding: 0; transition: all .15s;
+  }
+  .knn-count button:hover:not(:disabled) { background: var(--accent-soft); border-color: var(--accent); }
+  .knn-count button:disabled { opacity: .35; cursor: not-allowed; }
+  .knn-count-val { font-weight: 700; font-size: 1.05rem; min-width: 26px; text-align: center; color: var(--ink); }
+
+  /* ตารางจุดข้อมูล — พับ/เลื่อนได้ */
+  details.knn-table {
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 0; margin: 4px 0 0;
+    box-shadow: none;
+  }
+  details.knn-table > summary {
+    cursor: pointer; font-weight: 600; font-size: .9rem; padding: 10px 14px; color: var(--ink);
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  details.knn-table > summary::-webkit-details-marker { display: none; }
+  details.knn-table > summary::before { content: "▸"; color: var(--accent); transition: transform .2s; }
+  details.knn-table[open] > summary::before { transform: rotate(90deg); }
+  details.knn-table #ptCount { color: var(--accent); font-weight: 700; }
+  .knn-table-scroll { max-height: 230px; overflow-y: auto; border-top: 1px solid var(--border); }
+  #knnTable { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  #knnTable th, #knnTable td { padding: 6px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  #knnTable thead th {
+    position: sticky; top: 0; background: var(--accent-soft); color: var(--accent);
+    font-weight: 700; z-index: 1;
+  }
+  #knnTable tbody tr { cursor: pointer; transition: background .12s; }
+  #knnTable tbody tr:hover { background: rgba(127,127,127,.12); }
+  #knnTable tbody tr.pinned { background: rgba(255,211,77,.22); box-shadow: inset 3px 0 0 #e8b00c; }
+  #knnTable .tcls { display: inline-flex; align-items: center; gap: 6px; }
+  #knnTable .tcls i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  #knnTable .tgen { color: var(--muted); font-size: .78rem; }
+
+  @media (min-width: 620px) {
+    .knn-ctl { grid-template-columns: 1fr 1fr; }
+    .knn-ctl .span2 { grid-column: 1 / -1; }
+  }
+
+  /* จุดสีเล็กในเนื้อความ */
+  .cdot { display: inline-block; width: .72em; height: .72em; border-radius: 50%; vertical-align: middle; margin: 0 1px; }
+
+  /* ===== ไอคอน SVG แทน emoji (เส้นสไตล์เดียวกันทั้งหน้า) ===== */
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+
+  /* เวทีขั้นตอน — สแคทเตอร์จิ๋ว */
+  .mini-svg { display: block; margin: 6px auto 4px; max-width: 230px; }
+  .mini-svg .qtxt { font-weight: 700; }
+
+  /* กล่องสมการโทนหลากสี */
+  .eq-final { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin:12px 0; text-align:center; }
+  [data-theme="dark"] .eq-final { background: var(--card); }
+
+  .wsec { margin-bottom: 8px; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>KNN: จำแนกด้วย "เพื่อนบ้านใกล้ที่สุด"</h1>
+    <p class="subtitle">อยากรู้ว่าจุดใหม่เป็นพวกไหน? ดูว่าเพื่อนบ้านที่อยู่ใกล้มันที่สุด k คนเป็นพวกไหน แล้วโหวต — เรียบง่ายจนน่าตกใจ แต่คือรากของ "ค้นด้วยความหมาย" ใน AI ยุคนี้</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle class="f" cx="12" cy="12" r="1.6"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายหลักการ <strong>K-Nearest Neighbors (KNN)</strong> ได้ว่า "จุดใหม่ถูกจัดประเภทตามเสียงข้างมากของเพื่อนบ้าน k จุดที่ใกล้ที่สุด"</li>
+      <li>คำนวณ <strong>ระยะทาง</strong> (Euclidean / Manhattan) เรียงลำดับ เลือก k จุด แล้ว<strong>โหวต</strong>ด้วยมือได้</li>
+      <li>อธิบายผลของค่า <strong>k</strong> ต่อเส้นแบ่งเขต (k เล็ก = ดิ้นตามสัญญาณรบกวน/overfit, k ใหญ่ = เรียบเกิน/underfit) และเลือก k ที่พอดี</li>
+      <li>เชื่อมโยงได้ว่า KNN บนพิกัด "ความหมาย" (embedding) คือหัวใจของ <strong>semantic search / RAG</strong> ที่ LLM ใช้ค้นความรู้</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: "บอกได้ว่าเป็นใคร จากเพื่อนที่คบ" <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">คำถามเปิดคาบ: <em>"มีผลไม้ลูกหนึ่งวางอยู่ตรงหน้า เรารู้แค่ <strong>น้ำหนัก</strong> กับ <strong>ความหวาน</strong> ของมัน — จะเดายังไงว่ามันคือส้มหรือแอปเปิล?"</em></p>
+    <p>สัญชาตญาณของมนุษย์ตอบทันทีว่า: <strong>"ดูสิว่ามันเหมือนของที่เรารู้จักอันไหนมากที่สุด"</strong> — ถ้ามันคล้ายส้มหลายลูกที่เคยเห็น ก็เดาว่าส้ม นี่แหละคือ KNN เป๊ะๆ ไม่มีการฝึกสมการ ไม่มีการหาน้ำหนัก w เหมือน week02 — <strong>อัลกอริทึมแค่ "จำข้อมูลทั้งหมดไว้"</strong> แล้วตอนต้องทำนายค่อยไปถามเพื่อนบ้าน</p>
+
+    <p style="margin-bottom:6px"><strong>สูตรคิดของ KNN มีแค่ 3 ขั้น</strong> (จำง่ายมาก):</p>
+    <div class="eq-final" style="font-size:1.08rem; text-align:left; line-height:2">
+      <span style="color:#2456e6">①&nbsp;วัดระยะ</span> จากจุดใหม่ ไปยัง<strong>ทุกจุด</strong>ที่เรามี &nbsp;→&nbsp;
+      <span style="color:#8b5cf6">②&nbsp;เลือก k จุดที่ใกล้สุด</span> &nbsp;→&nbsp;
+      <span style="color:#12a150">③&nbsp;โหวต</span> คลาสไหนมีเยอะสุดในกลุ่มนั้น = คำตอบ
+    </div>
+
+    <p style="margin-bottom:0"><strong>ต่างจาก week02–03 เดิมยังไง?</strong> Linear/Polynomial Regression <em>สร้างเส้น/สมการ</em>ขึ้นมาอธิบายข้อมูล (เรียนรู้ตอนเทรน) — ส่วน KNN <em>ไม่สร้างอะไรเลย</em> มันเลื่อนงานหนักไปไว้ตอนทำนาย จึงถูกเรียกว่า <strong>lazy learner</strong> (ผู้เรียนขี้เกียจ) และเป็น <strong>ตัวจำแนก (classifier)</strong> ไม่ใช่ตัวถดถอย — ประตูสู่โลกของ "ระยะทาง" ที่สัปดาห์หน้าเราจะต่อยอดไปสู่ K-means clustering — ให้เครื่องจับกลุ่มข้อมูลเองโดยไม่มีเฉลย (แล้วไปถึง Neural Network ในเวลาต่อมา)</p>
+  </div>
+
+  </section>
+
+  <!-- ===================== ส่วนที่ 2 — เวทีเล่นชิ้นเอก ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: ขยับจุด ปรับ k แล้วดูเส้นแบ่งเขตมีชีวิต <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo knn" id="knn">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 3h6"/><path d="M10 3v6l-4.5 8.5A2 2 0 0 0 7.3 21h9.4a2 2 0 0 0 1.8-3.5L14 9V3"/><path d="M8 15h8"/></svg>KNN Playground</h3>
+    <p style="margin-top:0">พื้นหลังสีอ่อน = <strong>เขตการตัดสินใจ (decision boundary)</strong> ที่ KNN คิดไว้ให้ทุกจุดในสนามล่วงหน้า · แกน X–Y มีตัวเลขกำกับ (0–10) อ่านพิกัดจุดได้ ·
+    <b style="color:#2456e6">เลื่อนเมาส์</b> (หรือแตะบนมือถือ) เพื่อวางจุดปริศนา <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 4.8 1.3c0 1.6-2.3 2-2.3 3.5"/><circle class="f" cx="12" cy="17" r="1"/></svg> แล้วดูมันลากเส้นไปหา <strong>k เพื่อนบ้านใกล้ที่สุด</strong> พร้อมนับโหวตแบบสดๆ ·
+    อยากสร้างข้อมูลเอง? กด <b style="color:#8b5cf6">โหมดวางจุดเอง</b> แล้วเลือกสีคลาส คลิกลงสนามได้เลย</p>
+
+    <div class="knn-stage" id="knnStage">
+      <div class="knn-verdict" id="knnVerdict"><span class="dot" style="background:#9aa3b8"></span> เลื่อนเมาส์เข้ามาในสนาม…</div>
+      <canvas id="knnCanvas" width="780" height="460"></canvas>
+    </div>
+
+    <div class="knn-votes" id="knnVotes"></div>
+
+    <div class="knn-ctl">
+      <div class="knn-field span2">
+        <label class="cap" for="kSlide">จำนวนเพื่อนบ้าน k</label>
+        <input type="range" id="kSlide" min="1" max="21" step="1" value="5">
+        <span class="knn-kval" id="kVal">5</span>
+      </div>
+
+      <div class="knn-field">
+        <label class="cap">ชุดข้อมูล</label>
+        <div class="seg" id="dsSeg">
+          <button data-ds="blobs" class="on">3 กลุ่มก้อน</button>
+          <button data-ds="moons">พระจันทร์คู่</button>
+          <button data-ds="spiral">เกลียว</button>
+        </div>
+      </div>
+
+      <div class="knn-field">
+        <label class="cap">วัดระยะแบบ</label>
+        <div class="seg" id="metricSeg">
+          <button data-m="euclid" class="on">Euclidean</button>
+          <button data-m="manhat">Manhattan</button>
+        </div>
+      </div>
+
+      <div class="knn-field">
+        <label class="cap">จำนวนคลาส</label>
+        <div class="knn-count">
+          <button id="clsMinus" title="ลดคลาส">−</button>
+          <span class="knn-count-val" id="clsVal">3</span>
+          <button id="clsPlus" title="เพิ่มคลาส (สูงสุด 5)">+</button>
+        </div>
+        <span class="knn-hint" style="margin:0">(2–5 คลาส)</span>
+      </div>
+
+      <div class="knn-field span2 knn-chips">
+        <button class="knn-toggle on" id="tgBoundary"><span class="box"></span> แสดงเขตการตัดสินใจ</button>
+        <button class="knn-toggle" id="tgWeighted"><span class="box"></span> ถ่วงน้ำหนักตามระยะ</button>
+        <button class="knn-toggle" id="tgAdd"><span class="box"></span> โหมดวางจุดเอง</button>
+        <div class="knn-pal" id="knnPal">
+          <span style="font-weight:600;color:var(--muted)">เลือกสีคลาสที่จะวาง:</span>
+        </div>
+      </div>
+
+      <div class="knn-field span2 knn-chips">
+        <button id="btnTour"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>ทัวร์อัตโนมัติ (ให้อาจารย์เล่าประกอบ)</button>
+        <button id="btnClear" style="background:linear-gradient(135deg,#64748b,#94a3b8)"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M13 4l7 7-7 7H9l-4-4a2 2 0 0 1 0-3z"/></svg>ล้างจุดที่วาง</button>
+        <button id="btnReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/></svg>ล้างจุดทั้งหมด</button>
+      </div>
+
+      <p class="knn-hint span2" id="knnHint"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ลอง <b>ลาก k ให้เล็กสุด (k=1)</b> — เขตจะหยักตามทุกจุด (จำ noise) · แล้ว <b>ลากไปใหญ่ๆ</b> — เขตจะเรียบขึ้นเรื่อยๆ จนรายละเอียดหาย นี่คือหัวใจของ bias–variance</p>
+
+      <details class="knn-table span2" id="knnTableWrap">
+        <summary><svg class="ico" viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v2H9z"/><path d="M9 11h6M9 15h6"/></svg>ตารางจุดข้อมูล (<span id="ptCount">0</span> จุด) — กดเพื่อขยาย · ชี้/คลิกแถวเพื่อไฮไลต์จุดบนกราฟ</summary>
+        <div class="knn-table-scroll">
+          <table id="knnTable">
+            <thead><tr><th>#</th><th>x</th><th>y</th><th>คลาส</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่น demo:</strong>
+    <ul style="margin:6px 0 0">
+      <li>ตอน k=1 ทำไมเส้นแบ่งเขตถึง "หยัก" ตามทุกจุดแม้จุดนั้นดูเหมือนหลุดกลุ่ม (noise)? แล้วมันเสี่ยงอย่างไร?</li>
+      <li>เอาจุดปริศนาไปวางตรง "รอยต่อ" ระหว่างสองสี — เปลี่ยน k ทีละขั้น สังเกตว่าคำตอบพลิกไปมาได้ไหม เพราะอะไร?</li>
+      <li>เปิด "ถ่วงน้ำหนักตามระยะ" ที่ k ใหญ่ๆ — ทำไมผลถึงนิ่งขึ้น ไม่ค่อยโดนจุดไกลๆ ดึง?</li>
+    </ul>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — เดินทีละขั้น ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — KNN ทำงานทีละขั้น (คำนวณด้วยมือ) <span class="badge">ทีละขั้น</span></h2>
+  <p>โจทย์: มีจุดปริศนา <strong>Q = (5, 5)</strong> และข้อมูล 6 จุด (<span class="cdot" style="background:#2456e6"></span> คลาสน้ำเงิน 3 จุด, <span class="cdot" style="background:#e5484d"></span> คลาสแดง 3 จุด) ใช้ <strong>k = 3</strong> และระยะแบบ Euclidean — กดปุ่ม <b>เล่นทีละขั้น</b> หรือคลิกที่ขั้นใดก็ได้</p>
+
+  <ol class="steps">
+    <li><strong>ตั้งโจทย์:</strong> วางจุดปริศนา Q ลงในสนาม — เรายังไม่รู้ว่ามันเป็นสีอะไร รู้แค่พิกัด (5, 5)</li>
+    <li><strong>วัดระยะไปทุกจุด:</strong> ใช้ d = √((Δx)² + (Δy)²) คำนวณระยะจาก Q ไปยังข้อมูลทั้ง 6 จุด</li>
+    <li><strong>เรียงจากใกล้ → ไกล:</strong> จัดอันดับระยะทางที่ได้ จากน้อยไปมาก</li>
+    <li><strong>เลือก k = 3 จุดที่ใกล้ที่สุด:</strong> ตัดมาเฉพาะ 3 อันดับแรก วงกลมล้อมไว้</li>
+    <li><strong>โหวตตามเสียงข้างมาก:</strong> นับว่าในกลุ่ม 3 จุดนั้น เป็นสีอะไรกี่จุด</li>
+    <li><strong>สรุปคำตอบ:</strong> คลาสที่ได้เสียงมากที่สุดคือคำตอบของ Q</li>
+  </ol>
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — ตัวอย่างเพิ่ม ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ตัวอย่างคำนวณด้วยมือ (วิธีเดียวกับส่วนที่ 3) <span class="badge green">ลงมือ</span></h2>
+
+  <details class="example">
+    <summary>ตัวอย่าง A — จุดเดียวกัน แต่เปลี่ยน k = 5 คำตอบเปลี่ยนไหม?</summary>
+    <div class="ans">
+      <strong>ขั้น 1 — ระยะทั้ง 6 จุดจาก Q(5,5):</strong>
+      น้ำเงิน A₂(6,5)=1.00, A₁(4,6)=1.41, A₃(7,7)=2.83 · แดง B₁(2,2)=4.24, B₂(3,1)=4.47, B₃(1,3)=4.47
+      <strong>ขั้น 2 — เรียงใกล้→ไกล แล้วหยิบ 5 อันดับแรก (k=5):</strong>
+      A₂(1.00), A₁(1.41), A₃(2.83), B₁(4.24), B₂(4.47) — ได้ <span class="cdot" style="background:#2456e6"></span> 3 จุด, <span class="cdot" style="background:#e5484d"></span> 2 จุด
+      <strong>ขั้น 3 — โหวต:</strong> <span class="cdot" style="background:#2456e6"></span> 3 เสียง มากกว่า <span class="cdot" style="background:#e5484d"></span> 2 เสียง
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>คำตอบยังเป็น <strong><span class="cdot" style="background:#2456e6"></span> น้ำเงิน</strong> — แต่คราวนี้ "เฉียด" กว่าเดิม (3:2) แสดงว่า Q อยู่ค่อนไปทางรอยต่อ ถ้า k โตกว่านี้อีกอาจพลิกได้
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง B — เปลี่ยนเป็นระยะ Manhattan (L1) ที่ k = 3</summary>
+    <div class="ans">
+      <strong>ขั้น 1 — Manhattan d = |Δx| + |Δy| จาก Q(5,5):</strong>
+      A₂(6,5)=1, A₁(4,6)=2, A₃(7,7)=4 · B₁(2,2)=6, B₂(3,1)=6, B₃(1,3)=6
+      <strong>ขั้น 2 — 3 อันดับแรก:</strong> A₂(1), A₁(2), A₃(4) ล้วนเป็น <span class="cdot" style="background:#2456e6"></span>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>คำตอบ <strong><span class="cdot" style="background:#2456e6"></span> น้ำเงิน (3:0)</strong> — เมตริกต่างกันได้ระยะต่างกัน แต่ในกรณีนี้ "เพื่อนบ้าน 3 อันดับแรก" ยังเป็นชุดเดิม คำตอบเลยไม่เปลี่ยน (บางโจทย์เปลี่ยนเมตริกแล้วเพื่อนบ้านสลับได้!)
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง C — KNN ทำ "ถดถอย" (regression) ก็ได้ ไม่ใช่แค่จำแนก</summary>
+    <div class="ans">
+      <strong>โจทย์:</strong> ทำนาย <em>ราคาบ้าน</em> ของหลังใหม่ จากบ้าน k=3 หลังที่คล้ายที่สุด ซึ่งมีราคา 3.0, 3.4, 3.2 ล้าน
+      <strong>ขั้น 1 — KNN Regression ไม่โหวต แต่ "เฉลี่ย":</strong> ŷ = (3.0 + 3.4 + 3.2) / 3
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>ได้ <strong>3.2 ล้าน</strong> — เปลี่ยนจาก "โหวตหาคลาส" เป็น "เฉลี่ยค่าตัวเลข" เท่านี้ KNN ก็ทำนายค่าต่อเนื่องได้ (ถ้าถ่วงน้ำหนัก ก็ใช้ค่าเฉลี่ยถ่วงน้ำหนักตามระยะ)
+    </div>
+  </details>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — โหวตด้วยมือ</div>
+    <p>จุดปริศนา Q = (0, 0) มีข้อมูล 5 จุด:
+    <br><span class="cdot" style="background:#12a150"></span> G₁(1,1), <span class="cdot" style="background:#12a150"></span> G₂(2,0), <span class="cdot" style="background:#12a150"></span> G₃(0,2) &nbsp;·&nbsp; <span class="cdot" style="background:#e5484d"></span> R₁(3,1), <span class="cdot" style="background:#e5484d"></span> R₂(1,3)
+    <br>ใช้ระยะ Euclidean และ k = 3 จงหาว่า Q เป็นคลาสอะไร (แสดงระยะทุกจุด, เรียงลำดับ, แล้วโหวต)</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ระยะจาก Q(0,0): G₁=√2≈1.41, G₂=2.00, G₃=2.00, R₁=√10≈3.16, R₂=√10≈3.16<br>
+      เรียงใกล้สุด 3 อันดับ: G₁(1.41), G₂(2.00), G₃(2.00) → <span class="cdot" style="background:#12a150"></span> ทั้งหมด<br>
+      โหวต <span class="cdot" style="background:#12a150"></span> 3 : <span class="cdot" style="background:#e5484d"></span> 0 → <strong>คำตอบ = <span class="cdot" style="background:#12a150"></span> เขียว</strong>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — k สำคัญแค่ไหน</div>
+    <p>ใช้ข้อมูลชุดเดิมกับข้อ 1 แต่ย้ายจุดปริศนาเป็น Q = (2, 2)
+    <br>(ก) ที่ k = 1 Q เป็นคลาสอะไร? &nbsp; (ข) ที่ k = 5 (ใช้ทุกจุด) Q เป็นคลาสอะไร? &nbsp; (ค) อธิบายว่าทำไมคำตอบต่างกัน</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ระยะจาก Q(2,2): G₁(1,1)=√2≈1.41, G₂(2,0)=2.00, G₃(0,2)=2.00, R₁(3,1)=√2≈1.41, R₂(1,3)=√2≈1.41<br>
+      (ก) k=1: จุดที่ใกล้สุดเสมอกัน 3 จุด (G₁, R₁, R₂ ที่ระยะ 1.41) — ถ้า tie-break เลือกจุดแรก/สุ่ม อาจได้ <span class="cdot" style="background:#12a150"></span> หรือ <span class="cdot" style="background:#e5484d"></span> → <strong>คำตอบไม่แน่นอน</strong> (บทเรียน: k=1 เปราะต่อ noise และ tie มาก)<br>
+      (ข) k=5: ใช้ทุกจุด → <span class="cdot" style="background:#12a150"></span> 3 : <span class="cdot" style="background:#e5484d"></span> 2 → <strong><span class="cdot" style="background:#12a150"></span> เขียว</strong><br>
+      (ค) k เล็กมองแค่จุดใกล้สุดจึงไวและไม่เสถียร ส่วน k ใหญ่มองภาพรวมของบริเวณ จึงให้คำตอบที่ "เห็นพ้องของหมู่มาก" มั่นคงกว่า
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 3 (ทำในคาบ) — ทำไมต้องปรับสเกล</div>
+    <p>ชุดข้อมูลมีฟีเจอร์ "เงินเดือน (บาท)" ช่วง 15000–80000 กับ "อายุ (ปี)" ช่วง 22–60
+    ถ้าใช้ KNN โดย <em>ไม่</em> ปรับสเกล จงอธิบายว่าฟีเจอร์ใดจะครอบงำการวัดระยะ และควรแก้อย่างไร</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      "เงินเดือน" มีช่วงกว้างเป็นหมื่น ส่วน "อายุ" ต่างกันแค่หลักสิบ — ในสูตรระยะ ผลต่างเงินเดือนยกกำลังสองจะมหาศาลจนกลบผลต่างอายุไปเกือบหมด ทำให้ KNN ตัดสินโดยดู "เงินเดือน" อย่างเดียว<br>
+      แก้ด้วย <strong>feature scaling</strong>: standardization x←(x−μ)/σ หรือ min–max scaling ให้ทุกฟีเจอร์อยู่สเกล 0–1 เท่ากันก่อนคำนวณระยะ
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — เลือก k ด้วยเหตุผล</div>
+    <p>ชุดข้อมูลมี 100 จุด แบ่ง 2 คลาส มี noise พอสมควร
+    (ก) เสนอค่า k เริ่มต้นที่สมเหตุสมผล พร้อมเหตุผล (คำนวณจาก √n ประกอบ)
+    (ข) ทำไมนิยมเลือก k เป็นเลขคี่ในปัญหา 2 คลาส
+    (ค) อธิบายวิธี cross-validation สั้นๆ ว่าใช้เลือก k ที่ดีที่สุดได้อย่างไร (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 5 (การบ้าน) — โยงสู่ AI จริง</div>
+    <p>ระบบแนะนำเพลง "คนที่ชอบเพลงคล้ายคุณ ก็ชอบเพลงนี้" และระบบ RAG ที่ LLM "ค้นเอกสารที่เกี่ยวข้องกับคำถาม"
+    ทั้งสองใช้แนวคิด nearest-neighbor เหมือนกัน จงอธิบายว่า "จุด" และ "ระยะทาง" ในสองระบบนี้คืออะไร และเหตุใดการมี <em>embedding ที่ดี</em> จึงสำคัญกว่าตัวอัลกอริทึม KNN เอง (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 6 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    KNN สอนบทเรียนที่ลึกที่สุดข้อหนึ่งของ AI: <strong>"ความหมาย = ความใกล้ในปริภูมิ"</strong> — สิ่งที่คล้ายกันควรอยู่ใกล้กัน แล้วเราตัดสินของใหม่จากเพื่อนบ้านของมัน<br>
+    เมื่อ LLM แปลงคำ/ประโยค/เอกสารเป็นเวกเตอร์ <strong>embedding</strong> (พิกัดในปริภูมิความหมายหลายร้อยมิติ) การ "ค้นความรู้ที่เกี่ยวข้อง" ก็คือ <strong>KNN บนเวกเตอร์เหล่านั้น</strong> — นี่คือหัวใจของ <strong>semantic search</strong> และ <strong>RAG (Retrieval-Augmented Generation)</strong> ที่ทำให้ ChatGPT ตอบจากเอกสารของเราได้ · vector database (FAISS, Pinecone, HNSW) ที่คุณจะได้ยินบ่อยๆ ก็คือ "KNN เวอร์ชันเร็วสุดขีด" นั่นเอง<br>
+    <strong>สัปดาห์หน้า:</strong> เราจะใช้แนวคิด "ระยะทาง" เดิม แต่พลิกเป็นโจทย์ไร้เฉลย — <strong>K-means clustering</strong> ที่ให้เครื่อง <em>จับกลุ่ม</em> ข้อมูลเอง (unsupervised) — แล้วจึงเข้าสู่ Neural Network และในที่สุด เรียนรู้วิธีสร้าง embedding ที่ทำให้ระยะทางมีความหมายจริงๆ
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=HVXime0nQeI" target="_blank">K-nearest neighbors, Clearly Explained</a> — อธิบาย KNN ทีละขั้นด้วยภาพ เข้าใจง่ายมากใน 5 นาที</li>
+      <li><span class="src">MIT 6.034</span> <a href="https://www.youtube.com/watch?v=09mb78oiPkA" target="_blank">Learning: Nearest Neighbors</a> — เลกเชอร์ AI คลาสสิกของ MIT ครอบคลุมแนวคิด nearest neighbor และ decision boundary</li>
+      <li><span class="src">scikit-learn</span> <a href="https://scikit-learn.org/stable/modules/neighbors.html" target="_blank">Nearest Neighbors — User Guide</a> — เอกสารทางการ พร้อมโค้ด <code>KNeighborsClassifier</code> ที่เอาไปลองจริงได้ทันที</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week03.html">← Polynomial Regression</a>
+    <a href="week05.html">K-means Clustering →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ======================================================================
+   เวทีเล่น KNN — decision boundary + เพื่อนบ้านมีชีวิต
+   ====================================================================== */
+(function () {
+  const CLASSES = [
+    { name: 'คลาส A', color: '#2456e6', rgb: [36, 86, 230] },
+    { name: 'คลาส B', color: '#e5484d', rgb: [229, 72, 77] },
+    { name: 'คลาส C', color: '#12a150', rgb: [18, 161, 80] },
+    { name: 'คลาส D', color: '#f59e0b', rgb: [245, 158, 11] },
+    { name: 'คลาส E', color: '#a855f7', rgb: [168, 85, 247] }
+  ];
+  const DS_CLASSES = { blobs: 3, moons: 2, spiral: 2 };  // จำนวนคลาสธรรมชาติของแต่ละชุด
+
+  const cv = document.getElementById('knnCanvas');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const W = 780, H = 460;                 // พิกัดตรรกะ
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = W * dpr; cv.height = H * dpr;
+  cv.style.aspectRatio = W + '/' + H;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  // ---- ขอบเขตพื้นที่พล็อต (เว้นขอบไว้ใส่เลขแกน) + ตัวช่วยแปลงพิกัด ----
+  const PAD = { l: 44, r: 16, t: 14, b: 42 };
+  const RX0 = PAD.l, RX1 = W - PAD.r, RY0 = PAD.t, RY1 = H - PAD.b;
+  const clampX = v => Math.max(RX0 + 6, Math.min(RX1 - 6, v));
+  const clampY = v => Math.max(RY0 + 6, Math.min(RY1 - 6, v));
+  const toDataX = px => (px - RX0) / (RX1 - RX0) * 10;   // พิกเซล → หน่วยแกน 0–10
+  const toDataY = py => (RY1 - py) / (RY1 - RY0) * 10;   // แกน Y ชี้ขึ้น (แบบคณิตศาสตร์)
+
+  // canvas ซ้อนสำหรับ boundary (offscreen) วาดครั้งเดียวต่อการเปลี่ยนแปลง แล้ว drawImage
+  const bcv = document.createElement('canvas'); bcv.width = W; bcv.height = H;
+  const bctx = bcv.getContext('2d');
+
+  const state = {
+    k: 5, metric: 'euclid', dataset: 'blobs', numClasses: 3,
+    boundary: true, weighted: false, addMode: false, addClass: 0,
+    pts: [], query: null, hoverIn: false,
+    hlIdx: null, pinIdx: null,
+    tour: null, boundaryDirty: true
+  };
+
+  /* --------- สร้างชุดข้อมูล --------- */
+  function rnd(seed) { // RNG กำหนดค่าได้ เพื่อรีเซ็ตแล้วได้ภาพเดิม
+    let s = seed >>> 0;
+    return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+  }
+  function gauss(r) { // Box–Muller คร่าวๆ
+    return (r() + r() + r() + r() - 2) * 0.5;
+  }
+  function makeDataset(name) {
+    const r = rnd(20260702), P = [];
+    if (name === 'blobs') {
+      const centers = [[210, 150, 0], [560, 150, 1], [385, 340, 2]];
+      centers.forEach(([cx, cy, c]) => {
+        for (let i = 0; i < 16; i++) P.push({ x: cx + gauss(r) * 150, y: cy + gauss(r) * 150, c });
+      });
+    } else if (name === 'moons') {
+      for (let i = 0; i < 26; i++) {
+        const t = Math.PI * (i / 25);
+        P.push({ x: 250 + Math.cos(t) * 190 + gauss(r) * 55, y: 300 - Math.sin(t) * 150 + gauss(r) * 55, c: 0 });
+        P.push({ x: 530 - Math.cos(t) * 190 + gauss(r) * 55, y: 190 + Math.sin(t) * 150 + gauss(r) * 55, c: 1 });
+      }
+    } else if (name === 'spiral') {
+      for (let i = 0; i < 34; i++) {
+        const t = i / 34 * 3.4, rad = 24 + t * 52;
+        P.push({ x: 390 + Math.cos(t) * rad + gauss(r) * 26, y: 230 + Math.sin(t) * rad + gauss(r) * 26, c: 0 });
+        P.push({ x: 390 - Math.cos(t) * rad + gauss(r) * 26, y: 230 - Math.sin(t) * rad + gauss(r) * 26, c: 1 });
+      }
+    }
+    // จำกัดให้อยู่ในพื้นที่พล็อต
+    P.forEach(p => { p.x = clampX(p.x); p.y = clampY(p.y); p.gen = true; });
+    return P;
+  }
+
+  /* --------- ระยะทาง + จำแนก --------- */
+  function dist(ax, ay, bx, by) {
+    if (state.metric === 'manhat') return Math.abs(ax - bx) + Math.abs(ay - by);
+    const dx = ax - bx, dy = ay - by; return Math.sqrt(dx * dx + dy * dy);
+  }
+  // คืน { label, votes[], neighbors[] } — neighbors เฉพาะเมื่อ wantN=true
+  function classify(x, y, wantN) {
+    const pts = state.pts, n = pts.length;
+    const k = Math.min(state.k, n);
+    // หา k ที่ใกล้สุด
+    const arr = new Array(n);
+    for (let i = 0; i < n; i++) arr[i] = { i, d: dist(x, y, pts[i].x, pts[i].y) };
+    arr.sort((a, b) => a.d - b.d);
+    const votes = new Array(state.numClasses).fill(0);
+    for (let j = 0; j < k; j++) {
+      const p = pts[arr[j].i];
+      const w = state.weighted ? 1 / (arr[j].d * arr[j].d + 1) : 1;
+      if (p.c < state.numClasses) votes[p.c] += w;
+    }
+    let label = 0, best = -1;
+    for (let c = 0; c < state.numClasses; c++) if (votes[c] > best) { best = votes[c]; label = c; }
+    const out = { label, votes };
+    if (wantN) out.neighbors = arr.slice(0, k).map(a => ({ i: a.i, d: a.d }));
+    return out;
+  }
+
+  /* --------- วาด boundary ลง offscreen --------- */
+  function renderBoundary() {
+    const step = 7;
+    bctx.clearRect(0, 0, W, H);
+    if (!state.boundary || state.pts.length === 0) { state.boundaryDirty = false; return; }
+    for (let gx = RX0; gx < RX1; gx += step) {
+      for (let gy = RY0; gy < RY1; gy += step) {
+        const r = classify(gx + step / 2, gy + step / 2, false);
+        const rgb = CLASSES[r.label].rgb;
+        // ความมั่นใจ = สัดส่วนโหวตคลาสชนะ → คุมความเข้ม
+        let tot = 0; for (let c = 0; c < r.votes.length; c++) tot += r.votes[c];
+        const conf = tot > 0 ? r.votes[r.label] / tot : 0.34;
+        const a = 0.10 + conf * 0.20;
+        bctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a.toFixed(3) + ')';
+        bctx.fillRect(gx, gy, Math.min(step, RX1 - gx), Math.min(step, RY1 - gy));
+      }
+    }
+    state.boundaryDirty = false;
+  }
+
+  /* --------- วาดแกน X–Y: เส้นกริด + ตัวเลข + ชื่อแกน --------- */
+  function drawAxes() {
+    ctx.save();
+    ctx.lineWidth = 1;
+    // เส้นกริด + ตัวเลขกำกับ ทุกๆ 2 หน่วย (0–10)
+    for (let v = 0; v <= 10; v += 2) {
+      const gx = RX0 + v / 10 * (RX1 - RX0);
+      const gy = RY1 - v / 10 * (RY1 - RY0);
+      ctx.strokeStyle = 'rgba(90,100,120,.13)';
+      ctx.beginPath(); ctx.moveTo(gx, RY0); ctx.lineTo(gx, RY1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(RX0, gy); ctx.lineTo(RX1, gy); ctx.stroke();
+      ctx.fillStyle = '#5b6475';
+      ctx.font = '600 11px Poppins, Kanit, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillText(v, gx, RY1 + 7);
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(v, RX0 - 8, gy);
+    }
+    // กรอบพื้นที่พล็อต
+    ctx.strokeStyle = 'rgba(90,100,120,.33)';
+    ctx.strokeRect(RX0, RY0, RX1 - RX0, RY1 - RY0);
+    // ชื่อแกน
+    ctx.fillStyle = '#5b6475';
+    ctx.font = '600 12px Kanit, Poppins, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillText('ฟีเจอร์ X (แกนนอน)', (RX0 + RX1) / 2, H - 2);
+    ctx.translate(13, (RY0 + RY1) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textBaseline = 'top';
+    ctx.fillText('ฟีเจอร์ Y (แกนตั้ง)', 0, 0);
+    ctx.restore();
+  }
+
+  /* --------- วาดจุดข้อมูล --------- */
+  function drawPoints(highlight) {
+    const hi = highlight || {};
+    state.pts.forEach((p, i) => {
+      const isN = hi[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, isN ? 8.5 : 6.2, 0, Math.PI * 2);
+      ctx.fillStyle = CLASSES[p.c].color;
+      ctx.fill();
+      ctx.lineWidth = isN ? 3 : 1.5;
+      ctx.strokeStyle = isN ? '#ffd34d' : 'rgba(255,255,255,.9)';
+      ctx.stroke();
+    });
+  }
+
+  /* --------- ลูปวาดหลัก --------- */
+  let t0 = 0;
+  function frame(ts) {
+    if (!t0) t0 = ts;
+    const time = (ts - t0) / 1000;
+    if (state.boundaryDirty) renderBoundary();
+
+    ctx.clearRect(0, 0, W, H);
+    // พื้นหลัง boundary + แกน
+    ctx.drawImage(bcv, 0, 0, W, H);
+    drawAxes();
+
+    const q = state.query;
+    let hi = null, res = null;
+    if (q && state.hoverIn && state.pts.length > 0) {
+      res = classify(q.x, q.y, true);
+      hi = {};
+      res.neighbors.forEach(nb => hi[nb.i] = true);
+    }
+    drawPoints(hi);
+
+    // ไฮไลต์จุดที่ชี้/เลือกจากตาราง — วงประหมุนสีเข้ม
+    if (state.hlIdx != null && state.pts[state.hlIdx]) {
+      const p = state.pts[state.hlIdx];
+      const rr = 12 + Math.sin(time * 4) * 2.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
+      ctx.strokeStyle = '#111827'; ctx.lineWidth = 3;
+      ctx.setLineDash([5, 4]); ctx.lineDashOffset = -time * 24; ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 7.5, 0, Math.PI * 2);
+      ctx.fillStyle = CLASSES[p.c].color; ctx.fill();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.stroke();
+    }
+
+    if (state.pts.length === 0) {
+      verdictEl.innerHTML = '<span class="dot" style="background:#9aa3b8"></span> ยังไม่มีข้อมูล — เปิดโหมดวางจุด แล้วคลิกเพิ่มจุด หรือเลือกชุดข้อมูล';
+    }
+
+    // เส้นไปเพื่อนบ้าน + วงล้อม + จุดปริศนา
+    if (res) {
+      const far = res.neighbors.length ? res.neighbors[res.neighbors.length - 1].d : 0;
+      // วงล้อมรัศมี = เพื่อนบ้านที่ไกลสุดในกลุ่ม k (เฉพาะ Euclidean ถึงจะเป็นวงกลมจริง)
+      if (state.metric === 'euclid' && far > 0) {
+        ctx.beginPath();
+        ctx.arc(q.x, q.y, far, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(139,92,246,.55)';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([6, 6]);
+        ctx.lineDashOffset = -time * 22;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(139,92,246,.06)';
+        ctx.fill();
+      }
+      // เส้นเชื่อม
+      res.neighbors.forEach(nb => {
+        const p = state.pts[nb.i];
+        ctx.beginPath();
+        ctx.moveTo(q.x, q.y); ctx.lineTo(p.x, p.y);
+        ctx.strokeStyle = CLASSES[p.c].color;
+        ctx.globalAlpha = 0.55;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 5]);
+        ctx.lineDashOffset = -time * 26;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+      });
+      // จุดปริศนา — วงพัลส์ + แกนกลางสีคำตอบ
+      const pulse = 13 + Math.sin(time * 3.2) * 2.5;
+      ctx.beginPath(); ctx.arc(q.x, q.y, pulse + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(31,37,51,.18)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(q.x, q.y, pulse, 0, Math.PI * 2);
+      ctx.fillStyle = CLASSES[res.label].color; ctx.fill();
+      ctx.lineWidth = 3; ctx.strokeStyle = '#fff'; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = '700 15px Poppins, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('?', q.x, q.y + 1);
+      updatePanel(res);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* --------- แผงผล + โหวต --------- */
+  const verdictEl = document.getElementById('knnVerdict');
+  const votesEl = document.getElementById('knnVotes');
+  function buildVotePanel() {
+    votesEl.innerHTML = CLASSES.slice(0, state.numClasses).map((c, i) =>
+      '<div class="kv-row" data-c="' + i + '">' +
+        '<span class="kv-name"><i style="background:' + c.color + '"></i>' + c.name + '</span>' +
+        '<span class="kv-track"><span class="kv-fill" style="background:' + c.color + '"></span></span>' +
+        '<span class="kv-num">0</span></div>').join('');
+  }
+  function updatePanel(res) {
+    let tot = 0; for (let c = 0; c < res.votes.length; c++) tot += res.votes[c];
+    tot = tot || 1;
+    votesEl.querySelectorAll('.kv-row').forEach(row => {
+      const c = +row.dataset.c;
+      const frac = res.votes[c] / tot;
+      row.querySelector('.kv-fill').style.width = (frac * 100).toFixed(1) + '%';
+      row.querySelector('.kv-num').textContent = state.weighted ? res.votes[c].toFixed(2) : Math.round(res.votes[c]);
+      row.classList.toggle('win', c === res.label);
+    });
+    const win = CLASSES[res.label];
+    const q = state.query;
+    verdictEl.innerHTML = '<span class="dot" style="background:' + win.color + '"></span>' +
+      'จุด <b>(x=' + toDataX(q.x).toFixed(1) + ', y=' + toDataY(q.y).toFixed(1) + ')</b> น่าจะเป็น ' +
+      '<b style="color:' + win.color + '">' + win.name + '</b> ' +
+      '<span style="color:var(--muted)">(k=' + Math.min(state.k, state.pts.length) + ', ' +
+      (state.metric === 'euclid' ? 'Euclidean' : 'Manhattan') + (state.weighted ? ', ถ่วงระยะ' : '') + ')</span>';
+  }
+
+  /* --------- อินพุตในสนาม --------- */
+  const stage = document.getElementById('knnStage');
+  function toLocal(e) {
+    const rect = cv.getBoundingClientRect();
+    const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: cx / rect.width * W, y: cy / rect.height * H };
+  }
+  function onMove(e) {
+    if (state.tour) return;
+    const p = toLocal(e);
+    p.x = clampX(p.x); p.y = clampY(p.y);
+    state.query = p; state.hoverIn = true;
+  }
+  cv.addEventListener('mousemove', onMove);
+  cv.addEventListener('mouseleave', () => { if (!state.tour) { state.hoverIn = false; verdictEl.innerHTML = '<span class="dot" style="background:#9aa3b8"></span> เลื่อนเมาส์เข้ามาในสนาม…'; } });
+  cv.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, { passive: false });
+  cv.addEventListener('touchstart', e => { e.preventDefault(); onClick(toLocal(e)); onMove(e); }, { passive: false });
+  cv.addEventListener('click', e => onClick(toLocal(e)));
+
+  function onClick(p) {
+    if (state.addMode) {
+      state.pts.push({ x: clampX(p.x), y: clampY(p.y), c: state.addClass });
+      state.boundaryDirty = true;
+      rebuildTable();
+    }
+  }
+
+  /* --------- ทัวร์อัตโนมัติ --------- */
+  const btnTour = document.getElementById('btnTour');
+  function startTour() {
+    if (state.tour) { stopTour(); return; }
+    btnTour.innerHTML = '<svg class="ico ico-btn" viewBox="0 0 24 24"><rect class="f" x="6" y="5" width="4" height="14" rx="1"/><rect class="f" x="14" y="5" width="4" height="14" rx="1"/></svg>หยุดทัวร์';
+    state.hoverIn = true;
+    const t = { a: 0 };
+    state.tour = setInterval(() => {
+      t.a += 0.02;
+      // เดินเป็นเลข 8 กวาดทั่วสนาม
+      const cx = (RX0 + RX1) / 2, cy = (RY0 + RY1) / 2;
+      state.query = {
+        x: clampX(cx + Math.sin(t.a) * (RX1 - RX0) * 0.42),
+        y: clampY(cy + Math.sin(t.a * 2) * (RY1 - RY0) * 0.42)
+      };
+    }, 30);
+  }
+  function stopTour() {
+    clearInterval(state.tour); state.tour = null;
+    btnTour.innerHTML = '<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>ทัวร์อัตโนมัติ (ให้อาจารย์เล่าประกอบ)';
+  }
+  btnTour.addEventListener('click', startTour);
+
+  /* --------- ปุ่ม/สวิตช์ --------- */
+  const kSlide = document.getElementById('kSlide'), kVal = document.getElementById('kVal');
+  kSlide.addEventListener('input', () => { state.k = +kSlide.value; kVal.textContent = state.k; state.boundaryDirty = true; });
+
+  document.getElementById('dsSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#dsSeg button').forEach(x => x.classList.toggle('on', x === b));
+    state.dataset = b.dataset.ds;
+    state.numClasses = DS_CLASSES[state.dataset] || 3;
+    if (state.addClass >= state.numClasses) state.addClass = 0;
+    state.pts = makeDataset(state.dataset);
+    syncClasses(); pointsChanged();
+  });
+  document.getElementById('metricSeg').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#metricSeg button').forEach(x => x.classList.toggle('on', x === b));
+    state.metric = b.dataset.m; state.boundaryDirty = true;
+  });
+
+  function bindToggle(id, key, after) {
+    const el = document.getElementById(id);
+    el.addEventListener('click', () => {
+      state[key] = !state[key];
+      el.classList.toggle('on', state[key]);
+      if (after) after();
+    });
+  }
+  bindToggle('tgBoundary', 'boundary', () => { state.boundaryDirty = true; });
+  bindToggle('tgWeighted', 'weighted', () => { state.boundaryDirty = true; });
+  bindToggle('tgAdd', 'addMode', () => {
+    document.getElementById('knn').classList.toggle('addmode-ui', state.addMode);
+    stage.classList.toggle('addmode', state.addMode);
+    document.getElementById('knnHint').innerHTML = state.addMode
+      ? '<svg class="ico" viewBox="0 0 24 24"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg><b>โหมดวางจุด:</b> เลือกสีคลาสด้านบน แล้วคลิกในสนามเพื่อเพิ่มข้อมูล — ดูเขตการตัดสินใจขยับตามทันที'
+      : '<svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ลอง <b>ลาก k ให้เล็กสุด (k=1)</b> — เขตจะหยักตามทุกจุด (จำ noise) · แล้ว <b>ลากไปใหญ่ๆ</b> — เขตจะเรียบขึ้นเรื่อยๆ จนรายละเอียดหาย นี่คือหัวใจของ bias–variance';
+  });
+
+  document.getElementById('knnPal').addEventListener('click', e => {
+    const d = e.target.closest('.pal-dot'); if (!d) return;
+    document.querySelectorAll('#knnPal .pal-dot').forEach(x => x.classList.toggle('on', x === d));
+    state.addClass = +d.dataset.c;
+  });
+
+  /* --------- จานสี / จำนวนคลาส / ตาราง (สร้างแบบไดนามิก) --------- */
+  function buildPalette() {
+    document.getElementById('knnPal').innerHTML =
+      '<span style="font-weight:600;color:var(--muted)">เลือกสีคลาสที่จะวาง:</span>' +
+      CLASSES.slice(0, state.numClasses).map((c, i) =>
+        '<span class="pal-dot' + (i === state.addClass ? ' on' : '') + '" data-c="' + i +
+        '" title="' + c.name + '" style="background:' + c.color + '"></span>').join('');
+  }
+  function updateCountUI() {
+    document.getElementById('clsVal').textContent = state.numClasses;
+    document.getElementById('clsMinus').disabled = state.numClasses <= 2;
+    document.getElementById('clsPlus').disabled = state.numClasses >= 5;
+  }
+  function syncClasses() { buildPalette(); buildVotePanel(); updateCountUI(); }
+
+  function rebuildTable() {
+    document.getElementById('ptCount').textContent = state.pts.length;
+    document.querySelector('#knnTable tbody').innerHTML = state.pts.map((p, i) => {
+      const c = CLASSES[p.c] || CLASSES[0];
+      return '<tr data-idx="' + i + '"' + (i === state.pinIdx ? ' class="pinned"' : '') + '>' +
+        '<td>' + (i + 1) + (p.gen ? '' : ' <svg class="ico ico-btn tgen" viewBox="0 0 24 24" title="จุดที่วางเอง"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg>') + '</td>' +
+        '<td>' + toDataX(p.x).toFixed(1) + '</td>' +
+        '<td>' + toDataY(p.y).toFixed(1) + '</td>' +
+        '<td><span class="tcls"><i style="background:' + c.color + '"></i>' + c.name + '</span></td></tr>';
+    }).join('');
+  }
+  // เปลี่ยนโครงจุด (เพิ่ม/ลบ/รีเซ็ต) → รีเฟรชเขต + ล้างไฮไลต์ + สร้างตารางใหม่
+  function pointsChanged() {
+    state.boundaryDirty = true; state.hlIdx = null; state.pinIdx = null; rebuildTable();
+  }
+
+  // ชี้/คลิกแถวตาราง → ไฮไลต์จุดบนกราฟ
+  const tableEl = document.getElementById('knnTable');
+  tableEl.addEventListener('mouseover', e => {
+    const tr = e.target.closest('tr[data-idx]'); if (tr) state.hlIdx = +tr.dataset.idx;
+  });
+  tableEl.addEventListener('mouseleave', () => { state.hlIdx = state.pinIdx; });
+  tableEl.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-idx]'); if (!tr) return;
+    const i = +tr.dataset.idx;
+    state.pinIdx = state.pinIdx === i ? null : i;
+    state.hlIdx = state.pinIdx;
+    document.querySelectorAll('#knnTable tbody tr').forEach(r =>
+      r.classList.toggle('pinned', +r.dataset.idx === state.pinIdx));
+  });
+
+  // ปุ่มเพิ่ม/ลดจำนวนคลาส (2–5)
+  document.getElementById('clsPlus').addEventListener('click', () => {
+    if (state.numClasses >= 5) return;
+    state.numClasses++; syncClasses(); state.boundaryDirty = true;
+  });
+  document.getElementById('clsMinus').addEventListener('click', () => {
+    if (state.numClasses <= 2) return;
+    state.numClasses--;
+    state.pts = state.pts.filter(p => p.c < state.numClasses);  // ลบจุดของคลาสที่ถูกตัด
+    if (state.addClass >= state.numClasses) state.addClass = 0;
+    syncClasses(); pointsChanged();
+  });
+
+  document.getElementById('btnClear').addEventListener('click', () => {
+    state.pts = state.pts.filter(p => p.gen); pointsChanged();   // ลบเฉพาะจุดที่วางเอง
+  });
+  document.getElementById('btnReset').addEventListener('click', () => {
+    stopTour(); state.pts = []; pointsChanged();                 // ล้างจุดทั้งหมด
+  });
+
+  /* --------- เริ่มระบบ --------- */
+  state.pts = makeDataset(state.dataset);
+  syncClasses();
+  rebuildTable();
+  state.query = { x: clampX(W * 0.5), y: clampY(H * 0.42) }; state.hoverIn = true; // เริ่มด้วยจุดกลางสนามให้เห็นเลย
+  requestAnimationFrame(frame);
+})();
+
+/* ======================================================================
+   ฉากประกอบ "เดินทีละขั้น" (ส่วนที่ 3) — ใช้ร่วมกับ step-player ใน anim.js
+   ====================================================================== */
+(function () {
+  // ข้อมูลตัวอย่าง (พิกัด 0..8) + ระยะจาก Q(5,5)
+  const Q = { x: 5, y: 5 };
+  const D = [
+    { n: 'A₂', x: 6, y: 5, c: 0 }, { n: 'A₁', x: 4, y: 6, c: 0 }, { n: 'A₃', x: 7, y: 7, c: 0 },
+    { n: 'B₁', x: 2, y: 2, c: 1 }, { n: 'B₂', x: 3, y: 1, c: 1 }, { n: 'B₃', x: 1, y: 3, c: 1 }
+  ];
+  const COL = ['#2456e6', '#e5484d'];
+  D.forEach(p => p.d = Math.hypot(p.x - Q.x, p.y - Q.y));
+  const sorted = [...D].sort((a, b) => a.d - b.d);
+
+  // SVG สแคทเตอร์จิ๋ว
+  function px(v) { return 22 + v * 21; }
+  function py(v) { return 200 - (18 + v * 21); }
+  function scatter(opts) {
+    opts = opts || {};
+    const hi = opts.hi || [];        // ชื่อจุดที่ไฮไลต์
+    const lines = opts.lines;        // true = ลากเส้นจาก Q ไปทุกจุด
+    const circleR = opts.circleR;    // รัศมีวง (หน่วยข้อมูล)
+    const qFill = opts.qFill || '#9aa3b8';
+    let s = '<svg class="mini-svg" viewBox="-6 0 212 214" xmlns="http://www.w3.org/2000/svg">';
+    // แผ่นพื้น + เส้นกริด + ตัวเลขแกน (0,2,4,6)
+    s += '<rect x="8" y="8" width="184" height="184" fill="#fff" stroke="#d5dae6" rx="8"/>';
+    for (let v = 0; v <= 6; v += 2) {
+      const gx = px(v), gy = py(v);
+      s += '<line x1="' + gx + '" y1="8" x2="' + gx + '" y2="192" stroke="#eef1f6" stroke-width="1"/>';
+      s += '<line x1="8" y1="' + gy + '" x2="192" y2="' + gy + '" stroke="#eef1f6" stroke-width="1"/>';
+      s += '<text x="' + gx + '" y="204" text-anchor="middle" font-size="9" fill="#8a93a6">' + v + '</text>';
+      s += '<text x="1" y="' + (gy + 3) + '" text-anchor="middle" font-size="9" fill="#8a93a6">' + v + '</text>';
+    }
+    if (circleR != null) {
+      s += '<circle cx="' + px(Q.x) + '" cy="' + py(Q.y) + '" r="' + (circleR * 21) +
+        '" fill="rgba(139,92,246,.09)" stroke="rgba(139,92,246,.6)" stroke-width="1.6" stroke-dasharray="4 4"/>';
+    }
+    if (lines) D.forEach(p =>
+      s += '<line x1="' + px(Q.x) + '" y1="' + py(Q.y) + '" x2="' + px(p.x) + '" y2="' + py(p.y) +
+        '" stroke="' + COL[p.c] + '" stroke-width="1.2" stroke-opacity=".45" stroke-dasharray="3 3"/>');
+    D.forEach(p => {
+      const on = hi.indexOf(p.n) >= 0;
+      s += '<circle cx="' + px(p.x) + '" cy="' + py(p.y) + '" r="' + (on ? 8 : 6) + '" fill="' + COL[p.c] +
+        '" stroke="' + (on ? '#ffd34d' : '#fff') + '" stroke-width="' + (on ? 3 : 1.5) + '"/>';
+    });
+    // จุด Q
+    s += '<circle cx="' + px(Q.x) + '" cy="' + py(Q.y) + '" r="9" fill="' + qFill + '" stroke="#fff" stroke-width="2.5"/>';
+    s += '<text class="qtxt" x="' + px(Q.x) + '" y="' + (py(Q.y) + 4) + '" text-anchor="middle" font-size="11" fill="#fff">?</text>';
+    s += '</svg>';
+    return s;
+  }
+
+  function distTable(list, highlightN) {
+    let t = '<table style="margin:6px auto"><tr><th>จุด</th><th>พิกัด</th><th>ระยะจาก Q</th></tr>';
+    list.forEach(p => {
+      const on = highlightN && highlightN.indexOf(p.n) >= 0;
+      t += '<tr' + (on ? ' class="hl-g"' : '') + '><td><b style="color:' + COL[p.c] + '">' + p.n + '</b></td>' +
+        '<td>(' + p.x + ',' + p.y + ')</td><td>' + p.d.toFixed(2) + '</td></tr>';
+    });
+    return t + '</table>';
+  }
+
+  window.stepScenes = [
+    // 0 — ตั้งโจทย์
+    function (b) {
+      b.innerHTML = scatter({}) +
+        '<div class="note" style="text-align:center">จุดปริศนา <b>Q = (5, 5)</b> (สีเทา) — ยังไม่รู้คลาส<br>รอบตัวมีข้อมูล <span style="color:#2456e6">น้ำเงิน 3</span> + <span style="color:#e5484d">แดง 3</span></div>';
+    },
+    // 1 — วัดระยะ
+    function (b) {
+      b.innerHTML = scatter({ lines: true }) +
+        distTable(D) +
+        '<div class="note" style="text-align:center">ลากเส้นวัดระยะจาก Q ไปครบทั้ง 6 จุด (Euclidean)</div>';
+    },
+    // 2 — เรียง
+    function (b) {
+      b.innerHTML = scatter({ lines: true }) +
+        distTable(sorted) +
+        '<div class="note" style="text-align:center">เรียงใหม่จาก <b>ใกล้สุด → ไกลสุด</b></div>';
+    },
+    // 3 — เลือก k=3
+    function (b) {
+      const near = sorted.slice(0, 3).map(p => p.n);
+      b.innerHTML = scatter({ hi: near, circleR: sorted[2].d }) +
+        distTable(sorted, near) +
+        '<div class="note" style="text-align:center">วงม่วง = ขอบเขต <b>k = 3</b> จุดที่ใกล้ที่สุด: ' +
+        near.join(', ') + '</div>';
+    },
+    // 4 — โหวต
+    function (b) {
+      const near = sorted.slice(0, 3);
+      let blue = near.filter(p => p.c === 0).length, red = near.filter(p => p.c === 1).length;
+      b.innerHTML = scatter({ hi: near.map(p => p.n), circleR: sorted[2].d }) +
+        '<div class="bar-row"><span class="lbl" style="background:#dbe4ff"><span class="cdot" style="background:#2456e6"></span> A</span>' +
+        '<span class="bar" data-w="' + (blue / 3 * 100) + '%" style="background:#2456e6"></span><b>&nbsp;' + blue + '</b></div>' +
+        '<div class="bar-row"><span class="lbl" style="background:#ffe0e1"><span class="cdot" style="background:#e5484d"></span> B</span>' +
+        '<span class="bar" data-w="' + (red / 3 * 100) + '%" style="background:#e5484d"></span><b>&nbsp;' + red + '</b></div>' +
+        '<div class="note" style="text-align:center">นับเสียงในกลุ่ม 3 จุด: <span class="cdot" style="background:#2456e6"></span> ' + blue + ' : <span class="cdot" style="background:#e5484d"></span> ' + red + '</div>';
+    },
+    // 5 — สรุป
+    function (b) {
+      const near = sorted.slice(0, 3).map(p => p.n);
+      b.innerHTML = scatter({ hi: near, circleR: sorted[2].d, qFill: '#2456e6' }) +
+        '<div class="big" style="text-align:center;color:#2456e6">Q = <span class="cdot" style="background:#2456e6"></span> คลาส A (3 : 0)</div>' +
+        '<div class="note" style="text-align:center">เสียงข้างมากชนะ — Q ถูกจัดเป็นคลาสน้ำเงิน จบใน 3 ขั้น ไม่ต้องเทรนสมการเลย</div>';
+    }
+  ];
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diffusion &amp; Multimodal | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button {
+    font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s;
+  }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* ═══════ 🎬 ถอย noise ทีละก้าว ═══════ */
+  .rd-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px; }
+  @media(max-width:560px){ .rd-grid { grid-template-columns:1fr; } }
+  .rd-cap { font-weight:700; font-size:.9rem; text-align:center; margin-bottom:6px; }
+  .rd-t { text-align:center; font-weight:800; font-size:1.05rem; color:var(--accent); margin-top:6px; font-variant-numeric:tabular-nums; }
+  .rd-honest { font-size:.78rem; color:var(--muted); margin-top:6px; line-height:1.6; text-align:center; }
+  .rd-msg { border-radius:12px; padding:10px 14px; background:var(--accent-soft); min-height:4.4em; font-size:.92rem; line-height:1.8; margin-top:12px; }
+  .rd-msg b { color:var(--accent); }
+  .rd-chip { margin-top:8px; text-align:center; border-radius:10px; padding:8px 14px; font-size:1rem;
+    background:linear-gradient(135deg,#171c30,#101425); color:#dbe2ff; border:1px solid rgba(139,148,255,.3);
+    font-variant-numeric:tabular-nums; overflow-x:auto; }
+  .rd-chip b { color:#fbbf24; }
+  .rd-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .rd-row .cap { font-weight:700; font-size:.88rem; min-width:96px; }
+  #rdPlay { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+  #rdOnceBtn { background:linear-gradient(135deg,#e5484d,#f97316); }
+  .rd-once { display:none; margin-top:14px; border:1.5px dashed #e5484d; border-radius:12px; padding:12px 14px;
+    font-size:.9rem; line-height:1.8; }
+  .rd-once.show { display:block; }
+  .rd-once-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:460px; margin:10px auto 0; }
+  .rd-once .cap2 { text-align:center; font-size:.85rem; font-weight:700; margin-top:6px; }
+
+  /* ═══════ ☁️ ฝูงจุด ═══════ */
+  .pc-row { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .pc-row input[type=range] { flex:1; min-width:140px; accent-color:var(--accent); }
+  .pc-row .v { font-weight:700; color:var(--accent); min-width:80px; text-align:right; font-variant-numeric:tabular-nums; }
+  #pcFwd { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+  #pcRev { background:linear-gradient(135deg,#12a150,#0ea371); }
+
+  /* ═══════ 🏗️ U-Net ═══════ */
+  .un-wrap { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:6px; }
+  .un-wrap svg { display:block; width:100%; height:auto; }
+  #unSvg .blk { transition:all .25s; }
+  #unSvg .blk.on { stroke-width:4.5; filter:drop-shadow(0 0 6px rgba(124,58,237,.55)); }
+  #unSvg .skip { transition:all .3s; }
+  #unSvg .skip.hot { stroke-width:4.5; opacity:1; }
+  #unSvg .skip.cut { stroke:#9aa3b8; opacity:.3; stroke-dasharray:2 6; }
+  .un-msg { border-radius:12px; padding:10px 14px; background:var(--accent-soft); min-height:4.4em; font-size:.92rem; line-height:1.8; margin-top:10px; }
+  .un-msg b { color:var(--accent); }
+  #unPlay { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+  #unSkip.off { background:linear-gradient(135deg,#e5484d,#f97316); }
+  .un-cmp { display:grid; grid-template-columns:1fr 1fr; gap:14px; max-width:430px; margin:12px auto 0; }
+  .un-cmp .c { border:2px solid var(--border); border-radius:12px; padding:8px; text-align:center;
+    font-size:.84rem; font-weight:700; transition:all .3s; opacity:.55; }
+  .un-cmp .c.on { border-color:var(--accent); background:var(--accent-soft); opacity:1; }
+
+  /* ═══════ 🎚️ CFG ═══════ */
+  .cfg-th { display:flex; gap:14px; justify-content:center; margin-top:8px; }
+  .cfg-thc { width:112px; text-align:center; font-size:.82rem; font-weight:700; }
+  .cfg-out { max-width:250px; margin:12px auto 0; text-align:center; }
+  .cfg-row { display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+  .cfg-row input[type=range] { flex:1; min-width:140px; accent-color:var(--accent); }
+  .cfg-row .v { font-weight:800; color:var(--accent); min-width:44px; text-align:right; font-variant-numeric:tabular-nums; }
+  .cfg-eq { margin-top:8px; text-align:center; border-radius:10px; padding:8px 14px; font-size:.95rem;
+    background:linear-gradient(135deg,#171c30,#101425); color:#dbe2ff; border:1px solid rgba(139,148,255,.3); overflow-x:auto; }
+  .cfg-eq b { color:#fbbf24; }
+  .cfg-read { text-align:center; font-weight:700; font-size:.9rem; margin-top:8px; min-height:1.6em; }
+
+  /* ═══════ ⚡ latent race ═══════ */
+  .lr-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px; }
+  @media(max-width:560px){ .lr-grid { grid-template-columns:1fr; } }
+  .lr-cell h4 { margin:0 0 6px; font-size:.92rem; text-align:center; }
+  .lr-stat { text-align:center; font-size:.86rem; font-weight:700; margin-top:6px; font-variant-numeric:tabular-nums; min-height:1.5em; }
+  .lr-stat .done { color:#0e7f43; }
+  .lr-tick { text-align:center; font-weight:800; font-size:1rem; color:var(--accent); margin-top:10px; font-variant-numeric:tabular-nums; }
+  #lrGo { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+
+  /* ═══════ 💻 โค้ด ═══════ */
+  .code-wrap { position:relative; margin:10px 0; }
+  .code-wrap pre { background:#0f1425; color:#dbe2ff; border-radius:12px; padding:14px 16px 14px;
+    overflow-x:auto; font-size:.86rem; line-height:1.7; border:1px solid rgba(139,148,255,.25); margin:0; }
+  .code-wrap pre, .code-wrap code { font-family:'Cascadia Code', Consolas, 'Courier New', monospace !important; font-size-adjust:none; }
+  .code-wrap code .cm { color:#7fd18c; }
+  .code-copy { position:absolute; top:8px; right:8px; font-size:.8rem; padding:4px 12px;
+    background:linear-gradient(135deg,#334155,#475569); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>AI สร้างภาพได้อย่างไร: Diffusion &amp; Multimodal</h1>
+    <p class="subtitle">หลักการเดิม (ทำนาย) — แต่คราวนี้ทำนาย "noise ที่ต้องลบออก"</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายหลักการ diffusion ได้: เทรนให้ "ลบ noise ทีละนิด" แล้วสร้างภาพจาก noise ล้วน</li>
+      <li>อธิบายได้ว่า text prompt ควบคุมภาพที่ออกมาได้อย่างไร (ผ่าน embedding ร่วม)</li>
+      <li>เห็นว่าความรู้ทั้งเทอม (loss, เทรน, สถาปัตยกรรม) ใช้กับ AI ต่างชนิดได้หมด</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ: <em>"จะสอนใครสักคน 'วาดภาพจากศูนย์' กับสอนให้ 'ค่อยๆ ลบรอยเปื้อนออกจากภาพ' — อะไรสอนง่ายกว่า?"</em></p>
+
+    <h3>Diffusion: เรียนรู้การ "กู้ภาพคืน" จาก noise</h3>
+    <p>แทนที่จะสอนโมเดลวาดภาพตรงๆ (ยากมาก) เราพลิกโจทย์:</p>
+    <ol>
+      <li><strong>ขั้นเทรน:</strong> เอาภาพจริง → เติม noise ทีละขั้นจนกลายเป็นจุดสุ่มล้วน
+      แล้วเทรนโมเดลให้ทำงานเดียว: <em>"ทายว่า noise ที่เพิ่งถูกเติมเข้าไปคืออะไร"</em>
+      — นี่คือโจทย์ supervised learning ธรรมดา! มี input (ภาพเปื้อน) มีเฉลย (noise ที่เราเติมเอง)
+      มี loss (ทาย noise ผิดแค่ไหน) เทรนด้วย backprop ตามเคย</li>
+      <li><strong>ขั้นสร้างภาพ:</strong> เริ่มจาก noise สุ่มล้วนๆ → ให้โมเดลทาย noise แล้วลบออก ทีละขั้น
+      หลายสิบรอบ → ภาพ "โผล่" ออกมาจากหมอก</li>
+    </ol>
+    <p>เทียบกับ LLM: <strong>LLM ทำนาย "token ถัดไป" ทีละตัว — Diffusion ทำนาย "noise ที่ต้องลบ" ทีละขั้น</strong>
+    ต่างกันแค่ว่าทำนายอะไร โครงคิดเดียวกันหมด</p>
+
+    <h3>Text prompt คุมภาพได้อย่างไร</h3>
+    <p>โมเดลอย่าง CLIP เรียน "แผนที่ความหมายร่วม" ระหว่างข้อความกับภาพ
+    (ภาพแมวกับคำว่า "cat" อยู่ใกล้กันในแผนที่เวกเตอร์)
+    ตอน diffusion ลบ noise แต่ละขั้น เราเอาเวกเตอร์ของ prompt ไป "ดึงทิศ" ให้การลบ noise
+    เอียงไปทางภาพที่ตรงความหมาย — attention ระหว่างคำกับบริเวณภาพอีกแล้ว!</p>
+
+    <h3>Multimodal: ทุกอย่างคือ token</h3>
+    <p>โมเดลยุคล่าสุด (GPT-4o, Claude, Gemini) มองภาพ/เสียง/ข้อความเป็น "token" ในกระแสเดียวกัน
+    — ภาพถูกหั่นเป็นชิ้นเล็กแปลงเป็นเวกเตอร์เข้า Transformer ตัวเดียวกับข้อความ
+    บทเรียนเรื่อง CNN กลับมาอีกครั้ง: ออกแบบ "วิธีป้อนข้อมูล" ให้เข้ากับสถาปัตยกรรม</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — AI วาดรูปได้อย่างไร ใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">แบ่งเป็นสองเฟส: ตอนเรียน (ขั้น 1–2) กับตอนวาดจริง (ขั้น 3–5) — แล้วปิดด้วยวิธีที่ข้อความคุมภาพ</p>
+    <ol class="steps">
+      <li><strong>เฟสเรียน: สร้างโจทย์ฟรีไม่จำกัดข้อ</strong>
+        เอาภาพแมวจริง 1 ใบ เติม noise เข้าไป 10% — ตอนนี้เรามี "โจทย์พร้อมเฉลย" หนึ่งข้อ:
+        input = ภาพเปื้อน 10%, เฉลย = noise ที่เราเพิ่งเติมเอง (เรารู้เป๊ะเพราะเราเติม!)<br>
+        ทำซ้ำกับทุกระดับ noise (1%–100%) กับภาพหลายร้อยล้านใบ → ได้โจทย์ไม่จำกัดข้อ ฟรี ไม่ต้องจ้างใครเฉลย</li>
+      <li><strong>เทรนด้วยเครื่องมือเดิมทุกชิ้น</strong>
+        โมเดลทาย noise → เทียบกับเฉลย → loss คือ MSE (เรื่อง Polynomial Regression!) → backprop (เรื่อง Backpropagation)<br>
+        จบเฟสเรียน: ได้เซียนที่เก่งงานเดียว — <em>"ชี้ noise ในภาพเปื้อนได้แม่นมาก"</em> แค่นั้นจริงๆ</li>
+      <li><strong>เฟสวาด: เริ่มจากความว่างเปล่าสุดขั้ว</strong>
+        สุ่ม noise ล้วน 100% หนึ่งผืน (เหมือนทีวีจอซ่า) — ยังไม่มีภาพอะไรอยู่ในนั้นเลย</li>
+      <li><strong>ถามเซียนซ้ำๆ: "noise ตรงไหน" แล้วลบออกทีละนิด</strong>
+        เซียนชี้ noise → ลบออกส่วนหนึ่ง → ภาพชัดขึ้นนิดหนึ่ง → ถามใหม่ → ลบอีกนิด...<br>
+        ทำราว 20–50 รอบ ภาพ "โผล่จากหมอก": โครงใหญ่ (ฟ้า/พื้น) มาก่อน รายละเอียด (หนวด ขน) มาท้าย
+        <div class="try">กดปุ่ม ▶ ใน demo ข้างล่าง ดูภาพโผล่จาก noise — สังเกตว่าอะไรชัดก่อน-หลัง ตรงกับที่บอกไหม</div></li>
+      <li><strong>ทำไมแต่ละครั้งได้ภาพไม่ซ้ำ</strong>
+        เพราะขั้น 3 เริ่มจาก noise สุ่ม<em>คนละผืน</em> — เซียนลบ noise ไปคนละทิศ ภาพปลายทางจึงต่างกัน
+        (เหมือน LLM ที่สุ่มจาก softmax — ความสุ่มอยู่คนละจุด แต่บทบาทเดียวกัน)</li>
+      <li><strong>ใส่ prompt: ดึงทิศการลบ noise</strong>
+        ข้อความ "แมวส้มใส่หมวก" ถูกแปลงเป็นเวกเตอร์ความหมาย (CLIP) แล้วป้อนให้เซียน<em>ทุกรอบ</em>ที่ลบ noise
+        — การลบจึงเอียงไปทาง "ภาพที่ความหมายตรงกับข้อความ" ทีละนิดจนภาพสุดท้ายตรง prompt<br>
+        สรุปทั้งระบบ: <em>ทำนาย (noise) + loss + backprop + embedding + attention</em> — ไม่มีของใหม่ มีแต่ของเก่าพลิกมุม
+        <div class="try">ไปทำการทดลอง 3 ข้อใน demo 🧪 ทดลองกับเครื่องมือจริง (ท้ายส่วนที่ 2) แล้วอธิบายผลแต่ละข้อด้วยขั้น 3–6 ข้างบน</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — diffusion ไม่ได้มีแค่ภาพ</h3>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — คำนวณภาพเปื้อนด้วยมือ</summary>
+      <p>pixel ภาพจริงมีค่าความสว่าง 200, noise ที่สุ่มได้คือ 80 — ที่ระดับ noise 30% pixel ภาพเปื้อนมีค่าเท่าไหร่?
+      (สูตรผสม: เปื้อน = จริง × (1−ระดับ) + noise × ระดับ)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ส่วนของภาพจริง:</strong> 200 × (1−0.3) = 200 × 0.7 = 140<br>
+      <strong>ขั้น 2 — ส่วนของ noise:</strong> 80 × 0.3 = 24<br>
+      <strong>ขั้น 3 — รวม:</strong> 140 + 24 = <strong>164</strong> (ลองที่ 90%: 200×0.1 + 80×0.9 = <strong>92</strong> — แทบเป็น noise แล้ว)<br>
+      ✅ <strong>คำตอบ:</strong> 164 — สไลเดอร์ใน demo รันสูตรนี้กับทุก pixel พร้อมกัน
+      และคู่ (ภาพเปื้อน 164, noise 80) นี่แหละคือ "โจทย์พร้อมเฉลย" ที่ใช้เทรนโมเดลจริง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — เพลงและวิดีโอ: กลไกเดิม เปลี่ยนแค่ข้อมูล</summary>
+      <p>AI แต่งเพลง (เช่น Suno) กับ AI ทำวิดีโอ (เช่น Sora) ใช้หลักอะไร — ลองเดาจากที่เรียนก่อนกางเฉลย</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตั้งคำถามนำ:</strong> "ข้อมูลชนิดนี้ แปลงเป็นรูปแบบที่ diffusion กินได้ยังไง?"<br>
+      <strong>ขั้น 2 — เพลง:</strong> เสียงแปลงเป็น "ภาพคลื่นความถี่" (spectrogram: แกนนอนเวลา แกนตั้งความถี่) → ทำ diffusion บน "ภาพ" นั้น → แปลงกลับเป็นเสียง<br>
+      <strong>ขั้น 3 — วิดีโอ:</strong> ลบ noise หลายเฟรมพร้อมกัน โดยบังคับเงื่อนไขให้เฟรมติดกันต่อเนื่อง<br>
+      ✅ <strong>คำตอบ:</strong> ตระกูลเดียวกันทั้งคู่ — บทเรียนเรื่อง CNN ทำงานอีกครั้ง: เปลี่ยน "วิธีป้อนข้อมูล" ให้เข้าเครื่องจักรเดิม
+      เจอ AI สร้างคอนเทนต์ชนิดใหม่เมื่อไหร่ เดาก่อนเลยว่าข้างในคือ diffusion หรือ next-token</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — ปุ่ม CFG scale: เชื่อ prompt แค่ไหนดี</summary>
+      <p>เครื่องมือสร้างภาพหลายตัวมีปุ่ม "guidance/CFG scale" — ถ้าตั้งต่ำมาก (1–2) กับสูงมาก (15–20) ภาพจะต่างกันยังไง เพราะอะไร?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ทวนหน้าที่ของ CFG scale:</strong> มันคือตัวคูณ "แรงดึงทิศของ prompt" ตอนลบ noise แต่ละขั้น<br>
+      <strong>ขั้น 2 — กรณี scale ต่ำ (1–2):</strong> แรงดึงเบา → โมเดลลบ noise ตามธรรมชาติของภาพ → สวย หลากหลาย แต่อาจหลุดธีมจาก prompt<br>
+      <strong>ขั้น 3 — กรณี scale สูง (15–20):</strong> แรงดึงรุนแรงทุกขั้น → ตรง prompt เป๊ะ แต่ภาพถูกบิดตามแรงดึง: สีจัด คอนทราสต์แข็ง ดูปลอม<br>
+      ✅ <strong>คำตอบ:</strong> ต่ำ=สวยแต่เฉไฉ สูง=ตรงแต่แข็ง — ค่ามาตรฐานที่นิยมคือ 7–8 (สมดุล)
+      ลองลากปรับเองในเดโม 🎚️ CFG ส่วนที่ 2 แล้วต่อด้วยเครื่องมือจริง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — คำนวณย้อนกลับ: กู้ pixel จริงคืน</summary>
+      <p>จากตัวอย่าง 1: pixel เปื้อนค่า 164 (ที่ noise 30%) — ถ้าโมเดลทาย noise ได้แม่นเป๊ะว่าคือ 80 จะกู้ค่าจริงคืนได้เท่าไหร่? (สูตร: จริง = (เปื้อน − 0.3×noise) ÷ 0.7)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หักส่วนของ noise ออก:</strong> 164 − 0.3×80 = 164 − 24 = 140<br>
+      <strong>ขั้น 2 — ขยายกลับเต็มสเกล:</strong> 140 ÷ 0.7 = <strong>200</strong><br>
+      <strong>ขั้น 3 — ตรวจ:</strong> ตรงค่าจริง (200) เป๊ะ — เพราะเราสมมุติว่าทาย noise แม่น 100%<br>
+      ✅ <strong>คำตอบ:</strong> 200 — ทั้งกระบวนการสร้างภาพคือสมการชั้นมัธยมนี้ทำซ้ำๆ
+      ความเก่งทั้งหมดอยู่ที่ "ทาย noise ให้แม่น" ซึ่งคือหน้าที่ของ neural network</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — ทำไมไม่ลบ noise รวดเดียวให้จบ</summary>
+      <p>ในเมื่อโมเดลทาย noise ได้ ทำไมไม่ทายทีเดียวจากภาพ noise 100% แล้วลบครั้งเดียว — ต้องวน 50 รอบให้เสียเวลาทำไม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ลองลบทีเดียว:</strong> ที่ noise 100% ไม่มีเบาะแสอะไรเลย — คำตอบที่ "ปลอดภัยสุด" ของโมเดลคือค่าเฉลี่ยของทุกภาพ = ภาพเบลอๆ ไร้รายละเอียด<br>
+      <strong>ขั้น 2 — ลบทีละนิดแทน:</strong> รอบแรกลบนิดเดียว → โครงรางๆ เริ่มโผล่ (ฟ้าอยู่บน พื้นอยู่ล่าง)<br>
+      <strong>ขั้น 3 — รอบถัดไปฉลาดขึ้น:</strong> มีโครงเป็นเบาะแส → ทาย noise แม่นขึ้น → ภาพชัดขึ้น → เบาะแสมากขึ้นอีก — วงจรเสริมตัวเอง<br>
+      ✅ <strong>คำตอบ:</strong> ลบรวดเดียว = ทายมั่วจากความว่างเปล่า | ลบทีละนิด = ทุกขั้นใช้ข้อมูลจากขั้นก่อน —
+      ปรัชญาเดียวกับ gradient descent: <strong>ก้าวเล็กๆ ที่ใช้ข้อมูลใหม่ทุกก้าว ชนะการกระโดดครั้งเดียว</strong></div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — seed: คุมความสุ่มได้</summary>
+      <p>เครื่องมือสร้างภาพมีช่อง "seed" — ตั้ง seed 12345 + prompt เดิม สร้างกี่ครั้งก็ได้ภาพเดิมเป๊ะ — อธิบายด้วยกลไก แล้วบอกว่ามีประโยชน์ตอนไหน</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หาว่าความสุ่มอยู่ตรงไหน:</strong> ในกระบวนการสร้างภาพ ความสุ่มมีจุดเดียว: noise ตั้งต้น<br>
+      <strong>ขั้น 2 — seed ทำอะไร:</strong> ตัวเลขตั้งต้นของเครื่องสุ่ม — seed เดิมให้ "noise ผืนเดิม" เป๊ะทุกครั้ง<br>
+      <strong>ขั้น 3 — ไล่ผล:</strong> จุดเริ่มเดิม + prompt เดิม (เส้นทางลบ noise เดิม) = ปลายทางเดิม — ภาพซ้ำได้ 100%<br>
+      ✅ <strong>คำตอบ:</strong> ใช้จริงสองทาง: (1) ชอบองค์ประกอบแล้วอยากแก้รายละเอียด → ล็อก seed แก้แค่ prompt
+      (2) งานวิจัย/รายงานต้องทำซ้ำได้ → รายงาน seed เสมอ (ใส่ในโปรเจกต์ได้คะแนน)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — Magic Eraser: diffusion เฉพาะที่ (inpainting)</summary>
+      <p>ฟีเจอร์ "ลบคนแปลกหน้าหลังภาพ" ในมือถือ — ใช้กลไกอะไร? ใบ้: มันคือ diffusion ที่จำกัดบริเวณ</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ผู้ใช้ระบายทับคนที่จะลบ:</strong> บริเวณนั้นถูกแทนด้วย noise 100% (ส่วนที่เหลือของภาพคงเดิม)<br>
+      <strong>ขั้น 2 — denoise เฉพาะที่:</strong> โมเดลลบ noise บริเวณนั้น โดย<strong>มองเห็นบริบทรอบๆ</strong> (พื้นหญ้า กำแพง แสง)<br>
+      <strong>ขั้น 3 — ผลลัพธ์:</strong> มันเติมสิ่งที่ "ควรจะอยู่ตรงนั้น" ตามบริบท — พื้นหญ้าต่อเนื่อง เงาสอดคล้อง<br>
+      ✅ <strong>คำตอบ:</strong> diffusion เฉพาะบริเวณ + attention เชื่อมบริเวณว่างกับรอบข้าง (เรื่อง Attention &amp; Transformer อีกแล้ว) —
+      ฟีเจอร์ดูเวทมนตร์ แต่คุณมีชิ้นส่วนความรู้ครบหมดแล้ว</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — ทำไม AI วาดนิ้วมือพัง (เคยพัง)</summary>
+      <p>ยุค 2022–23 ภาพคนจาก AI มักมี 6–7 นิ้ว — อธิบายด้วยธรรมชาติของ diffusion ว่าทำไม "นิ้ว" ยากกว่า "ผิว/ผม"</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ดูสิ่งที่ diffusion เก่ง:</strong> สถิติเฉพาะที่ — ลายผิว แสงเงา ข้อนิ้ว: มองแพตช์เล็กๆ ทีละจุด ทุกจุดสมจริงหมด<br>
+      <strong>ขั้น 2 — ดูสิ่งที่ "มือ" ต้องการ:</strong> กฎเชิงโครงสร้าง "มีนิ้ว 5 นิ้วพอดี" — ต้อง<strong>นับข้ามทั้งบริเวณ</strong> ไม่ใช่ดูทีละจุด<br>
+      <strong>ขั้น 3 — เห็นช่องว่าง:</strong> แต่ละแพตช์เหมือนนิ้วจริงเป๊ะ แค่จำนวนรวมเป็น 6 — สถิติเฉพาะที่ผ่านหมด กฎรวมพัง<br>
+      ✅ <strong>คำตอบ:</strong> เพราะความสมจริงเฉพาะจุด ≠ ความถูกต้องเชิงโครงสร้าง — รุ่นใหม่ดีขึ้นด้วยข้อมูลมือมหาศาล+มุมมองกว้างขึ้น
+      แต่หลักจำ: งาน "นับ/ตรรกะ" คือจุดอ่อนคลาสสิกของโมเดลตระกูลสถิติ (LLM นับตัวอักษรพลาดด้วยเหตุผลพี่น้องกัน — tokenization)</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — สไตล์ศิลปิน: คำถามที่ศาลทั่วโลกยังไม่จบ</summary>
+      <p>โมเดลเทรนจากภาพศิลปินจริงนับล้านโดยไม่ขออนุญาต — สั่ง "วาดสไตล์ศิลปิน X" ได้ภาพคล้ายมาก — ใช้กลไกที่เรียนมาอธิบาย: มัน "ก๊อป" หรือ "เรียนรู้"?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ฝั่ง "เรียนรู้":</strong> โมเดลไม่ได้เก็บไฟล์ภาพต้นฉบับ — มันเก็บ weight ที่จับ "สถิติของสไตล์" (โทนสี ฝีแปรง องค์ประกอบ)
+      เหมือนคนเรียนวาดจากการดูงานเยอะๆ<br>
+      <strong>ขั้น 2 — ฝั่ง "ก๊อป":</strong> ถ้าภาพไหนซ้ำในข้อมูลฝึกบ่อย โมเดล overfit ภาพนั้น (ส.6!) แล้วผลิตใกล้ต้นฉบับได้จริง — มีงานวิจัยสกัดภาพฝึกออกมาได้<br>
+      <strong>ขั้น 3 — ปัจจัยที่เทคนิคตอบไม่ได้:</strong> สเกล (ล้านภาพ/วัน) + ความเร็ว + ไม่ขออนุญาต ทำให้ผลกระทบต่อศิลปิน
+      คนละเรื่องกับนักเรียนศิลปะคนหนึ่งฝึกตาม<br>
+      ✅ <strong>คำตอบ:</strong> เชิงกลไกคือ "เรียนสถิติ" เป็นหลัก แต่ก๊อปได้ในเคส overfit — เทคนิคตอบได้ครึ่งเดียว
+      อีกครึ่งเป็นกฎหมาย/จริยธรรม ซึ่งสัปดาห์หน้าเจาะเต็มคาบ</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — จาก 1 ภาพ เป็นวิดีโอ 240 ภาพ: ความยากเพิ่มตรงไหน</summary>
+      <p>วิดีโอ 10 วินาที = 24 เฟรม/วิ × 10 = 240 ภาพ — ถ้าใช้ diffusion สร้างทีละเฟรมอิสระกัน จะได้วิดีโอแบบไหน? แล้วของจริง (Sora ฯลฯ) แก้ยังไง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ลองวิธีง่าย (สร้างทีละเฟรมอิสระ):</strong> แต่ละเฟรมเริ่มจาก noise คนละผืน → ลบ noise คนละเส้นทาง<br>
+      <strong>ขั้น 2 — ดูผล:</strong> แต่ละเฟรมสวยเดี่ยวๆ แต่<strong>ไม่ต่อเนื่อง</strong>: เสื้อเปลี่ยนสี หน้าเปลี่ยนคน ฉากกระพริบ — ดูไม่ได้<br>
+      <strong>ขั้น 3 — วิธีของจริง:</strong> denoise ทุกเฟรม<strong>พร้อมกัน</strong> + attention เชื่อมข้ามเฟรม บังคับ "เสื้อเฟรม 1 ต้องเหมือนเฟรม 240"<br>
+      ✅ <strong>คำตอบ:</strong> ความยากใหม่คือ "ความต่อเนื่องข้ามเวลา" ซึ่งแลกด้วยงานคำนวณคูณมหาศาล —
+      เหตุที่วิดีโอ AI มาช้ากว่าภาพนิ่ง 2 ปี และแพงกว่ามากจนวันนี้</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+
+  <!-- ── 2.1 ชิ้นเอก: reverse diffusion ทีละก้าว ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🎬 ถอย noise ทีละก้าว — reverse diffusion จริงๆ</h3>
+    <p style="margin-top:0">นี่คือลูปที่ AI สร้างภาพใช้จริง: <strong>มองภาพเลอะ → ทาย noise → ลบออกนิดเดียว → วนใหม่</strong> ·
+    ซ้าย = ภาพ ณ เวลา t (t=1000 คือ noise ล้วน, t=0 คือภาพเสร็จ) · ขวา = "คำทาย ε̂" ของโมเดล ·
+    กด ▶ ดูครบลูป หรือกด ◀ ▶ เดินเองทีละจังหวะ — ปุ่มลัด t ไว้กระโดดไปช่วงที่สนใจ</p>
+    <div class="rd-grid">
+      <div>
+        <div class="rd-cap">ภาพตอนนี้ x<sub>t</sub></div>
+        <canvas id="rdImg" width="240" height="240" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <div class="rd-t" id="rdTBadge">t = 1000</div>
+      </div>
+      <div>
+        <div class="rd-cap">สิ่งที่โมเดลทาย: noise ε̂</div>
+        <canvas id="rdEps" width="240" height="240" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <div class="rd-honest">🤝 ตรงไปตรงมา: เดโมนี้ใช้ "โมเดลเก่งสมมติ" ที่ทายแม่นเป๊ะ (เราแอบใช้ noise จริงที่เราเติมเอง)
+        — ของจริงคือ neural network ที่ต้องเทรนให้ทาย (ดูเดโม 🏗️ ข้างล่าง)</div>
+      </div>
+    </div>
+    <div class="rd-msg" id="rdMsg"></div>
+    <div class="rd-chip" id="rdChip"></div>
+    <div class="rd-row">
+      <span class="cap">กระโดดไป t:</span>
+      <span class="seg" id="rdPresets">
+        <button data-t="1000" class="on">1000</button><button data-t="800">800</button><button data-t="600">600</button>
+        <button data-t="400">400</button><button data-t="200">200</button><button data-t="50">50</button><button data-t="0">0</button>
+      </span>
+    </div>
+    <div class="rd-row">
+      <button id="rdPrev">◀ ถอยจังหวะ</button>
+      <button id="rdNext">▶ จังหวะถัดไป</button>
+      <button id="rdPlay">▶ เล่นอัตโนมัติ</button>
+      <button id="rdSpeed" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+      <button id="rdReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่ (t=1000)</button>
+      <button id="rdOnceBtn">❌ ลบทีเดียวหมด (จาก t=1000)</button>
+    </div>
+    <div class="rd-once" id="rdOnceBox">
+      <strong style="color:#e5484d">ทำไมต้องถอยทีละก้าว?</strong> — ถ้าลบ noise ทั้งหมดในครั้งเดียวจาก t=1000
+      โมเดลไม่มีเบาะแสอะไรเลย คำตอบที่ "ปลอดภัยสุด" ของมันคือค่าเฉลี่ยของทุกภาพที่เคยเห็น = ก้อนเบลอไร้รายละเอียด
+      · ส่วนการถอยทีละก้าว ทุกก้าวได้เบาะแสใหม่จากก้าวก่อน ภาพจึงคมขึ้นเรื่อยๆ (ตัวอย่าง 5 ข้างบนเป๊ะๆ)
+      <div class="rd-once-grid">
+        <div><canvas id="rdOnceCv" width="200" height="200" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+          <div class="cap2" style="color:#e5484d">❌ ลบทีเดียว: ได้ "ภาพเฉลี่ย" เบลอๆ</div></div>
+        <div><canvas id="rdStepCv" width="200" height="200" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+          <div class="cap2" style="color:#0e7f43">✅ ถอย 11 ก้าว: คมชัดทุกจุด</div></div>
+      </div>
+    </div>
+    <div class="try">🔎 ลอง: กด ▶ เล่นจนจบหนึ่งรอบ สังเกตว่า "โครงใหญ่" (ฟ้า/พื้น/ตัวบ้าน) โผล่ก่อน "รายละเอียด" (ประตู ต้นไม้) —
+    แล้วกด ❌ ลบทีเดียวหมด เทียบผลสองฝั่ง: นี่คือคำตอบว่าทำไม diffusion ต้องวนหลายสิบรอบ</div>
+  </div>
+
+  <!-- ── 2.2 สไลเดอร์เดิม: เลื่อนเล่นเอง ── -->
+  <div class="demo">
+    <h3>🧪 เลื่อนเล่นเอง — forward ↔ reverse</h3>
+    <p style="margin-top:0">คราวนี้มือเราคือคนคุม t เอง: เลื่อนสไลเดอร์จากขวา (noise 100%) มาซ้าย (noise 0%)
+    — สังเกตว่า "โครงร่างใหญ่" โผล่ก่อน "รายละเอียด" ทีหลัง ตรงกับที่ diffusion จริงสร้างภาพหยาบ→ละเอียด
+    (สูตรผสมเดียวกับเดโม 🎬 ข้างบน — เลื่อนไปขวา = forward เติม noise, เลื่อนกลับซ้าย = reverse)</p>
+    <canvas id="noise" width="300" height="300" style="border:1px solid var(--border); border-radius:8px; display:block; margin:auto"></canvas>
+    <div style="margin-top:10px; text-align:center">
+      ← ภาพชัด &nbsp; ระดับ noise: <input type="range" id="lvl" min="0" max="100" step="2" value="100" style="width:50%" oninput="denoise()">
+      &nbsp; noise ล้วน →
+    </div>
+    <div style="text-align:center; margin-top:8px">
+      <button onclick="animate()">▶ เล่นย้อนจาก noise → ภาพ (เหมือนตอนสร้างจริง)</button>
+    </div>
+  </div>
+
+  <!-- ── 2.3 ฝูงจุด: การกระจายตัวเดินทาง ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">☁️ มองเป็นฝูงจุด — การกระจายตัวเดินทาง</h3>
+    <p style="margin-top:0">เปลี่ยนมุมมอง: แทนที่จะดู "ภาพหนึ่งใบ" ลองดู <strong>จุดข้อมูล 300 จุดที่เรียงเป็นรูปหน้าแมว</strong> ·
+    forward = ทุกจุดเดินสุ่มทีละก้าวจนกลายเป็นก้อนหมอก Gaussian · reverse = เดินกลับจนรูปโผล่ —
+    diffusion บนภาพจริงคือสิ่งเดียวกันนี้ แค่ <strong>ภาพหนึ่งใบ = จุดหนึ่งจุดในปริภูมิล้านมิติ</strong> (พิกเซลละหนึ่งแกน)</p>
+    <canvas id="pcCv" width="460" height="340" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div class="pc-row">
+      <button id="pcFwd">▶ forward — ละลายเป็นหมอก</button>
+      <button id="pcRev">◀ reverse — เดินกลับเป็นรูป</button>
+      <input type="range" id="pcT" min="0" max="40" step="1" value="0">
+      <span class="v" id="pcTv">t = 0 / 40</span>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);margin:8px 0 0;line-height:1.7">🤝 ตรงไปตรงมา: ปุ่ม reverse ในเดโมนี้ "เดินกลับตามเส้นทางเดิมที่จดไว้" เพื่อให้เห็นภาพ —
+    ของจริงโมเดลไม่ได้จำเส้นทางของใคร มันเรียน <strong>สนามทิศทาง</strong> (score) ที่บอกว่า "จุดที่ตรงนี้ควรขยับไปทางไหน"
+    แล้วเส้นทางกลับทุกเส้นก็งอกจากสนามนั้นเอง</p>
+    <div class="try">🔎 ลอง: ลากสไลเดอร์ไป-กลับช้าๆ — ช่วง t เล็กรูปยังจำได้ ช่วงท้ายรูปหายเกลี้ยง ·
+    เทียบกับเดโมภาพข้างบน: ระดับ noise ของภาพ = ตำแหน่ง t ของฝูงจุดนี่เอง</div>
+  </div>
+
+  <!-- ── 2.4 U-Net ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🏗️ เดินผ่าน U-Net — สถาปนิกของ diffusion</h3>
+    <p style="margin-top:0">แล้ว "ตัวทาย noise" หน้าตาเป็นยังไงข้างใน? โมเดลมาตรฐานคือ <strong>U-Net</strong>:
+    ฝั่งซ้าย (encoder) ย่อภาพลงเรื่อยๆ เพื่อจับภาพรวม → ก้นหุบเขา (bottleneck) → ฝั่งขวา (decoder) ขยายกลับเพื่อวาดรายละเอียด
+    โดยมี <b style="color:#b45309">skip connections</b> ส่ง "ความคม" ข้ามหุบเขา · <strong>t และ prompt ถูกฉีดเข้าทุกชั้น</strong>
+    — กด ▶ แล้วตามลูกไฟไปทีละชั้น</p>
+    <div class="un-wrap">
+      <svg id="unSvg" viewBox="0 0 720 330">
+        <path id="unS0" class="skip" d="M61 88 C61 24, 555 24, 555 88" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 5" opacity=".8"/>
+        <path id="unS1" class="skip" d="M149 134 C149 66, 467 66, 467 134" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 5" opacity=".8"/>
+        <path id="unS2" class="skip" d="M229 172 C229 118, 379 118, 379 172" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-dasharray="6 5" opacity=".8"/>
+        <text x="308" y="16" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">skip connections — ส่ง "ความคม" ข้ามหุบเขา</text>
+        <g stroke="#8b93ad" stroke-width="2.5" stroke-linecap="round">
+          <line x1="94" y1="240" x2="120" y2="240"/><line x1="178" y1="240" x2="204" y2="240"/>
+          <line x1="254" y1="240" x2="280" y2="240"/><line x1="328" y1="240" x2="354" y2="240"/>
+          <line x1="404" y1="240" x2="438" y2="240"/><line x1="496" y1="240" x2="522" y2="240"/>
+          <line x1="588" y1="177" x2="612" y2="177"/>
+        </g>
+        <rect id="unB0" class="blk" x="30" y="92" width="62" height="170" rx="8" fill="#dbe7ff" stroke="#2456e6" stroke-width="2.5"/>
+        <rect id="unB1" class="blk" x="122" y="138" width="54" height="124" rx="8" fill="#dbe7ff" stroke="#2456e6" stroke-width="2.5"/>
+        <rect id="unB2" class="blk" x="206" y="176" width="46" height="86" rx="8" fill="#dbe7ff" stroke="#2456e6" stroke-width="2.5"/>
+        <rect id="unB3" class="blk" x="282" y="206" width="44" height="56" rx="8" fill="#ede9fe" stroke="#7c3aed" stroke-width="2.5"/>
+        <rect id="unB4" class="blk" x="356" y="176" width="46" height="86" rx="8" fill="#dcfce7" stroke="#12a150" stroke-width="2.5"/>
+        <rect id="unB5" class="blk" x="440" y="138" width="54" height="124" rx="8" fill="#dcfce7" stroke="#12a150" stroke-width="2.5"/>
+        <rect id="unB6" class="blk" x="524" y="92" width="62" height="170" rx="8" fill="#dcfce7" stroke="#12a150" stroke-width="2.5"/>
+        <rect id="unB7" class="blk" x="616" y="140" width="88" height="74" rx="10" fill="#fff7ed" stroke="#f59e0b" stroke-width="2.5"/>
+        <text x="61" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">48×48</text>
+        <text x="149" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">24×24</text>
+        <text x="229" y="224" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">12×12</text>
+        <text x="304" y="239" text-anchor="middle" font-size="12" font-weight="700" fill="#7c3aed">6×6</text>
+        <text x="379" y="224" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">12×12</text>
+        <text x="467" y="205" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">24×24</text>
+        <text x="555" y="182" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2533">48×48</text>
+        <text x="61" y="82" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2456e6">x_t เข้า</text>
+        <text x="660" y="172" text-anchor="middle" font-size="16" font-weight="800" fill="#b45309">ε̂</text>
+        <text x="660" y="192" text-anchor="middle" font-size="10.5" fill="#5b6475">คำทาย noise</text>
+        <g stroke="#8b5cf6" stroke-width="2" opacity=".6" stroke-dasharray="3 4">
+          <line x1="61" y1="296" x2="61" y2="270"/><line x1="149" y1="296" x2="149" y2="270"/>
+          <line x1="229" y1="296" x2="229" y2="270"/><line x1="304" y1="296" x2="304" y2="270"/>
+          <line x1="379" y1="296" x2="379" y2="270"/><line x1="467" y1="296" x2="467" y2="270"/>
+          <line x1="555" y1="296" x2="555" y2="270"/>
+        </g>
+        <g fill="#8b5cf6" opacity=".75">
+          <path d="M61 264l-4 8h8z"/><path d="M149 264l-4 8h8z"/><path d="M229 264l-4 8h8z"/>
+          <path d="M304 264l-4 8h8z"/><path d="M379 264l-4 8h8z"/><path d="M467 264l-4 8h8z"/><path d="M555 264l-4 8h8z"/>
+        </g>
+        <text x="308" y="317" text-anchor="middle" font-size="12.5" font-weight="700" fill="#7c3aed">t (ระดับ noise ตอนนี้) + prompt (เวกเตอร์ CLIP) ถูกฉีดเข้า "ทุกชั้น"</text>
+        <circle id="unPulse" r="10" fill="#fbbf24" opacity="0" stroke="#fff" stroke-width="2"/>
+      </svg>
+    </div>
+    <div class="un-msg" id="unMsg">กด ▶ เพื่อเดินผ่านทีละชั้น — หรือกด ✂️ ตัด skip connections ดูว่าทำไมเส้นส้มถึงสำคัญ</div>
+    <div class="rd-row">
+      <button id="unPlay">▶ เดินผ่านทีละชั้น</button>
+      <button id="unSkip" style="background:linear-gradient(135deg,#64748b,#94a3b8)">✂️ ตัด skip connections</button>
+    </div>
+    <div class="un-cmp">
+      <div class="c on" id="unCmpA"><canvas id="unOutA" width="180" height="180" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>มี skip → ε̂ คมชัด</div>
+      <div class="c" id="unCmpB"><canvas id="unOutB" width="180" height="180" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>ตัด skip → เบลอ (ภาพจำลอง)</div>
+    </div>
+    <div class="try">🔎 ลอง: เดินผ่านจนจบ 1 รอบ แล้วกด ✂️ ตัด skip แล้วเดินใหม่ — สังเกตคำบรรยายชั้น decoder ที่เปลี่ยนไป ·
+    โมเดลตัวนี้แหละคือ "เซียนทาย noise" ที่ทำงานอยู่ในเดโม 🎬 ข้อแรก — ถูกเรียกซ้ำทุกก้าว t</div>
+  </div>
+
+  <!-- ── 2.5 CFG ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🎚️ เชื่อ prompt แค่ไหน — Classifier-Free Guidance</h3>
+    <p style="margin-top:0">ตอนสร้างภาพ ระบบทาย noise สองครั้ง (ครั้งหนึ่งเห็น prompt ครั้งหนึ่งไม่เห็น) แล้วขยายส่วนต่างด้วยตัวคูณ s
+    — นี่คือปุ่ม <strong>cfg_scale</strong> ที่อยู่ใน UI ของ Stable Diffusion ทุกตัว · เลือก prompt แล้วลากสไลเดอร์
+    ดูว่าภาพ "ตัดสินใจ" แรงขึ้นยังไง</p>
+    <div class="cfg-row" style="margin-top:0">
+      <span style="font-weight:700">prompt:</span>
+      <span class="seg" id="cfgSeg">
+        <button data-p="house" class="on">🏠 "บ้าน"</button><button data-p="cat">🐱 "หน้าแมว"</button>
+      </span>
+    </div>
+    <div class="cfg-th">
+      <div class="cfg-thc"><canvas id="cfgA" width="112" height="112" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>เป้าหมาย "บ้าน"</div>
+      <div class="cfg-thc"><canvas id="cfgB" width="112" height="112" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>เป้าหมาย "หน้าแมว"</div>
+    </div>
+    <div class="cfg-out">
+      <canvas id="cfgOut" width="240" height="240" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+      <div class="cfg-read" id="cfgRead"></div>
+    </div>
+    <div class="cfg-row">
+      <span style="font-weight:700">guidance s</span>
+      <input type="range" id="cfgS" min="0" max="15" step="0.5" value="7">
+      <span class="v" id="cfgV">7.0</span>
+    </div>
+    <div class="cfg-eq" id="cfgEq"></div>
+    <p style="font-size:.82rem;color:var(--muted);margin:8px 0 0;line-height:1.7">🤝 ตรงไปตรงมา: สมการข้างบนคือ CFG จริงจาก deepdive (ส่วนที่ 1) —
+    เดโมนี้ใช้มันกับ "ภาพเป้าหมาย" ตรงๆ แทนที่จะเป็นคำทาย noise ทุกก้าว เพื่อให้เห็นผลทันตา ·
+    ที่ s สูงมาก ค่าสีถูกดันทะลุช่วง 0–255 แล้วโดนตัดทิ้ง (clip) — นั่นคือที่มาของภาพ "สีจัด แข็งทื่อ"
+    เวลาตั้ง cfg_scale สูงเกินในเครื่องมือจริง</p>
+    <div class="try">🔎 ลอง: ตั้ง s=0 (ก้อนเฉลี่ยบ้านปนแมว) → เลื่อนขึ้นช้าๆ หา "จุดที่ภาพตัดสินใจ" → ลากไป 15 ดูสีที่ถูกดันจนเพี้ยน ·
+    แล้วสลับ prompt เป็นหน้าแมวโดยไม่ขยับสไลเดอร์ — ตัวอย่าง 3 ข้างบนคือเรื่องเดียวกันนี้ในเครื่องมือจริง</div>
+  </div>
+
+  <!-- ── 2.6 latent race ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">⚡ ทำไม latent diffusion ถึงเร็ว — จับเวลากันจะๆ</h3>
+    <p style="margin-top:0">การลบ noise ต้องทำ "ทุกช่อง ทุกก้าว" — Stable Diffusion เลยบีบภาพลง <strong>latent space</strong> เล็กๆ ก่อน
+    (ด้วย autoencoder) แล้วค่อยทำ diffusion ในนั้น เสร็จแล้ว "decode" ขยายกลับเป็นภาพเต็ม ·
+    กด ▶ ให้สองฝั่งเริ่มกวาดลบ noise พร้อมกัน <strong>ด้วยความเร็วต่อช่องเท่ากันเป๊ะ</strong></p>
+    <div class="lr-grid">
+      <div class="lr-cell">
+        <h4>pixel space — 48×48 = <b>2,304 ช่อง</b></h4>
+        <canvas id="lrPx" width="240" height="240" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <div class="lr-stat" id="lrPxS">รอเริ่ม — เหลือ 2,304 / 2,304 ช่อง</div>
+      </div>
+      <div class="lr-cell">
+        <h4>latent space — 12×12 = <b>144 ช่อง</b></h4>
+        <canvas id="lrLt" width="240" height="240" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <div class="lr-stat" id="lrLtS">รอเริ่ม — เหลือ 144 / 144 ช่อง</div>
+      </div>
+    </div>
+    <div class="lr-tick" id="lrTick">⏱ จังหวะที่ 0</div>
+    <div class="rd-row" style="justify-content:center">
+      <button id="lrGo">▶ เริ่มแข่ง</button>
+      <button id="lrRst" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+    </div>
+    <p id="lrNote" style="text-align:center;font-weight:700;color:#0e7f43;min-height:1.6em;margin:8px 0 0"></p>
+    <div class="try">🔎 ลอง: สังเกตว่าฝั่ง latent ลบ noise จบแล้ว decode กลับเป็นภาพเต็มตั้งนานแล้ว ฝั่ง pixel ยังกวาดไม่ถึงครึ่ง —
+    งานน้อยกว่ากัน 16 เท่า (144 vs 2,304 ช่อง) นี่คือเคล็ดลับที่ทำให้ Stable Diffusion รันบนการ์ดจอบ้านได้
+    (ของจริงตาม deepdive: ลดงาน ~50 เท่า)</div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 ทดลองกับเครื่องมือจริง</h3>
+    <p style="margin-top:0">ใช้เครื่องมือสร้างภาพฟรีตัวใดก็ได้ (เช่น Bing Image Creator, Stable Diffusion บน Hugging Face)
+    ทดลองเชิงวิทยาศาสตร์:</p>
+    <ol>
+      <li>prompt เดิมเป๊ะ สร้าง 4 ครั้ง — ทำไมได้ภาพไม่ซ้ำ? (เริ่มจาก noise สุ่มคนละผืน!)</li>
+      <li>เพิ่มรายละเอียด prompt ทีละขั้น: "แมว" → "แมวส้มใส่หมวก" → "แมวส้มใส่หมวกสไตล์สีน้ำ"
+      — สังเกตการ "ดึงทิศ" ที่แรงขึ้น</li>
+      <li>ลองสั่งสิ่งที่มันมักพลาด: ข้อความบนป้าย, จำนวนนิ้วมือ — แล้วอธิบายว่าทำไมงานแบบนี้ยากสำหรับ diffusion</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 3 — โค้ดจริง: diffusion ของเล่นใน Colab <span class="badge">ลงมือ</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">diffusion ทั้งระบบเขียนได้ใน ~45 บรรทัด — สคริปต์นี้ทำสองอย่างที่ตรงกับเดโม ☁️ ข้างบนเป๊ะ:
+    <strong>(ก)</strong> forward process ละลายฝูงจุดรูป "พระจันทร์เสี้ยว 2 อัน" เป็นหมอก
+    <strong>(ข)</strong> reverse เดินกลับจาก noise จนรูปโผล่ ·
+    เปิด <a href="https://colab.research.google.com" target="_blank">Google Colab</a> → New Notebook → วาง → Run — ไม่ต้องติดตั้งอะไรเพิ่ม</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="codeD1">📋 คัดลอก</button>
+      <pre><code id="codeD1">import numpy as np
+import matplotlib.pyplot as plt
+
+rng = np.random.default_rng(42)
+
+# ── (ก) ฝูงจุดรูป "พระจันทร์เสี้ยว 2 อัน" — เหมือนเดโม ☁️ ในบทเรียน ──
+n = 600
+th = rng.uniform(0, np.pi, n)
+x0 = np.c_[np.cos(th), np.sin(th)]                    # เสี้ยวบน
+x0[n//2:] = np.c_[1 - np.cos(th[n//2:]), 0.5 - np.sin(th[n//2:])]  # เสี้ยวล่าง
+x0 += rng.normal(0, 0.06, x0.shape)
+
+# forward process: x_t = √ᾱ·x₀ + √(1−ᾱ)·ε   (สมการเดียวกับ deepdive)
+T = 200
+abar = np.cumprod(1 - np.linspace(1e-4, 0.02, T))     # noise schedule
+
+def q_sample(x0, t):
+    eps = rng.normal(size=x0.shape)
+    return np.sqrt(abar[t]) * x0 + np.sqrt(1 - abar[t]) * eps
+
+fig, ax = plt.subplots(1, 4, figsize=(13, 3.2))
+for a, t in zip(ax, [0, 60, 130, 199]):
+    xt = x0 if t == 0 else q_sample(x0, t)
+    a.scatter(*xt.T, s=4); a.set_title(f"forward: t = {t}")
+    a.set_xlim(-3, 4); a.set_ylim(-3, 3.5)
+plt.show()                      # รูปค่อยๆ "ละลาย" เป็นก้อน Gaussian
+
+# ── (ข) reverse: เดินกลับจาก noise → รูป ──
+# ยอมรับตรงๆ: ของจริงใช้ neural network ที่เทรนให้ทาย noise (แบบ Neural Network + Backpropagation)
+# ที่นี่เราแทนโมเดลด้วยตัวทายแบบซื่อๆ: "x₀ ที่น่าจะเป็น = จุดข้อมูลจริงที่ใกล้สุด"
+def denoise_step(x, t):
+    d = ((x[:, None, :] - x0[None, :, :])**2).sum(-1)   # ระยะถึงจุดจริงทุกจุด
+    x0_hat = x0[d.argmin(1)]                            # คำทาย x₀
+    if t == 0:
+        return x0_hat
+    eps_hat = (x - np.sqrt(abar[t]) * x0_hat) / np.sqrt(1 - abar[t])  # ⇒ คำทาย noise
+    # ถอยหนึ่งขั้น (สไตล์ DDIM): เล็งไปทาง x₀ แต่คง noise ระดับ t−1 ไว้
+    return np.sqrt(abar[t-1]) * x0_hat + np.sqrt(1 - abar[t-1]) * eps_hat
+
+x = rng.normal(size=(n, 2))                             # เริ่มจาก noise ล้วน (t = T)
+snap = {}
+for t in range(T - 1, -1, -1):
+    x = denoise_step(x, t)
+    if t in (150, 80, 20, 0): snap[t] = x.copy()
+
+fig, ax = plt.subplots(1, 4, figsize=(13, 3.2))
+for a, t in zip(ax, [150, 80, 20, 0]):
+    a.scatter(*snap[t].T, s=4, color="tomato"); a.set_title(f"reverse: ถอยถึง t = {t}")
+    a.set_xlim(-3, 4); a.set_ylim(-3, 3.5)
+plt.show()                      # ฝูงจุดเดินกลับเป็นพระจันทร์เสี้ยว!</code></pre>
+    </div>
+    <p>อยากเรียก Stable Diffusion ตัวจริง? สิบบรรทัดนี้พอ — ใช้ไลบรารี <code>diffusers</code> บน Colab:</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="codeD2">📋 คัดลอก</button>
+      <pre><code id="codeD2"># ⚠️ ต้องเปิด GPU ก่อน: เมนู Runtime → Change runtime type → เลือก T4 GPU
+!pip -q install diffusers transformers accelerate
+import torch
+from diffusers import StableDiffusionPipeline
+
+pipe = StableDiffusionPipeline.from_pretrained(
+    "runwayml/stable-diffusion-v1-5", torch_dtype=torch.float16).to("cuda")
+
+img = pipe("a watercolor painting of an orange cat wearing a hat",
+           num_inference_steps=25,     # จำนวนก้าวถอย noise (เดโม 🎬 ของเราใช้ 11 ก้าว)
+           guidance_scale=7.5,         # ปุ่ม cfg_scale จากเดโม 🎚️ ตรงตัว!
+           ).images[0]
+img                                    # แสดงภาพในเซลล์ Colab</code></pre>
+    </div>
+    <p style="margin-bottom:0"><strong>สิ่งที่ต้องสังเกต:</strong></p>
+    <ul style="margin:6px 0 0">
+      <li>ภาพแถวบน: ฝูงจุด "ละลาย" เป็นก้อน Gaussian ตามสมการ x<sub>t</sub> = √ᾱ<sub>t</sub>·x₀ + √(1−ᾱ<sub>t</sub>)·ε — สูตรเดียวกับ deepdive และสไลเดอร์ในเดโมเป๊ะ</li>
+      <li>ภาพแถวล่าง: จุดสีแดงเดินจาก noise กลับเป็นรูปสำเร็จ ทั้งที่ "ตัวทาย" ของเราคือ nearest-neighbor โง่ๆ —
+      พลังอยู่ที่<strong>การถอยทีละขั้น</strong> ไม่ใช่ความฉลาดของตัวทาย (ของจริงแค่แทนตัวทายด้วย U-Net ที่เทรนแล้ว)</li>
+      <li>ลองเปลี่ยน <code>default_rng(42)</code> เป็นเลขอื่น — ปลายทางยังเป็นพระจันทร์เสี้ยวเหมือนเดิม แต่จุดตกคนละตำแหน่ง:
+      seed คุมความสุ่มทั้งหมด (ตัวอย่าง 6 ข้างบนตรงตัว)</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — เทียบสองตระกูล</div>
+    <p>เติมตารางเปรียบเทียบ LLM กับ Diffusion: สิ่งที่ทำนาย / ข้อมูลฝึก / loss วัดอะไร /
+    สร้างผลงานทีละอะไร / ทำไมผลแต่ละครั้งไม่ซ้ำกัน</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      <table class="simple">
+        <tr><th></th><th>LLM</th><th>Diffusion</th></tr>
+        <tr><td>ทำนาย</td><td>token ถัดไป</td><td>noise ที่ต้องลบ</td></tr>
+        <tr><td>ข้อมูลฝึก</td><td>ข้อความมหาศาล (เฉลยคือคำถัดไปจริง)</td><td>ภาพจริง + noise ที่เราเติมเอง (เฉลยคือ noise นั้น)</td></tr>
+        <tr><td>loss</td><td>ทำนายคำผิดแค่ไหน (cross-entropy)</td><td>ทาย noise ผิดแค่ไหน (MSE — เรื่อง Polynomial Regression!)</td></tr>
+        <tr><td>สร้างทีละ</td><td>token</td><td>ขั้นการลบ noise</td></tr>
+        <tr><td>ไม่ซ้ำเพราะ</td><td>สุ่มจาก softmax (temperature)</td><td>เริ่มจาก noise สุ่มคนละผืน</td></tr>
+      </table>
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — ทำไมต้อง "พลิกโจทย์"</div>
+    <p>ทำไมการเทรนให้ "ลบ noise ทีละนิด" ถึงง่ายกว่าเทรนให้ "วาดภาพทั้งใบในครั้งเดียว"?
+    ตอบโดยใช้แนวคิด supervised learning (มี input–เฉลยชัดเจนไหม) และแนวคิดการแบ่งปัญหาใหญ่เป็นขั้นเล็ก</p>
+    <details class="answer">
+      <summary>แนวคำตอบ</summary>
+      (1) การเติม noise เองทำให้เรามี "คู่ input-เฉลย" ไม่จำกัดฟรีๆ จากภาพจริงทุกใบ —
+      กลายเป็น supervised learning ธรรมดาที่เรารู้วิธีเทรนดี
+      (2) ลบ noise นิดเดียวคือ "ก้าวเล็กที่เรียนได้" เหมือน gradient descent ทีละก้าว —
+      ส่วนการวาดทั้งใบในครั้งเดียวไม่มีสัญญาณบอกว่าผิดตรงไหนควรแก้ทางไหน
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — รายงานการทดลองสร้างภาพ</div>
+    <p>ทำการทดลอง 3 ข้อจาก demo 🧪 ทดลองกับเครื่องมือจริง (ท้ายส่วนที่ 2) ส่งภาพประกอบ + รายงาน 1 หน้า
+    โดยทุกข้อสังเกตต้องอธิบายด้วยกลไก (noise เริ่มต้น, การดึงทิศของ prompt, ข้อจำกัดของการมองภาพแบบหยาบ→ละเอียด)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — เตรียมหัวข้อโปรเจกต์</div>
+    <p>ส่งหัวข้อโปรเจกต์ปลายภาค (ดูโจทย์ในหน้าเรื่อง โปรเจกต์ปลายภาค) เป็นย่อหน้าเดียว:
+    จะสร้าง/วิเคราะห์อะไร ใช้แนวคิดจากสัปดาห์ไหนบ้าง — อาจารย์จะ feedback ก่อนเริ่มทำจริง</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้ยืนยันอะไร:</strong><br>
+    ความรู้แกนของเทอม (โมเดล-loss-เทรน-สถาปัตยกรรม) อธิบาย AI ได้<em>ทุกตระกูล</em>
+    ไม่ใช่แค่ภาษา — เปลี่ยนแค่ "ทำนายอะไร" ก็ได้ AI คนละชนิด
+    นี่คือความหมายจริงของ "รู้พื้นฐานและที่มา": เจอ AI ตัวใหม่ในอนาคตก็แกะเองได้<br>
+    <strong>สัปดาห์หน้า:</strong> พลังขนาดนี้มาพร้อมคำถามใหญ่ — ใช้อย่างไรให้ถูก ใครรับผิดชอบเมื่อพัง
+    และอาชีพเราจะเปลี่ยนไปอย่างไร
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">Computerphile</span> <a href="https://www.youtube.com/watch?v=1CIpzeNxIhU" target="_blank">How AI Image Generators Work (Stable Diffusion)</a> — อธิบาย diffusion ด้วยภาพวาดบนกระดาษ เข้าใจง่ายที่สุด</li>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=iv-5mZ_9CPY" target="_blank">Guest video: How CLIP and diffusion guidance work</a> — เห็น "แผนที่ความหมายร่วม" ข้อความ-ภาพแบบแอนิเมชัน</li>
+      <li><span class="src">Hugging Face</span> <a href="https://huggingface.co/spaces" target="_blank">Spaces (ค้น "stable diffusion")</a> — สนามทดลองฟรีสำหรับการบ้านข้อ 3 ไม่ต้องติดตั้งอะไร</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week16.html">← Prompting, RAG, Agents</a>
+    <a href="week18.html">จริยธรรมและข้อจำกัด →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" — diffusion สองเฟส =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">🐱 ภาพจริง</span><span class="arrow">+</span>' +
+    '<span class="chip" style="animation-delay:.4s">📺 noise 10%</span><span class="arrow">=</span>' +
+    '<span class="chip ok" style="animation-delay:.8s">โจทย์พร้อมเฉลย 1 ข้อ</span></div>' +
+    '<div class="note">เฉลย = noise ที่เราเติมเอง (รู้เป๊ะเพราะเราเติม!) — โจทย์ฟรีไม่จำกัดข้อ</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">ทำกับทุกระดับ noise × ภาพหลายร้อยล้านใบ:</div>' +
+    '<div class="bar-row"><span class="lbl">ทาย noise</span><span class="bar" data-w="70%"></span></div>' +
+    '<div class="bar-row"><span class="lbl">เทียบเฉลย</span><span class="bar" data-w="70%" style="background:linear-gradient(90deg,#b97a0a,#e6b04e)"></span>MSE (ส.2!)</div>' +
+    '<div class="bar-row"><span class="lbl">backprop</span><span class="bar" data-w="70%" style="background:linear-gradient(90deg,#1d9b6c,#3ecf96)"></span>(ส.5!)</div>' +
+    '<div class="note">จบเฟสเรียน: ได้เซียนที่เก่งงานเดียว — "ชี้ noise ในภาพเปื้อน"</div>',
+  s => s.innerHTML = '<div class="big fade" style="font-size:2rem;letter-spacing:2px">▓▒░▒▓░▒▓▒░▓▒</div>' +
+    '<div class="note">เฟสวาด: เริ่มจาก noise สุ่มล้วน 100% — ยังไม่มีภาพอะไรอยู่ในนั้นเลย</div>',
+  s => {
+    s.innerHTML = '<div class="big" id="s13a" style="font-size:1.7rem;letter-spacing:4px"></div>' +
+      '<div class="netrow">noise <input type="range" id="s13n" min="0" max="100" step="10" value="100">' +
+      '<span class="wchip" id="s13v"></span></div>' +
+      '<div class="note">👆 ลากจากขวา (noise 100%) มาซ้าย — ภาพโผล่จากหมอก: โครงใหญ่ก่อน รายละเอียดท้ายสุด (ของจริงใน demo ข้างล่าง)</div>';
+    const art = ['🏠', '🌳', '☀️', '🐱'];
+    const nz = ['▓', '▒', '░'];
+    const upd = () => {
+      const v = +s.querySelector('#s13n').value;
+      const reveal = Math.round((100 - v) / 25);
+      s.querySelector('#s13v').textContent = v + '%';
+      s.querySelector('#s13a').textContent = art.map((c, i) =>
+        i < reveal ? c : nz[Math.floor(Math.random() * 3)]).join(' ');
+    };
+    s.querySelector('#s13n').oninput = upd;
+    upd();
+  },
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">seed A → 🏠</span>' +
+    '<span class="chip" style="animation-delay:.5s">seed B → 🏡</span>' +
+    '<span class="chip" style="animation-delay:.9s">seed C → 🛖</span></div>' +
+    '<div class="note">เริ่มจาก noise คนละผืน → ปลายทางคนละภาพ — ความสุ่มทั้งหมดอยู่ที่จุดเริ่มจุดเดียว</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip win" style="animation-delay:.1s">"แมวส้มใส่หมวก"</span>' +
+    '<span class="arrow">⟶ ดึงทิศทุกรอบ ⟶</span><span class="chip ok" style="animation-delay:.6s">🐱🎩</span></div>' +
+    '<div class="note">เวกเตอร์ความหมายของ prompt (CLIP) เอียงการลบ noise ทีละนิดจนภาพตรงคำสั่ง — attention อีกแล้ว</div>',
+];
+
+// วาดภาพเป้าหมาย (บ้าน + พระอาทิตย์) บน canvas ซ่อน แล้วผสม noise ตามระดับ
+const cv = document.getElementById('noise'), ctx = cv.getContext('2d');
+const hidden = document.createElement('canvas');
+hidden.width = hidden.height = 300;
+const hctx = hidden.getContext('2d');
+
+(function drawScene() {
+  hctx.fillStyle = '#bfe3ff'; hctx.fillRect(0, 0, 300, 300);          // ฟ้า
+  hctx.fillStyle = '#ffd34d';                                          // พระอาทิตย์
+  hctx.beginPath(); hctx.arc(235, 60, 32, 0, 7); hctx.fill();
+  hctx.fillStyle = '#7ccf7c'; hctx.fillRect(0, 210, 300, 90);          // พื้นหญ้า
+  hctx.fillStyle = '#e8b06a'; hctx.fillRect(80, 140, 110, 80);         // ตัวบ้าน
+  hctx.fillStyle = '#b3543e';                                          // หลังคา
+  hctx.beginPath(); hctx.moveTo(65, 140); hctx.lineTo(135, 90); hctx.lineTo(205, 140); hctx.closePath(); hctx.fill();
+  hctx.fillStyle = '#7a4a2b'; hctx.fillRect(120, 175, 30, 45);         // ประตู
+})();
+
+const clean = hctx.getImageData(0, 0, 300, 300);
+// noise ผืนเดิมตลอด เพื่อให้เลื่อนสไลเดอร์แล้วภาพ "โผล่" ต่อเนื่อง
+const noisePix = new Float32Array(300 * 300 * 3);
+for (let i = 0; i < noisePix.length; i++) noisePix[i] = Math.random() * 255;
+
+function denoise() {
+  const a = +document.getElementById('lvl').value / 100;
+  const out = ctx.createImageData(300, 300);
+  for (let p = 0, q = 0; p < clean.data.length; p += 4, q += 3) {
+    out.data[p]     = clean.data[p]     * (1 - a) + noisePix[q]     * a;
+    out.data[p + 1] = clean.data[p + 1] * (1 - a) + noisePix[q + 1] * a;
+    out.data[p + 2] = clean.data[p + 2] * (1 - a) + noisePix[q + 2] * a;
+    out.data[p + 3] = 255;
+  }
+  ctx.putImageData(out, 0, 0);
+}
+
+let anim = null;
+function animate() {
+  clearInterval(anim);
+  const s = document.getElementById('lvl');
+  s.value = 100;
+  anim = setInterval(() => {
+    s.value = +s.value - 2;
+    denoise();
+    if (+s.value <= 0) clearInterval(anim);
+  }, 60);
+}
+denoise();
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   เครื่องมือใหม่pixel diffusion, ฝูงจุด, U-Net, CFG, latent race
+   (ทั้งหมดอยู่ใน IIFE เดียว — ไม่ชนกับ denoise()/animate()/stepScenes เดิม
+    ลอจิกทุกตัวเดินด้วย setInterval ทีละขั้น discrete — ถูกต้องไม่ขึ้นกับอัตรา timer)
+   ══════════════════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+/* ---- PRNG มี seed → ทุกอย่าง deterministic (ซื่อสัตย์ ตรวจซ้ำได้) ---- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const c255=v=>v<0?0:v>255?255:Math.round(v);
+
+/* ---- ฉาก pixel-art 48×48 วาดด้วยโค้ดล้วน ---- */
+const PS=48;
+function sceneBuf(draw){
+  const c=document.createElement('canvas');c.width=c.height=PS;
+  const g=c.getContext('2d');draw(g);
+  const d=g.getImageData(0,0,PS,PS).data,b=new Float32Array(PS*PS*3);
+  for(let p=0,q=0;q<b.length;p+=4,q+=3){b[q]=d[p];b[q+1]=d[p+1];b[q+2]=d[p+2];}
+  return b;
+}
+function drawHouse(g){
+  g.fillStyle='#cfe8ff';g.fillRect(0,0,48,48);                                  /* ฟ้า */
+  g.fillStyle='#ffd34d';g.beginPath();g.arc(39,9,5,0,7);g.fill();               /* พระอาทิตย์ */
+  g.fillStyle='#8fd08f';g.fillRect(0,33,48,15);                                 /* พื้นหญ้า */
+  g.fillStyle='#e8b06a';g.fillRect(8,21,17,13);                                 /* ตัวบ้าน */
+  g.fillStyle='#b3543e';g.beginPath();g.moveTo(5,21);g.lineTo(16.5,11);g.lineTo(28,21);g.closePath();g.fill(); /* หลังคา */
+  g.fillStyle='#bfe9f5';g.fillRect(10,24,4,4);                                  /* หน้าต่าง */
+  g.fillStyle='#7a4a2b';g.fillRect(15,27,5,7);                                  /* ประตู */
+  g.fillStyle='#8a5a33';g.fillRect(34,25,3,9);                                  /* ลำต้น */
+  g.fillStyle='#3f9d4f';g.beginPath();g.arc(35.5,19,7,0,7);g.fill();            /* พุ่มไม้ */
+}
+function drawCat(g){
+  g.fillStyle='#fdf2dc';g.fillRect(0,0,48,48);
+  g.fillStyle='#e8a25e';
+  g.beginPath();g.moveTo(10,18);g.lineTo(13,4);g.lineTo(21,13);g.closePath();g.fill();   /* หูซ้าย */
+  g.beginPath();g.moveTo(38,18);g.lineTo(35,4);g.lineTo(27,13);g.closePath();g.fill();   /* หูขวา */
+  g.beginPath();g.arc(24,27,15,0,7);g.fill();                                            /* หัว */
+  g.fillStyle='#f7c893';g.beginPath();g.arc(24,32,8,0,7);g.fill();                       /* ปาก-แก้ม */
+  g.fillStyle='#26314b';g.fillRect(17,22,3,4);g.fillRect(28,22,3,4);                     /* ตา */
+  g.fillStyle='#d9534f';g.beginPath();g.moveTo(21.5,29);g.lineTo(26.5,29);g.lineTo(24,32);g.closePath();g.fill(); /* จมูก */
+  g.strokeStyle='#8a5a33';g.lineWidth=1;g.beginPath();
+  g.moveTo(4,27);g.lineTo(14,28);g.moveTo(4,32);g.lineTo(14,31);
+  g.moveTo(44,27);g.lineTo(34,28);g.moveTo(44,32);g.lineTo(34,31);g.stroke();            /* หนวด */
+}
+const HOUSE=sceneBuf(drawHouse), CATF=sceneBuf(drawCat);
+
+/* ---- noise ผืนเดียวคงที่ — ε̂ ของ "โมเดลเก่งสมมติ" คือตัวนี้เอง ---- */
+const rnd=mulberry32(150704);
+const NOI=new Float32Array(PS*PS*3);for(let i=0;i<NOI.length;i++)NOI[i]=rnd()*255;
+
+function mixBuf(cl,a){const o=new Float32Array(cl.length);for(let i=0;i<cl.length;i++)o[i]=cl[i]*(1-a)+NOI[i]*a;return o;}
+function blurBuf(src,r,passes){
+  let a=Float32Array.from(src),b=new Float32Array(a.length);
+  for(let pp=0;pp<passes;pp++){
+    for(let y=0;y<PS;y++)for(let x=0;x<PS;x++){let s0=0,s1=0,s2=0,n=0;
+      for(let k=-r;k<=r;k++){const xx=x+k;if(xx<0||xx>=PS)continue;const q=(y*PS+xx)*3;s0+=a[q];s1+=a[q+1];s2+=a[q+2];n++;}
+      const q=(y*PS+x)*3;b[q]=s0/n;b[q+1]=s1/n;b[q+2]=s2/n;}
+    for(let y=0;y<PS;y++)for(let x=0;x<PS;x++){let s0=0,s1=0,s2=0,n=0;
+      for(let k=-r;k<=r;k++){const yy=y+k;if(yy<0||yy>=PS)continue;const q=(yy*PS+x)*3;s0+=b[q];s1+=b[q+1];s2+=b[q+2];n++;}
+      const q=(y*PS+x)*3;a[q]=s0/n;a[q+1]=s1/n;a[q+2]=s2/n;}
+  }
+  return a;
+}
+/* วาด buffer n×n ขึ้น canvas จอ ขยายแบบ pixel คม */
+const OFFC={};
+function show(buf,cv,n){
+  n=n||PS;
+  if(!OFFC[n]){const c=document.createElement('canvas');c.width=c.height=n;OFFC[n]=c;}
+  const o=OFFC[n],g=o.getContext('2d'),im=g.createImageData(n,n);
+  for(let p=0,q=0;q<buf.length;p+=4,q+=3){
+    im.data[p]=c255(buf[q]);im.data[p+1]=c255(buf[q+1]);im.data[p+2]=c255(buf[q+2]);im.data[p+3]=255;}
+  g.putImageData(im,0,0);
+  const d=cv.getContext('2d');d.imageSmoothingEnabled=false;
+  d.clearRect(0,0,cv.width,cv.height);d.drawImage(o,0,0,cv.width,cv.height);
+}
+
+/* ═══════════ 1) 🎬 ถอย noise ทีละก้าว ═══════════ */
+(function(){
+  const img=$('rdImg');if(!img)return;
+  const eps=$('rdEps');
+  const WP=[1000,900,800,700,600,500,400,300,200,100,50,0];
+  const LAST=(WP.length-1)*3;                 /* micro-step สุดท้าย = สถานะ "เสร็จ" */
+  let ms=0,timer=null,speed=1;
+  function epsBuf(a){const o=new Float32Array(NOI.length);for(let i=0;i<o.length;i++)o[i]=128+(NOI[i]-128)*a;return o;}
+  const pct=a=>Math.round(a*100);
+  function render(){
+    const done=ms>=LAST;
+    const wi=done?WP.length-2:Math.floor(ms/3), ph=done?3:ms%3;
+    const t=WP[wi], tN=WP[wi+1], a=t/1000, aN=tN/1000;
+    const tShow=done?0:(ph===2?tN:t);
+    show(mixBuf(HOUSE,tShow/1000),img);
+    if(done){show(epsBuf(0),eps);}
+    else if(ph===0){
+      show(epsBuf(a*0.15),eps);
+      const g=eps.getContext('2d');g.font='700 60px Poppins,Kanit,sans-serif';
+      g.fillStyle='rgba(80,90,115,.6)';g.textAlign='center';g.fillText('?',eps.width/2,eps.height/2+22);
+    }else show(epsBuf(a),eps);
+    $('rdTBadge').textContent='t = '+tShow+' (noise '+pct(tShow/1000)+'%)';
+    const M=$('rdMsg'),C=$('rdChip');
+    if(done){
+      M.innerHTML='<b>🎉 ถึง t = 0</b> — ภาพเสร็จสมบูรณ์! ทั้งหมดคือ 3 จังหวะเดิมทำซ้ำ '+(WP.length-1)+' รอบ: มอง → ทาย → ลบนิดเดียว · ของจริง (Stable Diffusion ฯลฯ) ใช้ 20–50 ก้าวกับภาพ 512×512 — หลักการเดียวกันเป๊ะ';
+      C.innerHTML='x<sub>0</sub> สำเร็จ — noise เหลือ 0% · กด ↺ ดูใหม่ หรือกด ❌ เทียบการลบทีเดียว';
+    }else if(ph===0){
+      M.innerHTML='<b>1) มองภาพ</b> — โมเดลรับภาพเลอะที่ <b>t = '+t+'</b> (noise '+pct(a)+'%) พร้อมเลข t เป็นเบาะแสว่า "ตอนนี้เลอะหนักแค่ไหน" — ยังไม่รู้ว่า noise อยู่ตรงไหน (ฝั่งขวาจึงเป็น ?)';
+      C.innerHTML='กำลังจะทำ: x<sub>'+tN+'</sub> = x<sub>'+t+'</sub> − ε̂ × step';
+    }else if(ph===1){
+      M.innerHTML='<b>2) ทาย noise</b> — โมเดลตอบ: "noise ที่ปนอยู่หน้าตาแบบนี้" (ε̂ ฝั่งขวา) · สังเกต: t ยิ่งต่ำ ε̂ ยิ่งจาง เพราะ noise เหลือน้อยลง · ของจริงตัวทายคือ U-Net (เดโม 🏗️ ข้างล่าง) ที่เทรนด้วย MSE';
+      C.innerHTML='ε̂ พร้อมแล้ว → เตรียมลบ: x<sub>'+tN+'</sub> = x<sub>'+t+'</sub> − <b>ε̂</b> × step';
+    }else{
+      M.innerHTML='<b>3) ลบออกนิดเดียว</b> — หัก ε̂ ออกแค่ <b>'+pct(a-aN)+'%</b> (ไม่ใช่ทั้งหมด!) → ได้ภาพที่ <b>t = '+tN+'</b> สะอาดขึ้นหนึ่งขั้น แล้ววนกลับจังหวะ 1 กับภาพใหม่ที่มีเบาะแสมากขึ้น';
+      C.innerHTML='x<sub>'+tN+'</sub> = x<sub>'+t+'</sub> − ε̂ × step &nbsp;·&nbsp; step นี้ลบ noise ออก <b>'+pct(a-aN)+'%</b> → เหลือ '+pct(aN)+'%';
+    }
+    [...$('rdPresets').children].forEach(b=>b.classList.toggle('on',+b.dataset.t===tShow));
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;$('rdPlay').textContent='▶ เล่นอัตโนมัติ';}}
+  function startTimer(){timer=setInterval(()=>{if(ms>=LAST){stop();return;}ms++;render();},1500/speed);}
+  $('rdNext').addEventListener('click',()=>{stop();if(ms<LAST){ms++;render();}});
+  $('rdPrev').addEventListener('click',()=>{stop();if(ms>0){ms--;render();}});
+  $('rdReset').addEventListener('click',()=>{stop();ms=0;render();});
+  $('rdPlay').addEventListener('click',()=>{
+    if(timer){stop();return;}
+    if(ms>=LAST)ms=0;
+    $('rdPlay').textContent='⏸ หยุด';render();startTimer();
+  });
+  $('rdSpeed').addEventListener('click',()=>{
+    speed=speed===1?2:1;
+    $('rdSpeed').textContent=speed===1?'🐢 ความเร็ว ×1':'🐇 ความเร็ว ×2';
+    if(timer){clearInterval(timer);startTimer();}
+  });
+  $('rdPresets').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    stop();
+    const t=+b.dataset.t;
+    ms=t===0?LAST:WP.indexOf(t)*3;
+    render();
+  });
+  $('rdOnceBtn').addEventListener('click',()=>{
+    $('rdOnceBox').classList.add('show');
+    /* จำลองคำตอบ "ปลอดภัยสุด" ของโมเดลที่ไร้เบาะแส = ภาพเฉลี่ยเบลอ + เศษ noise */
+    const bl=blurBuf(HOUSE,4,3),one=new Float32Array(bl.length);
+    for(let i=0;i<one.length;i++)one[i]=bl[i]*0.88+NOI[i]*0.12;
+    show(one,$('rdOnceCv'));show(HOUSE,$('rdStepCv'));
+  });
+  render();
+})();
+
+/* ═══════════ 2) ☁️ ฝูงจุด — การกระจายตัวเดินทาง ═══════════ */
+(function(){
+  const cv=$('pcCv');if(!cv)return;
+  const g=cv.getContext('2d');
+  const CW=460,CH=340,S=40;
+  const r2=mulberry32(9091);
+  function bm(){let u=0,v=0;while(u===0)u=r2();while(v===0)v=r2();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function triPt(ax,ay,bx,by,cx,cy){let u=r2(),v=r2();if(u+v>1){u=1-u;v=1-v;}
+    return[ax+(bx-ax)*u+(cx-ax)*v,ay+(by-ay)*u+(cy-ay)*v];}
+  /* รูปหน้าแมว 300 จุด: หัว 150 + หู 70 + ตา 50 + ปาก 30 (สุ่มถ่วงรูปทรง, seed คงที่) */
+  const pts=[];
+  for(let i=0;i<150;i++){const an=r2()*Math.PI*2,rr=62+(r2()-0.5)*10;
+    pts.push([230+Math.cos(an)*rr,175+Math.sin(an)*rr*0.92]);}
+  for(let i=0;i<35;i++)pts.push(triPt(176,128,152,52,220,108));
+  for(let i=0;i<35;i++)pts.push(triPt(284,128,308,52,240,108));
+  for(let i=0;i<25;i++){const an=r2()*6.283,rr=Math.sqrt(r2())*9;pts.push([202+Math.cos(an)*rr,160+Math.sin(an)*rr]);}
+  for(let i=0;i<25;i++){const an=r2()*6.283,rr=Math.sqrt(r2())*9;pts.push([258+Math.cos(an)*rr,160+Math.sin(an)*rr]);}
+  for(let i=0;i<30;i++){const an=Math.PI*(0.25+0.5*r2());pts.push([230+Math.cos(an)*26,190+Math.sin(an)*18]);}
+  const N=pts.length;
+  /* ปลายทาง Gaussian + random walk ต่อจุด (สร้างล่วงหน้า → เล่นซ้ำ/ถอยกลับได้เป๊ะ) */
+  const gs=[],wk=[];
+  for(let i=0;i<N;i++){
+    gs.push([230+bm()*55,170+bm()*46]);
+    const w=[[0,0]];let ax=0,ay=0;
+    for(let s=1;s<=S;s++){ax+=(r2()-0.5)*9;ay+=(r2()-0.5)*9;w.push([ax,ay]);}
+    wk.push(w);
+  }
+  function pos(i,s){
+    const f=s/S,e=Math.sin(Math.PI*f);
+    return[pts[i][0]+(gs[i][0]-pts[i][0])*f+wk[i][s][0]*e,
+           pts[i][1]+(gs[i][1]-pts[i][1])*f+wk[i][s][1]*e];
+  }
+  let cur=0,timer=null;
+  function draw(){
+    g.fillStyle='#f7f8fb';g.fillRect(0,0,CW,CH);
+    g.fillStyle='rgba(124,58,237,.8)';
+    for(let i=0;i<N;i++){const p=pos(i,cur);g.beginPath();g.arc(p[0],p[1],2.6,0,6.3);g.fill();}
+    $('pcTv').textContent='t = '+cur+' / '+S;
+    $('pcT').value=cur;
+  }
+  function stop(){
+    if(timer){clearInterval(timer);timer=null;}
+    $('pcFwd').textContent='▶ forward — ละลายเป็นหมอก';
+    $('pcRev').textContent='◀ reverse — เดินกลับเป็นรูป';
+  }
+  function play(dir){
+    stop();
+    $(dir>0?'pcFwd':'pcRev').textContent='⏸ หยุด';
+    timer=setInterval(()=>{
+      cur+=dir;
+      if(cur<=0||cur>=S){cur=Math.max(0,Math.min(S,cur));draw();stop();return;}
+      draw();
+    },80);
+  }
+  $('pcFwd').addEventListener('click',()=>{if(timer){stop();return;}if(cur>=S)cur=0;play(1);});
+  $('pcRev').addEventListener('click',()=>{if(timer){stop();return;}if(cur<=0)cur=S;play(-1);});
+  $('pcT').addEventListener('input',()=>{stop();cur=+$('pcT').value;draw();});
+  draw();
+})();
+
+/* ═══════════ 3) 🏗️ U-Net ═══════════ */
+(function(){
+  const svg=$('unSvg');if(!svg)return;
+  const POS=[[61,177],[149,200],[229,219],[304,234],[379,219],[467,200],[555,177],[660,177]];
+  const CAP=[
+    '<b>Encoder ชั้น 1 (48×48)</b> — รับภาพเลอะ x<sub>t</sub> เต็มความละเอียด จับลวดลายเล็กๆ แล้ว "พัก" สำเนาความคมไว้บนเส้น skip ก่อนย่อลงครึ่ง',
+    '<b>Encoder ชั้น 2 (24×24)</b> — ภาพเล็กลง แต่ละจุดมองเห็นบริเวณกว้างขึ้น: เริ่มจับ "โครง" (ตรงไหนคือก้อนวัตถุ ตรงไหนคือฉากหลัง)',
+    '<b>Encoder ชั้น 3 (12×12)</b> — เหลือแต่ใจความหยาบของภาพ — รายละเอียดพิกเซลถูกพักไว้บนเส้น skip ครบสามชั้นแล้ว',
+    '<b>Bottleneck (6×6)</b> — จุดที่โมเดล "เข้าใจภาพทั้งใบ" ในตัวเลขไม่กี่ตัว — t และ prompt ที่ฉีดเข้ามามีอิทธิพลเข้มข้นที่สุดตรงนี้',
+    '<b>Decoder (12×12)</b> — เริ่มขยายกลับ + รับ "ความคม" คืนจากเส้น skip สีส้มของชั้นตรงข้าม (encoder 12×12)',
+    '<b>Decoder (24×24)</b> — วาดรายละเอียดกลับ: มีทั้ง "ความเข้าใจ" จากก้นหุบเขา และ "ความคม" จากเส้น skip',
+    '<b>Decoder ชั้นสุดท้าย (48×48)</b> — กลับมาเต็มความละเอียดเท่าภาพเข้า พร้อมปล่อยคำตอบ',
+    '<b>ผลลัพธ์: ε̂ ทั้งผืน</b> — คำทาย noise ที่เดโม 🎬 ข้างบนใช้ลบทุกก้าว — โมเดลตัวเดียวถูกเรียกซ้ำทุกค่า t โดยรู้จาก t ที่ฉีดเข้ามาว่ากำลังลบขั้นไหน'
+  ];
+  const SKIP={4:'unS2',5:'unS1',6:'unS0'};
+  let idx=-1,timer=null,cut=false;
+  const pulse=$('unPulse');
+  function setStage(i){
+    idx=i;
+    for(let k=0;k<=7;k++)$('unB'+k).classList.toggle('on',k===i);
+    ['unS0','unS1','unS2'].forEach(id=>$(id).classList.remove('hot'));
+    if(!cut&&SKIP[i])$(SKIP[i]).classList.add('hot');
+    pulse.setAttribute('opacity',i>=0?1:0);
+    if(i>=0){pulse.setAttribute('cx',POS[i][0]);pulse.setAttribute('cy',POS[i][1]);}
+    let m=CAP[i]||'';
+    if(cut&&SKIP[i])m+=' <b style="color:#e5484d">← แต่ skip ถูกตัดอยู่! ความคมส่งมาไม่ถึง — ชั้นนี้ต้องเดาจากภาพรวมล้วนๆ</b>';
+    $('unMsg').innerHTML=m;
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;$('unPlay').textContent='▶ เดินผ่านทีละชั้น';}}
+  $('unPlay').addEventListener('click',()=>{
+    if(timer){stop();return;}
+    $('unPlay').textContent='⏸ หยุด';
+    setStage(0);
+    timer=setInterval(()=>{if(idx>=7){stop();return;}setStage(idx+1);},2100);
+  });
+  $('unSkip').addEventListener('click',()=>{
+    cut=!cut;
+    const b=$('unSkip');
+    b.classList.toggle('off',cut);
+    b.textContent=cut?'↩ ต่อ skip กลับ':'✂️ ตัด skip connections';
+    ['unS0','unS1','unS2'].forEach(id=>$(id).classList.toggle('cut',cut));
+    $('unCmpA').classList.toggle('on',!cut);
+    $('unCmpB').classList.toggle('on',cut);
+    if(idx>=0)setStage(idx);
+    else $('unMsg').innerHTML=cut?
+      '<b style="color:#e5484d">ตัด skip แล้ว</b> — "ความคม" ที่ encoder พักไว้ส่งข้ามหุบเขาไม่ได้ decoder เหลือแต่ภาพรวมจากก้นบึ้ง → ε̂ เบลอ ลบ noise แล้วภาพยิ่งมัว (ดูภาพเทียบด้านล่าง) — นี่คือเหตุผลที่ U-Net ต้องมีเส้นส้ม':
+      'ต่อ skip กลับแล้ว — decoder ได้ทั้งภาพรวม + ความคม → ε̂ กลับมาคมชัด';
+  });
+  show(HOUSE,$('unOutA'));
+  show(blurBuf(HOUSE,2,2),$('unOutB'));
+})();
+
+/* ═══════════ 4) 🎚️ Classifier-Free Guidance ═══════════ */
+(function(){
+  const out=$('cfgOut');if(!out)return;
+  /* ε(x,∅) "ไร้ prompt" ⇒ ดึงเข้าหาค่าเฉลี่ยของทุกภาพ = ก้อนเฉลี่ยบ้านปนแมว (เบลอนิดเพื่อความมัว) */
+  const mush0=new Float32Array(HOUSE.length);
+  for(let i=0;i<mush0.length;i++)mush0[i]=(HOUSE[i]+CATF[i])/2;
+  const MUSH=blurBuf(mush0,1,2);
+  let sel='house';
+  show(HOUSE,$('cfgA'));show(CATF,$('cfgB'));
+  function upd(){
+    const gv=+$('cfgS').value,k=gv/6,T=sel==='house'?HOUSE:CATF;
+    const o=new Float32Array(T.length);
+    for(let i=0;i<o.length;i++)o[i]=MUSH[i]+k*(T[i]-MUSH[i]);   /* ค่าเกิน 0–255 โดน clip ตอนวาด = "สีจัด" */
+    show(o,out);
+    $('cfgV').textContent=gv.toFixed(1);
+    $('cfgEq').innerHTML='ε̂ = ε(x, ∅) + <b>'+gv.toFixed(1)+'</b> · [ ε(x, "'+(sel==='house'?'บ้าน':'หน้าแมว')+'") − ε(x, ∅) ]';
+    $('cfgRead').innerHTML=
+      gv<2? 'cfg_scale '+gv.toFixed(1)+' — 🌫️ แทบไม่ฟัง prompt: ได้ "ก้อนเฉลี่ย" บ้านปนแมว'
+      :gv<5? 'cfg_scale '+gv.toFixed(1)+' — 🙂 เริ่มเอียงตาม prompt แต่ยังกั๊กความหลากหลายไว้'
+      :gv<10? 'cfg_scale '+gv.toFixed(1)+' — ✅ โซนสมดุล (UI จริงอย่าง Stable Diffusion นิยมตั้ง 7–8 ตรงนี้)'
+      :'cfg_scale '+gv.toFixed(1)+' — 🔥 เชื่อ prompt เกินเหตุ: ค่าสีถูกดันทะลุ 0–255 แล้วโดนตัด → สีจัด แข็งทื่อ';
+  }
+  $('cfgS').addEventListener('input',upd);
+  $('cfgSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button');if(!b)return;
+    [...$('cfgSeg').children].forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');sel=b.dataset.p;upd();
+  });
+  upd();
+})();
+
+/* ═══════════ 5) ⚡ latent race ═══════════ */
+(function(){
+  const px=$('lrPx');if(!px)return;
+  const lt=$('lrLt');
+  const LT=12,F=PS/LT;                       /* 48 → 12 : บีบ 4×4 ช่องเหลือ 1 */
+  const latClean=new Float32Array(LT*LT*3);
+  for(let y=0;y<LT;y++)for(let x=0;x<LT;x++){
+    let s0=0,s1=0,s2=0;
+    for(let dy=0;dy<F;dy++)for(let dx=0;dx<F;dx++){
+      const q=((y*F+dy)*PS+(x*F+dx))*3;s0+=HOUSE[q];s1+=HOUSE[q+1];s2+=HOUSE[q+2];}
+    const q=(y*LT+x)*3;latClean[q]=s0/(F*F);latClean[q+1]=s1/(F*F);latClean[q+2]=s2/(F*F);
+  }
+  const r5=mulberry32(5150);
+  const latNoi=new Float32Array(LT*LT*3);for(let i=0;i<latNoi.length;i++)latNoi[i]=r5()*255;
+  const TOTPX=PS*PS,TOTLT=LT*LT,RATE=24;     /* ทั้งคู่ล้างได้ 24 ช่อง/จังหวะ เท่ากันเป๊ะ */
+  let kPx=0,kLt=0,dec=0,ticks=0,timer=null,pxDone=0,ltDone=0;
+  function paint(){
+    const o=new Float32Array(HOUSE.length);
+    for(let i=0;i<TOTPX;i++){const q=i*3,src=i<kPx?HOUSE:NOI;o[q]=src[q];o[q+1]=src[q+1];o[q+2]=src[q+2];}
+    show(o,px);
+    if(kLt<TOTLT||dec===0){
+      const l=new Float32Array(latClean.length);
+      for(let i=0;i<TOTLT;i++){const q=i*3,src=i<kLt?latClean:latNoi;l[q]=src[q];l[q+1]=src[q+1];l[q+2]=src[q+2];}
+      show(l,lt,LT);
+    }else{
+      const rows=Math.min(PS,dec*4);
+      const l=new Float32Array(HOUSE.length);
+      for(let y=0;y<PS;y++)for(let x=0;x<PS;x++){
+        const q=(y*PS+x)*3;
+        if(y<rows){l[q]=HOUSE[q];l[q+1]=HOUSE[q+1];l[q+2]=HOUSE[q+2];}
+        else{const ql=((y/F|0)*LT+(x/F|0))*3;l[q]=latClean[ql];l[q+1]=latClean[ql+1];l[q+2]=latClean[ql+2];}
+      }
+      show(l,lt);
+    }
+    $('lrPxS').innerHTML=kPx>=TOTPX?
+      '<span class="done">✅ เสร็จที่จังหวะ '+pxDone+'</span>'
+      :'เหลือ '+(TOTPX-kPx).toLocaleString()+' / 2,304 ช่อง';
+    $('lrLtS').innerHTML=kLt>=TOTLT?
+      (dec*4>=PS?'<span class="done">✅ denoise เสร็จจังหวะ '+ltDone+' + decode กลับ 48×48 แล้ว — รออีกฝั่ง…</span>'
+                :'✅ denoise ครบ 144 ช่อง → กำลัง decode ขยายกลับ…')
+      :'เหลือ '+(TOTLT-kLt)+' / 144 ช่อง';
+    $('lrTick').textContent='⏱ จังหวะที่ '+ticks;
+  }
+  function stop(){if(timer){clearInterval(timer);timer=null;$('lrGo').textContent='▶ เริ่มแข่ง';}}
+  function reset(){stop();kPx=0;kLt=0;dec=0;ticks=0;pxDone=0;ltDone=0;$('lrNote').textContent='';paint();}
+  $('lrGo').addEventListener('click',()=>{
+    if(timer){stop();return;}
+    if(kPx>=TOTPX&&dec*4>=PS)reset();
+    $('lrGo').textContent='⏸ พัก';
+    timer=setInterval(()=>{
+      ticks++;
+      if(kPx<TOTPX){kPx=Math.min(TOTPX,kPx+RATE);if(kPx>=TOTPX)pxDone=ticks;}
+      if(kLt<TOTLT){kLt=Math.min(TOTLT,kLt+RATE);if(kLt>=TOTLT)ltDone=ticks;}
+      else if(dec*4<PS)dec++;
+      paint();
+      if(kPx>=TOTPX&&dec*4>=PS){
+        stop();
+        $('lrNote').textContent='🏁 latent จบ denoise ตั้งแต่จังหวะ '+ltDone+' — pixel เพิ่งจบที่จังหวะ '+pxDone+' (ช้ากว่า ~'+Math.round(pxDone/ltDone)+' เท่า)';
+      }
+    },80);
+  });
+  $('lrRst').addEventListener('click',reset);
+  paint();
+})();
+
+/* ═══════════ 6) 💻 โค้ด: ไฮไลต์คอมเมนต์ + ปุ่มคัดลอก ═══════════ */
+(function(){
+  document.querySelectorAll('#codeD1, #codeD2').forEach(code=>{
+    const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    code.innerHTML=code.textContent.split('\n').map(line=>{
+      const i=line.indexOf('#');
+      if(i<0)return esc(line);
+      return esc(line.slice(0,i))+'<span class="cm">'+esc(line.slice(i))+'</span>';
+    }).join('\n');
+  });
+  document.querySelectorAll('.code-copy').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const txt=document.getElementById(btn.dataset.code).textContent;
+      const ok=()=>{const old=btn.textContent;btn.textContent='✓ คัดลอกแล้ว';setTimeout(()=>btn.textContent=old,1600);};
+      const fallback=()=>{const ta=document.createElement('textarea');ta.value=txt;ta.style.position='fixed';ta.style.opacity='0';
+        document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');ok();}catch(_){}
+        document.body.removeChild(ta);};
+      if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(ok,fallback);
+      else fallback();
+    });
+  });
+})();
+
+})();
+</script>
+
+</body>
+</html>

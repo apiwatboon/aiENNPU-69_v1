@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จริยธรรมและข้อจำกัดของ AI | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ===== ชิ้นส่วนร่วมของวิดเจ็ตเรื่อง จริยธรรม AI ===== */
+  .w16row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:8px 0; font-size:.92rem; }
+  .w16row > label { font-weight:700; min-width:6.4em; }
+  .w16row input[type=range] { flex:1; min-width:140px; accent-color:var(--accent); }
+  .w16row .v { min-width:3.4em; text-align:right; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  .w16seg { display:inline-flex; flex-wrap:wrap; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--card); }
+  .demo .w16seg button { background:transparent; color:var(--ink); border:none; border-radius:0; margin:0;
+    padding:7px 13px; font-size:.85rem; box-shadow:none; }
+  .demo .w16seg button:hover { transform:none; box-shadow:none; filter:none; background:rgba(127,127,127,.12); }
+  .demo .w16seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+
+  .w16bars { margin-top:12px; display:flex; flex-direction:column; gap:7px; }
+  .w16bar { display:flex; align-items:center; gap:9px; font-size:.88rem; }
+  .w16bar .lbl { flex:0 0 13.5em; text-align:right; font-weight:600; }
+  .w16bar .trk { flex:1; height:16px; border:1px solid var(--border); border-radius:9px; overflow:hidden; background:var(--bg); }
+  .w16bar .fill { height:100%; border-radius:8px; width:0; transition:width .5s cubic-bezier(.2,.8,.3,1); }
+  .w16bar .val { min-width:3.8em; font-weight:700; font-variant-numeric:tabular-nums; }
+  @media(max-width:640px){ .w16bar .lbl { flex-basis:9em; font-size:.8rem; } }
+
+  .w16tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-top:12px; }
+  .w16tile { border:1px solid var(--border); border-radius:10px; background:var(--bg); padding:9px 12px; }
+  .w16tile .t { font-size:.78rem; color:var(--muted); font-weight:600; }
+  .w16tile .n { font-size:1.02rem; font-weight:700; margin-top:2px; font-variant-numeric:tabular-nums; }
+
+  .w16pill { display:inline-block; border-radius:999px; padding:2px 12px; font-size:.82rem; font-weight:700; }
+  .w16pill.ok { background:var(--green-soft); color:var(--green); }
+  .w16pill.bad { background:#fde3e3; color:#c0392b; }
+  [data-theme="dark"] .w16pill.bad { background:#472024; color:#ff9b9b; }
+
+  .w16note { margin-top:12px; font-size:.88rem; line-height:1.75; background:var(--amber-soft); border-radius:10px; padding:9px 13px; }
+  .w16msg { margin-top:12px; font-size:.9rem; line-height:1.8; background:var(--accent-soft); border-radius:10px; padding:10px 14px; }
+
+  /* 🕵️ กลไก hallucination */
+  .hl-ctx { background:var(--bg); border:1px dashed var(--border); border-radius:10px; padding:9px 13px; font-size:.92rem; margin:10px 0; }
+  .hl-chip { display:inline-block; background:var(--accent-soft); color:var(--accent); border-radius:8px; padding:1px 9px; margin:2px 3px 2px 0; font-weight:700; font-variant-numeric:tabular-nums; }
+  .hl-chip.fab { background:var(--amber-soft); color:var(--amber); }
+  .hl-cands { margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+  .hl-cand { display:flex; align-items:center; gap:9px; font-size:.88rem; }
+  .hl-cand .tk { flex:0 0 10.5em; text-align:right; font-weight:700; font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hl-cand .trk { flex:1; height:15px; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg); }
+  .hl-cand .fill { height:100%; width:0; border-radius:8px; background:linear-gradient(90deg,#9fb5f5,#2456e6); transition:width .45s; }
+  .hl-cand.win .fill { background:linear-gradient(90deg,#f7c86b,#e8871e); }
+  .hl-cand .pv { min-width:3.4em; font-weight:700; font-variant-numeric:tabular-nums; }
+  @media(max-width:640px){ .hl-cand .tk { flex-basis:7em; font-size:.8rem; } }
+
+  /* 💻 บล็อกโค้ด (แบบเดียวกับเรื่อง Attention &amp; Transformer) */
+  .code-wrap { position:relative; margin:10px 0; }
+  .code-wrap pre { background:#0f1425; color:#dbe2ff; border-radius:12px; padding:14px 16px;
+    overflow-x:auto; font-size:.86rem; line-height:1.7; border:1px solid rgba(139,148,255,.25); margin:0; }
+  .code-wrap pre, .code-wrap code { font-family:'Cascadia Code', Consolas, 'Courier New', monospace !important; font-size-adjust:none; }
+  .code-wrap code .cm { color:#7fd18c; }
+  .code-copy { position:absolute; top:8px; right:8px; font-size:.8rem; padding:5px 12px; border:none; border-radius:8px;
+    color:#fff; cursor:pointer; font-weight:600; font-family:inherit; background:linear-gradient(135deg,#334155,#475569); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>ข้อจำกัด จริยธรรม และอนาคต</h1>
+    <p class="subtitle">วิจารณ์ AI อย่างมีหลักการ — เพราะเรารู้แล้วว่าข้างในคืออะไร</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>วิเคราะห์ปัญหาจริยธรรม AI โดย "ชี้กลไก" ได้ ไม่ใช่พูดลอยๆ ว่า AI อันตราย/วิเศษ</li>
+      <li>อธิบายที่มาของ bias ใน AI ได้จากกระบวนการเทรนที่เรียนมา</li>
+      <li>มีหลักส่วนตัวในการใช้ AI อย่างรับผิดชอบในการเรียนและการทำงาน</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ: <em>"ถ้า AI คัดใบสมัครงานแล้วปัดผู้หญิงตกมากกว่าผู้ชายอย่างเป็นระบบ — ใครผิด:
+    โมเดล? ข้อมูล? คนเขียนโค้ด? บริษัทที่ใช้?"</em></p>
+
+    <h3>ทุกปัญหาจริยธรรม ชี้กลับไปที่กลไกที่เราเรียนมาได้</h3>
+    <table class="simple">
+      <tr><th>ปัญหา</th><th>กลไกต้นเหตุ (จากบทเรียนของเรา)</th></tr>
+      <tr><td><strong>Bias / การเลือกปฏิบัติ</strong></td>
+          <td>โมเดลเรียนจากข้อมูล (ส.2, 6) — ข้อมูลประวัติศาสตร์มีอคติ โมเดลก็ "ทำนายอคติต่อ" อย่างซื่อสัตย์
+          เช่น ระบบคัดคนของ Amazon ที่เรียนจากประวัติการจ้างที่ชายล้วน</td></tr>
+      <tr><td><strong>Hallucination + ความมั่นใจปลอม</strong></td>
+          <td>softmax ผลิตคำตอบเสมอ ไม่มีปุ่ม "ไม่รู้" (ส.11) — อันตรายเมื่อคนเชื่อเพราะ "มันพูดเหมือนผู้เชี่ยวชาญ"
+          (เคสทนายความยื่นคำพิพากษาปลอมต่อศาลมาแล้วจริงๆ)</td></tr>
+      <tr><td><strong>ข้อมูลส่วนตัว / ลิขสิทธิ์</strong></td>
+          <td>โมเดลใหญ่จำข้อมูลฝึกบางส่วนได้ (overfit บางจุด — ส.6, 9) และข้อมูลฝึกถูกกวาดจากเน็ตโดยเจ้าของไม่ได้ยินยอม</td></tr>
+      <tr><td><strong>Deepfake / ข้อมูลลวง</strong></td>
+          <td>diffusion + LLM (ส.11, 13) ทำให้ "การปลอม" ถูกลงล้านเท่า — ของปลอมล้นจนของจริงถูกสงสัย</td></tr>
+      <tr><td><strong>ผลกระทบอาชีพ</strong></td>
+          <td>LLM เก่งงาน "แพตเทิร์นจากข้อมูลมาก" (ส.9) แต่อ่อนงานที่ต้องรับผิดชอบ ตรวจสอบได้ และบริบทเฉพาะหน้า
+          — งานจึง "เปลี่ยนรูป" มากกว่าหายเกลี้ยง</td></tr>
+    </table>
+
+    <h3>คำถามที่ยังไม่มีคำตอบ (และนักศึกษารุ่นนี้จะเป็นคนตอบ)</h3>
+    <ul>
+      <li>ความรับผิดชอบ: เมื่อ AI วินิจฉัยโรคผิด ใครรับผิด — หมอ? โรงพยาบาล? บริษัทโมเดล?</li>
+      <li>ความโปร่งใส: weight แสนล้านตัวอธิบายตัวเองไม่ได้ — เราควรให้มันตัดสินเรื่องสำคัญแค่ไหน (สินเชื่อ, ประกัน, ศาล?)</li>
+      <li>การใช้ในการศึกษา: เส้นแบ่งระหว่าง "ใช้ AI ช่วยเรียน" กับ "ให้ AI เรียนแทน" อยู่ตรงไหน?</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — ไล่หา "ประตูที่อคติแอบเข้า" ใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">ใช้เคสจริงเป็นตัวเดินเรื่อง: ระบบ AI คัดใบสมัครงาน — ทุกขั้นของการสร้างโมเดล (ที่เราเรียนมาทั้งเทอม) มีประตูให้อคติแทรกได้ทั้งหมด</p>
+    <ol class="steps">
+      <li><strong>ประตูที่ 1: ตอนตั้งเป้าหมาย (เลือก loss)</strong>
+        บริษัทสั่งให้โมเดล "ทำนายว่าใครจะเหมือนพนักงานที่ประสบความสำเร็จ<em>ในอดีต</em>"
+        — ฟังดูสมเหตุสมผล แต่ถ้าอดีตมีอคติ (จ้างแต่คนกลุ่มเดียว) เป้าหมายนี้คือคำสั่งให้<em>ทำซ้ำอคติอย่างแม่นยำ</em>
+        ปัญหาเริ่มก่อนเขียนโค้ดบรรทัดแรก</li>
+      <li><strong>ประตูที่ 2: ตอนเก็บข้อมูล</strong>
+        ข้อมูลฝึกคือใบสมัคร 10 ปีย้อนหลัง — ใครไม่เคยถูกเรียกสัมภาษณ์ ก็ไม่มีข้อมูลว่า "ถ้าจ้างแล้วจะเวิร์กไหม"
+        → คนกลุ่มที่เคยถูกมองข้าม หายไปจากข้อมูลตั้งแต่ต้น (เหมือน train set ที่ไม่ครอบคลุม — เรื่อง Overfitting)</li>
+      <li><strong>ประตูที่ 3: ตอนเลือก feature</strong>
+        ลบช่อง "เพศ" ออกแล้ว ปลอดภัยแล้วใช่ไหม? — ไม่: โมเดลเรียนจาก<em>ตัวแทนทางอ้อม</em> (proxy) ได้
+        เช่น ชื่อชมรม กีฬาที่เล่น ปีที่เว้นช่วงงาน — เคสจริงของ Amazon โมเดลจับคำว่า "women's" ในเรซูเม่เป็นสัญญาณลบ
+        <div class="try">คิดเอง: ถ้าลบ "ที่อยู่" ออก โมเดลยังเดาฐานะผู้สมัครได้จากอะไรอีกบ้าง? (หาให้ได้ 2 อย่าง)</div></li>
+      <li><strong>ประตูที่ 4: ตอนเทรน</strong>
+        gradient descent ทำหน้าที่ของมันอย่างซื่อสัตย์: ลด loss = เลียนแบบข้อมูล —
+        โมเดล<em>ไม่รู้และไม่สนใจ</em>ว่าแพตเทิร์นที่เจอคืออคติหรือความจริง มันเห็นแค่สถิติ
+        (ทบทวน: โมเดลคือเครื่องทำนายแพตเทิร์น ไม่ใช่เครื่องตัดสินความถูกต้อง)</li>
+      <li><strong>ประตูที่ 5: ตอนวัดผล</strong>
+        ทีมรายงาน "accuracy 94%!" — แต่วัดกับ test set ที่ตัดมาจากข้อมูลอดีตชุดเดียวกัน (อคติเดียวกัน)
+        → ตัวเลขสวยยืนยันว่าโมเดล<em>เลียนแบบอดีตเก่ง</em> ไม่ได้ยืนยันว่ายุติธรรม<br>
+        วิธีดูให้เห็น: แยกวัดผลรายกลุ่ม (ชาย/หญิง, กทม./ต่างจังหวัด) — ถ้า error ต่างกันมาก = สัญญาณแดง</li>
+      <li><strong>ประตูที่ 6: ตอนใช้งานจริง (อันตรายสุดเพราะวนลูป)</strong>
+        ระบบปัดกลุ่ม A ตก → กลุ่ม A ไม่ถูกจ้าง → ข้อมูลปีหน้ายิ่งไม่มีกลุ่ม A → โมเดลรุ่นถัดไปยิ่งมั่นใจว่ากลุ่ม A ไม่เหมาะ
+        — อคติถูก<em>ตอกย้ำแรงขึ้นเอง</em> (feedback loop)<br>
+        <strong>ข้อสรุปของทั้งเทอม:</strong> จะตรวจสอบ AI ให้เป็น ต้องรู้ครบทุกขั้นที่มันถูกสร้าง — และตอนนี้คุณรู้แล้ว
+        <div class="try">เอาเฟรม "6 ประตู" นี้ไปวิเคราะห์ข่าวที่เลือกในการบ้านข้อ 3 — อคติ/ความผิดพลาดในข่าวนั้นเข้าประตูไหน</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — ฝึกวิเคราะห์เคสด้วย "6 ประตู"</h3>
+    <p style="color:var(--muted); font-size:.95rem">ทุกข้อ: ชี้กลไกต้นเหตุ + ประตูที่อคติ/ความผิดพลาดเข้า + วิธีกัน — ลองวิเคราะห์เองก่อนกางเฉลย</p>
+    <details class="example">
+      <summary>เคส 1 — ระบบอนุมัติสินเชื่อปฏิเสธคนทั้งย่าน</summary>
+      <p>ธนาคารใช้ AI พิจารณาสินเชื่อ พบว่าคนจากบางรหัสไปรษณีย์ถูกปฏิเสธสูงผิดปกติ ทั้งที่รายได้เท่ากับผู้ที่ผ่าน</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หากลไกต้นเหตุ:</strong> โมเดลเรียนจากการอนุมัติในอดีต — ถ้าอดีตเคยกีดกันย่านนั้น โมเดล "ทำนายการกีดกันต่อ" อย่างซื่อสัตย์<br>
+      <strong>ขั้น 2 — ระบุประตูที่อคติเข้า:</strong> ประตู 1 (เป้าหมาย: เลียนแบบอดีต) + ประตู 3 (feature: รหัสไปรษณีย์ = proxy ของฐานะ/กลุ่มสังคม ทั้งที่ไม่ได้ใส่ช่อง "เชื้อชาติ/ฐานะ" เลย)<br>
+      <strong>ขั้น 3 — วางวิธีกัน:</strong> ตัด feature ที่เป็น proxy, วัด error แยกรายกลุ่มพื้นที่ทุกรุ่นโมเดล, มีช่องอุทธรณ์โดยมนุษย์<br>
+      ✅ <strong>คำตอบ:</strong> อคติเข้าทางเป้าหมาย+feature ไม่ใช่ทางโค้ด — และหลายประเทศออกกฎหมายบังคับช่องอุทธรณ์แล้ว
+      (เช่น EU AI Act จัดสินเชื่อเป็นระบบความเสี่ยงสูง)</div>
+    </details>
+    <details class="example">
+      <summary>เคส 2 — AI ตรวจเรียงความ ให้คะแนนงานสร้างสรรค์ต่ำ</summary>
+      <p>โรงเรียนใช้ AI ตรวจเรียงความที่เทรนจากงานที่ครูเคยให้คะแนนไว้ 5 ปี พบว่างานสำนวนแหวกแนวมักได้คะแนนต่ำ ทั้งที่ครูจริงๆ อ่านแล้วชอบ</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ดูสิ่งที่โมเดลเรียนจริงๆ:</strong> ไม่ใช่ "ความดีของงานเขียน" แต่คือ "แพตเทิร์นของงานที่เคยได้คะแนนดี" — สองอย่างนี้ไม่เหมือนกัน<br>
+      <strong>ขั้น 2 — เจอช่องว่าง:</strong> งานแหวกแนว = อยู่นอกแพตเทิร์นอดีต → โมเดลตีความ "ความใหม่" เป็น "ความผิดปกติ" → คะแนนต่ำ
+      (ประตู 4: generalize อดีตอย่างซื่อสัตย์เกินไป)<br>
+      <strong>ขั้น 3 — วางวิธีกัน:</strong> ใช้ AI แค่รอบคัดแรก/ตรวจไวยากรณ์ คะแนนจริงเป็นของมนุษย์ + สุ่มงานให้ครูตรวจคู่ขนานเพื่อจับความเพี้ยน (drift)<br>
+      ✅ <strong>คำตอบ:</strong> โมเดลทำงานตามที่ถูกเทรนเป๊ะ — ปัญหาคือเป้าหมายที่ตั้งให้มัน
+      มุมคิด: งานที่ "วัดด้วยอดีตไม่ได้" คืองานที่ AI ตัดสินแทนไม่ได้</div>
+    </details>
+    <details class="example">
+      <summary>เคส 3 — face recognition จับผิดคน</summary>
+      <p>ตำรวจ (เคสจริงในสหรัฐฯ ปี 2020) จับชายผิวดำผิดคนจากระบบจดจำใบหน้า — ระบบรายงาน accuracy รวม 95%+</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แกะตัวเลข 95%:</strong> เป็นค่าเฉลี่ย<strong>รวมทุกกลุ่ม</strong> — กลุ่มที่มีข้อมูลฝึกเยอะแม่น 99% ก็ดึงค่าเฉลี่ยขึ้นได้ แม้บางกลุ่มแม่นแค่ 70%<br>
+      <strong>ขั้น 2 — หาที่มาของความต่าง:</strong> ข้อมูลฝึกมีใบหน้าบางกลุ่มน้อย (ประตู 2) → โมเดลเรียนรู้กลุ่มนั้นหยาบ → error รายกลุ่มสูงผิดปกติ<br>
+      <strong>ขั้น 3 — ชี้จุดวัดผลพลาด:</strong> รายงานแค่ค่าเฉลี่ยรวม = ความต่างรายกลุ่มถูกบังไว้ (ประตู 5) — ระบบดู "ผ่านมาตรฐาน" ทั้งที่อันตรายกับบางกลุ่ม<br>
+      ✅ <strong>คำตอบ:</strong> วิธีกัน: รายงาน error แยกกลุ่มเสมอ + ผลจากระบบเป็นแค่ "เบาะแส" ห้ามเป็นหลักฐานจับกุมเดี่ยวๆ —
+      เหมือนเคสโรงพยาบาล A/B เรื่อง สอบกลางภาค เป๊ะ: ความรู้ train/test ที่ดูแห้งๆ ชี้ขาดอิสรภาพคนจริงได้</div>
+    </details>
+    <details class="example">
+      <summary>เคส 4 — แชทบอทเพื่อนคุยใจ: เนียนแต่ไม่มีใบประกอบวิชาชีพ</summary>
+      <p>วัยรุ่นใช้แชทบอทระบายปัญหาใจแทนนักจิตวิทยา — มันตอบอบอุ่นน่าเชื่อถือมาก — ความเสี่ยงเชิงกลไกอยู่ตรงไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แกะที่มาของ "ความอบอุ่น":</strong> RLHF เลือกคำตอบที่คนให้คะแนนสูง → น้ำเสียงเห็นอกเห็นใจคือ<strong>พฤติกรรมที่ถูกคัดเลือก</strong> ไม่ใช่ความเข้าใจมนุษย์จริง<br>
+      <strong>ขั้น 2 — หาช่องโหว่เชิงกลไก:</strong> softmax ผลิตคำแนะนำเสมอ ไม่ว่าเคสจะเกินขีดความสามารถแค่ไหน — ไม่มีปุ่ม "เคสนี้ต้องส่งต่อหมอ" โดยธรรมชาติ<br>
+      <strong>ขั้น 3 — ชี้จุดเสี่ยงสุด:</strong> เคสวิกฤต (ทำร้ายตัวเอง) ที่ความล่าช้า/คำแนะนำผิดมีราคาเป็นชีวิต<br>
+      ✅ <strong>คำตอบ:</strong> ระบบที่รับผิดชอบต้องมี detector แยกเคสวิกฤตที่เทสต์อย่างหนัก + เบอร์สายด่วน hard-coded (ไม่ผ่านการทำนาย) —
+      อย่าฝากชีวิตคนไว้กับการทำนายคำ</div>
+    </details>
+    <details class="example">
+      <summary>เคส 5 — AI สรุปข่าว: อคติที่มาพร้อมภาพลักษณ์ "เครื่องจักรเป็นกลาง"</summary>
+      <p>คนจำนวนมากเชื่อสรุปข่าวจาก AI มากกว่านักข่าว เพราะ "เครื่องจักรไม่มีอคติ" — ความเชื่อนี้ผิดตรงไหนเชิงกลไก?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ถามว่าโมเดลเรียนจากอะไร:</strong> ข้อความที่มนุษย์เขียน — ซึ่งมาพร้อมมุมมอง การเลือกคำ และเรื่องที่ถูกเล่าบ่อย/ไม่ถูกเล่า<br>
+      <strong>ขั้น 2 — ไล่ผล:</strong> สถิติของข้อมูลเอียงทางไหน การ "ทำนายต่อ" ก็เอียงทางนั้น — ภาษาที่ข้อมูลน้อยยิ่งเอียงตามแหล่งที่บังเอิญมี<br>
+      <strong>ขั้น 3 — หาจุดที่อันตรายกว่านักข่าว:</strong> นักข่าวมีชื่อ มีสังกัด คนรู้ว่าต้องอ่านอย่างระวัง — แต่ "เครื่องจักร" สวมเสื้อความเป็นกลาง คนเลิกตั้งคำถาม<br>
+      ✅ <strong>คำตอบ:</strong> ความเชื่อนั้นผิดเพราะโมเดลคือกระจกของข้อมูลฝึก — อันตรายจริงคือ<strong>อคติที่สวมเสื้อความเป็นกลาง</strong>
+      ทักษะยุคนี้: อ่านสรุป AI แบบเดียวกับอ่านคอลัมนิสต์ ("ใครเขียน และเลือกเล่าอะไร")</div>
+    </details>
+    <details class="example">
+      <summary>เคส 6 — เคสจริง: อัลกอริทึมจัดเกรดช่วงโควิด (อังกฤษ 2020)</summary>
+      <p>สอบจริงถูกยกเลิก รัฐใช้อัลกอริทึมจัดเกรดแทน โดยใช้ "ผลงานในอดีตของโรงเรียน" เป็นตัวแปร — เด็กเก่งจากโรงเรียนเล็ก/ยากจนถูกกดเกรดทั้งที่ครูประเมินว่าดีเยี่ยม — ประท้วงทั้งประเทศจนรัฐยกเลิก — อคติเข้าประตูไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แกะสูตรของอัลกอริทึม:</strong> เกรดเด็ก ← ผลงานโรงเรียนในอดีต — เด็กถูกตัดสินจาก<strong>ค่าเฉลี่ยของกลุ่ม</strong> ไม่ใช่ผลงานตัวเอง<br>
+      <strong>ขั้น 2 — ระบุประตู:</strong> ประตู 3 (เลือก feature): "โรงเรียน" คือ proxy ของฐานะ — เด็กเก่งจากโรงเรียนเล็กโดนกดทันทีโดยไม่มีทางสู้<br>
+      <strong>ขั้น 3 — สังเกตความย้อนแย้ง:</strong> เชิงสถิติรวม อัลกอริทึมอาจ "แม่น" (ทำนายแนวโน้มกลุ่มถูก) — แต่<strong>อยุติธรรมรายบุคคล</strong>สุดขั้ว<br>
+      ✅ <strong>คำตอบ:</strong> สถิติกับความยุติธรรมไม่ใช่สิ่งเดียวกัน — การตัดสินใจระดับชีวิต (เกรด สิทธิ์เรียนต่อ)
+      ต้องมีช่องอุทธรณ์โดยมนุษย์เสมอ — เคสนี้จบที่การยกเลิกทั้งระบบหลังประท้วงทั้งประเทศ</div>
+    </details>
+    <details class="example">
+      <summary>เคส 7 — เครื่องตรวจจับ "งานเขียนจาก AI" กล่าวหานักศึกษาผิด</summary>
+      <p>อาจารย์ใช้เครื่องมือตรวจว่างานเขียนมาจาก AI ไหม — มันชี้ว่างานของนักศึกษาต่างชาติ (ภาษาอังกฤษเป็นภาษาที่สอง) เป็น AI ทั้งที่เขียนเอง — ทำไมพลาดแบบนี้อย่างเป็นระบบ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ดูว่าเครื่องมือจับอะไร:</strong> "ความเรียบสม่ำเสมอของภาษา" — ข้อความ AI มักเรียบเนียนสม่ำเสมอผิดธรรมชาติ<br>
+      <strong>ขั้น 2 — หากลุ่มที่ซวยโดยบังเอิญ:</strong> คนเขียนภาษาที่สองใช้โครงประโยคปลอดภัย ศัพท์มาตรฐาน → โปรไฟล์ภาษา "เรียบ" คล้าย AI
+      → false positive กระจุกที่กลุ่มนี้อย่างเป็นระบบ<br>
+      <strong>ขั้น 3 — ดูภาระการพิสูจน์:</strong> "พิสูจน์ว่าเขียนเอง" แทบเป็นไปไม่ได้ — ภาระตกที่ผู้ถูกกล่าวหา ทั้งที่เครื่องมือคือฝ่ายเดาผิด<br>
+      ✅ <strong>คำตอบ:</strong> error ไม่กระจายเท่ากันระหว่างกลุ่ม + ภาระพิสูจน์กลับด้าน — แนวปฏิบัติที่เป็นธรรม:
+      ใช้เป็นสัญญาณชวนคุย ไม่ใช่หลักฐานลงโทษ และออกแบบงานให้ใช้ AI ได้อย่างโปร่งใสแทนการไล่จับ (แบบเกณฑ์โปรเจกต์วิชาเรา)</div>
+    </details>
+    <details class="example">
+      <summary>เคส 8 — หมอใช้ AI ช่วยวินิจฉัยแล้วพลาด: ใครรับผิด?</summary>
+      <p>AI ชี้ว่า "ไม่พบความผิดปกติ" หมอเชื่อตาม ปรากฏพลาดเนื้อร้ายระยะแรก — ไล่ความรับผิดชอบ: หมอ? โรงพยาบาล? บริษัทผู้พัฒนา?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — วางสถานะของ AI ก่อน:</strong> กรอบที่ใช้กันจริง: AI เป็น "เครื่องมือช่วยตัดสินใจ" ไม่ใช่ผู้ตัดสินใจ — เทียบ: ผลแล็บที่หมอต้องอ่านประกอบอาการ ไม่ใช่เชื่อทื่อๆ<br>
+      <strong>ขั้น 2 — แบ่งความรับผิดสามฝ่าย:</strong> หมอ: ผู้ตัดสินใจสุดท้าย (เชื่อเครื่องโดยไม่ดูคนไข้ = บกพร่องวิชาชีพ) |
+      บริษัท: ต้องแจ้งขีดจำกัด (เทรนกับประชากรไหน ความไวเท่าไร) | โรงพยาบาล: กระบวนการใช้ (อบรม, เป็น second opinion ไม่ใช่ first)<br>
+      <strong>ขั้น 3 — จุดเชื่อมเทคนิค:</strong> ถ้าโมเดลรายงานความมั่นใจที่ calibrate ดี (ส.3) หมอจะรู้ว่าเคสไหนควรดูเองละเอียด<br>
+      ✅ <strong>คำตอบ:</strong> รับผิดร่วมสามฝ่ายตามบทบาท — และ "การสื่อสารความไม่แน่นอน" คือฟีเจอร์ความปลอดภัย ไม่ใช่ความอ่อนแอ</div>
+    </details>
+    <details class="example">
+      <summary>เคส 9 — โมเดลท่องข้อมูลส่วนตัวออกมา: ทำไม "ลบ" แทบไม่ได้</summary>
+      <p>มีคนเจอว่า LLM ท่องเบอร์โทร/อีเมลจริงจากข้อมูลฝึกออกมาได้ — เจ้าของข้อมูลขอใช้ "สิทธิ์ให้ลืม" (right to be forgotten) — ทำไมเชิงเทคนิคถึงยากมาก?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เข้าใจวิธีเก็บข้อมูลของโมเดลก่อน:</strong> ไม่มีไฟล์/ลิ้นชักให้ชี้ลบ — ข้อมูล<strong>ละลายอยู่ใน weight แสนล้านตัว</strong>
+      ที่ทุกตัวรับอิทธิพลจากข้อมูลทุกชิ้นผ่าน gradient descent นับล้านก้าว<br>
+      <strong>ขั้น 2 — ไล่ทางเลือก:</strong> (1) เทรนใหม่ทั้งหมดโดยตัดข้อมูลนั้น — ได้ผลแต่แพงระดับพันล้านต่อหนึ่งคำขอ
+      (2) machine unlearning — ยังเป็นปัญหาวิจัยเปิด ไม่มีวิธีรับประกัน (3) กรองที่ขาออก — ปิดอาการ ข้อมูลยังอยู่ข้างใน<br>
+      <strong>ขั้น 3 — สรุปเชิงนโยบาย:</strong> ไม่มีทางเลือกไหนตอบโจทย์ "สิทธิ์ให้ลืม" ได้จริงในราคาที่จ่ายไหว<br>
+      ✅ <strong>คำตอบ:</strong> ความเป็นส่วนตัวต้อง<strong>กันที่ขาเข้า (ก่อนเทรน)</strong> — ในโลกโมเดลใหญ่ สายเกินแก้คือสายเกินแก้จริงๆ</div>
+    </details>
+    <details class="example">
+      <summary>เคส 10 — ด้านสว่าง: เทคโนโลยีเดียวกัน บริบทดี = ช่วยชีวิต</summary>
+      <p>AI ตรวจเบาหวานขึ้นจอตาจากภาพถ่าย ใช้ในพื้นที่ขาดแคลนจักษุแพทย์ (ใช้จริงในไทยและอินเดีย) — อะไรทำให้เคสนี้ "เวิร์ก" ทั้งที่เทคโนโลยีเดียวกับเคสที่พังข้างบน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คโจทย์:</strong> แคบ ชัด วัดผลได้ (ภาพจอตา → ระดับความเสี่ยง) — ไม่ใช่ "AI รักษาทุกโรค"<br>
+      <strong>ขั้น 2 — เช็คบทบาท:</strong> เป็น "ตัวคัดกรอง" ส่งต่อหมอ ไม่ใช่ผู้ตัดสินสุดท้าย — ความผิดพลาดมีตาข่ายรอง<br>
+      <strong>ขั้น 3 — เช็คทางเลือกเดิม:</strong> พื้นที่ขาดแคลนหมอ ทางเลือกคือ "ไม่ได้ตรวจเลย" — AI ที่ดี 90% ชนะการไม่มีหมอ 100%<br>
+      <strong>ขั้น 4 — เช็คการวัดผล:</strong> ทดสอบรายกลุ่มประชากรจริงก่อนใช้ (บทเรียนจากเคส 3 ถูกนำมาแก้)<br>
+      ✅ <strong>คำตอบ:</strong> เวิร์กเพราะออกแบบทั้งระบบให้รับผิดชอบ ไม่ใช่เพราะเทคโนโลยีวิเศษ — ข้อสรุปของวิชานี้:
+      คำถามที่ถูกไม่ใช่ "AI ดีหรือร้าย" แต่คือ <strong>"ระบบนี้ ในบริบทนี้ ออกแบบมารับผิดชอบแค่ไหน"</strong>
+      และตอนนี้คุณมีเครื่องมือครบที่จะตอบมันอย่างมีหลักการ</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo">
+    <h3>🧪 เกม: จริงหรือมโน?</h3>
+    <p style="margin-top:0">ข้อความต่อไปนี้บางข้อเป็นเรื่องจริง บางข้อคือ "คำตอบสไตล์ hallucination"
+    (เนียน มั่นใจ แต่ผิด) — กดเลือกแล้วดูเฉลยพร้อมวิธีสังเกต</p>
+    <div id="quiz"></div>
+    <div class="output" id="score">ตอบครบทุกข้อแล้วดูคะแนนตรงนี้</div>
+  </div>
+
+  <div class="demo">
+    <h3>⚖️ ห้องแล็บอคติ — สอนโมเดลคัดคนเข้าทำงานด้วยข้อมูลอดีต</h3>
+    <p style="margin-top:0">ผู้สมัคร 2 กลุ่ม 🔵/🟠 (เช่น เพศ) มี "ความสามารถจริง" สุ่มจาก<strong>การแจกแจงเดียวกันเป๊ะ</strong>
+    — แต่การจ้างในอดีตลำเอียง: ที่ฝีมือเท่ากัน 🔵 ผ่านง่ายกว่า
+    เราจะเทรนโมเดลใสๆ (เกณฑ์คะแนนที่ฟิตจากการนับข้อมูลจริง) บน "คำตัดสินในอดีต" นั้น
+    แล้วดูว่ามันเรียนอะไรมา — จากนั้นลองวิธีแก้ทีละแบบ</p>
+    <div class="w16row"><label for="blBias">อคติในอดีต</label>
+      <input type="range" id="blBias" min="0" max="100" step="5" value="70">
+      <span class="v" id="blBiasV">70%</span></div>
+    <div class="w16row"><label>วิธีแก้</label>
+      <div class="w16seg" id="blFix">
+        <button data-f="none" class="on">ไม่แก้ (ดูปัญหา)</button>
+        <button data-f="drop">ก) ลบคอลัมน์กลุ่ม</button>
+        <button data-f="quota">ข) บังคับสัดส่วนรับเท่ากัน</button>
+        <button data-f="relabel">ค) แก้ข้อมูลอดีตให้ยุติธรรม</button>
+      </div></div>
+    <button id="blRun">🔁 สุ่มข้อมูลใหม่ &amp; เทรนอีกรอบ</button>
+    <canvas id="blCv" width="760" height="310" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div class="w16msg" id="blLearn"></div>
+    <div class="w16bars" id="blBars"></div>
+    <div class="w16tiles" id="blTiles"></div>
+    <div class="w16msg" id="blMsg"></div>
+    <p class="w16note">🔎 <strong>ข้อมูลจำลอง</strong> — ของจริงซับซ้อนกว่านี้มาก แต่<strong>กลไกเดียวกันเป๊ะ</strong>:
+    ระบบคัดใบสมัครของ Amazon (เคสในตารางส่วนที่ 1) ก็เรียนจากประวัติการจ้างที่ชายล้วนแบบเดียวกับสไลเดอร์ "อคติในอดีต" นี้
+    และการลบคำว่า "women's" ออกก็ไม่ช่วย เพราะ proxy อื่นรั่วต่อ — ประตูที่ 1–3 ของ 👣 ข้างบนทั้งนั้น</p>
+  </div>
+
+  <div class="demo">
+    <h3>🎯 ความยุติธรรมที่เลือกได้ทีละอย่าง — ทำไม COMPAS ถึงเถียงกันไม่จบ</h3>
+    <p style="margin-top:0">โมเดลให้ "คะแนนความเสี่ยง" ผู้ต้องหา 2 กลุ่ม แล้วชี้ว่า "เสี่ยงสูง" เมื่อคะแนนเกินเกณฑ์
+    — โมเดลตัวเดียวกัน แจกคะแนนแบบเดียวกันทั้งสองกลุ่ม ต่างกันแค่ <strong>อัตราฐาน</strong>
+    (สัดส่วนคนที่กระทำผิดซ้ำจริงในกลุ่ม) — ลองลากเกณฑ์เอง แล้วเช็คนิยามความยุติธรรม 2 แบบพร้อมกัน</p>
+    <div class="w16row"><label for="fxBaseA">อัตราฐานกลุ่ม A</label>
+      <input type="range" id="fxBaseA" min="10" max="50" step="1" value="20"><span class="v" id="fxBaseAV">20%</span></div>
+    <div class="w16row"><label for="fxBaseB">อัตราฐานกลุ่ม B</label>
+      <input type="range" id="fxBaseB" min="10" max="50" step="1" value="40"><span class="v" id="fxBaseBV">40%</span></div>
+    <div class="w16row"><label for="fxTA">เกณฑ์กลุ่ม A</label>
+      <input type="range" id="fxTA" min="20" max="95" step="0.5" value="55"><span class="v" id="fxTAV">55</span></div>
+    <div class="w16row"><label for="fxTB">เกณฑ์กลุ่ม B</label>
+      <input type="range" id="fxTB" min="20" max="95" step="0.5" value="55"><span class="v" id="fxTBV">55</span></div>
+    <div class="w16row">
+      <button id="fxPreCal">⚖️ ทำให้ calibration เท่า</button>
+      <button id="fxPreFpr">⚖️ ทำให้ FPR เท่า</button>
+    </div>
+    <canvas id="fxCv" width="760" height="340" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    <div class="w16bars" id="fxBars"></div>
+    <div class="w16msg" id="fxMsg"></div>
+    <p class="w16note">🧮 นี่คือภาพจำลองของทฤษฎีบทใน 🔬 เจาะลึก (Kleinberg et al. 2016):
+    ถ้าอัตราฐานต่างกัน <strong>คณิตศาสตร์พิสูจน์แล้วว่าเลือกได้อย่างเดียว</strong> ระหว่าง "แม่นเท่ากันเมื่อชี้ว่าเสี่ยง (calibration)"
+    กับ "กล่าวหาคนบริสุทธิ์ผิดในอัตราเท่ากัน (FPR)" — จะยอมผิดแบบไหน <strong>สังคมต้องเลือก ไม่ใช่โมเดล</strong></p>
+  </div>
+
+  <div class="demo">
+    <h3>🕵️ ทำไม LLM โกหกหน้าตาย — hallucination ระดับกลไก</h3>
+    <p style="margin-top:0">ต่อจากเกม "จริงหรือมโน" ข้างบน: มาดูว่า "การมโนอย่างมั่นใจ" เกิดขึ้น<strong>ตรงไหนของกลไก</strong>
+    (ส.11–13) — softmax ต้องแจกความน่าจะเป็นให้ token ถัดไปเสมอ และแพตเทิร์น "ISBN คือ 978-…"
+    ในข้อมูลฝึกแรงมาก โมเดลจึง "ต้องพ่นตัวเลขสักชุด" ทั้งที่เลขจริงมันจำไม่ได้ — กดสร้างทีละ token ดูเอง</p>
+    <div class="w16row"><label>โหมดถาม</label>
+      <div class="w16seg" id="hlTabs">
+        <button data-m="0" class="on">1) ถามตรงๆ</button>
+        <button data-m="1">2) ถามแบบให้ทางหนี</button>
+      </div></div>
+    <div class="hl-ctx" id="hlPrompt"></div>
+    <div class="hl-ctx" style="border-style:solid"><strong>คำตอบที่งอกทีละ token:</strong> <span id="hlOut"></span></div>
+    <div class="w16row">
+      <button id="hlNext">▶ สร้าง token ถัดไป</button>
+      <button id="hlReset">↺ เริ่มใหม่</button>
+    </div>
+    <div class="hl-cands" id="hlCands"></div>
+    <div class="w16msg" id="hlMsg">👆 กด "สร้าง token ถัดไป" แล้วดูแท่งความน่าจะเป็นของผู้ท้าชิงแต่ละตัว
+      (🎲 = token ตัวเลขที่โมเดลกำลัง "เดา")</div>
+    <p class="w16note">🔎 <strong>จำลองกลไก</strong> — ตัวเลขความน่าจะเป็นในนี้แต่งขึ้นเพื่อการสอน
+    แต่พฤติกรรมตรงกับของจริง: โมเดลไม่มีสัญญาณภายในที่แยก "จำได้จริง" ออกจาก "เติมตามแพตเทิร์น"
+    — ทั้งสองอย่างคือการทำนาย token ถัดไปเหมือนกันเป๊ะ (นี่คือเหตุผลเชิงกลไกของเคสทนายความในตารางส่วนที่ 1)</p>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 ศาลจำลองในคาบ: คดี AI คัดคนเข้าทำงาน</h3>
+    <p style="margin-top:0">แบ่งห้องเป็น 4 ฝ่าย: บริษัทผู้ใช้ระบบ / บริษัทผู้พัฒนาโมเดล / ผู้สมัครที่ถูกปัดตก / ผู้พิพากษา
+    — สถานการณ์: ระบบ AI คัดใบสมัครปัดผู้สมัครจากมหาวิทยาลัยต่างจังหวัดตกอย่างเป็นระบบ
+    เพราะข้อมูลฝึกคือ "พนักงานที่ประสบความสำเร็จในอดีต" ซึ่งส่วนใหญ่จบจากเมืองหลวง<br>
+    แต่ละฝ่ายเตรียมแถลง 3 นาที <strong>ต้องอ้างกลไกทางเทคนิคที่เรียนมา</strong>ประกอบทุกครั้ง
+    ผู้พิพากษาตัดสินพร้อมเหตุผล</p>
+  </div>
+
+  <h2>ส่วนที่ 3 — โค้ดจริง: วัดอคติเองใน Colab <span class="badge">ลงมือ</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">สคริปต์นี้สร้างข้อมูลจ้างงานจำลอง<strong>โครงเดียวกับวิดเจ็ต ⚖️ ข้างบน</strong>
+    (สองกลุ่มฝีมือแจกแจงเดียวกัน + ป้ายกำกับอดีตที่ลำเอียง + proxy ที่สัมพันธ์กับกลุ่ม)
+    แล้วเทรน LogisticRegression ของ sklearn จริงๆ — เปิด <a href="https://colab.research.google.com" target="_blank">Google Colab</a>
+    → New Notebook → วาง → Run แล้วเทียบผลกับวิดเจ็ต</p>
+    <div class="code-wrap">
+      <button class="code-copy" data-code="w16code">📋 คัดลอก</button>
+      <pre><code id="w16code">import numpy as np, pandas as pd
+from sklearn.linear_model import LogisticRegression
+
+rng = np.random.default_rng(42)
+n = 4000                                        # ผู้สมัครในประวัติศาสตร์
+group = rng.integers(0, 2, n)                   # 0 = กลุ่มน้ำเงิน, 1 = กลุ่มส้ม
+skill = rng.normal(60, 12, n).clip(0, 100)      # ฝีมือจริง: แจกแจงเดียวกันทั้งสองกลุ่ม!
+# proxy เช่น "ชมรม/มหาวิทยาลัย" — ไม่เกี่ยวกับฝีมือ แต่สัมพันธ์กับกลุ่ม (รั่ว!)
+proxy = (rng.random(n) &lt; np.where(group == 0, 0.8, 0.2)).astype(int)
+
+BIAS = 15                                       # อคติในอดีต: กลุ่มส้มต้องเก่งกว่า 30 แต้ม
+cutoff = np.where(group == 0, 60 - BIAS, 60 + BIAS)
+hired = (skill &gt;= cutoff).astype(int)           # ป้ายกำกับประวัติศาสตร์ (ฝังอคติแล้ว)
+
+def report(title, X, y):
+    model = LogisticRegression(max_iter=1000).fit(X, y)   # เทรนบน "คำตัดสินในอดีต"
+    df = pd.DataFrame({"กลุ่ม": np.where(group == 0, "น้ำเงิน", "ส้ม"),
+                       "รับ": model.predict(X), "ฝีมือ": skill})
+    print(f"\n== {title} ==")
+    print(df.groupby("กลุ่ม")["รับ"].mean().round(3).rename("อัตราถูกรับ"))
+    band = df[df["ฝีมือ"].between(55, 65)]      # เทียบกันที่ "ฝีมือเท่ากัน"
+    print(band.groupby("กลุ่ม")["รับ"].mean().round(3).rename("อัตราถูกรับ (ฝีมือ 55-65)"))
+
+X_full  = np.column_stack([skill, group, proxy])   # โมเดลเห็นคอลัมน์กลุ่มตรงๆ
+X_blind = np.column_stack([skill, proxy])          # "ลบคอลัมน์กลุ่ม" แล้ว แต่ proxy ยังอยู่
+report("1) ใส่คอลัมน์กลุ่ม", X_full, hired)
+report("2) ลบคอลัมน์กลุ่ม (proxy ยังรั่ว)", X_blind, hired)
+
+hired_fair = (skill &gt;= 60).astype(int)          # แก้ที่ต้นเหตุ: ติดป้ายอดีตใหม่แบบไม่มีอคติ
+report("3) แก้ข้อมูลอดีตให้ยุติธรรม", X_blind, hired_fair)</code></pre>
+    </div>
+    <p style="margin-bottom:0"><strong>สิ่งที่ต้องสังเกต:</strong></p>
+    <ul style="margin:6px 0 0">
+      <li>รอบ 1: ที่ฝีมือ 55–65 เท่ากัน อัตราถูกรับของสองกลุ่มต่างกันลิบ — โมเดล "สืบทอด" อคติจากป้ายกำกับ ไม่ใช่จากโค้ด (โค้ด sklearn บรรทัดเดียวกันเป๊ะทั้งสามรอบ)</li>
+      <li>รอบ 2: ลบคอลัมน์กลุ่มแล้ว ช่องว่าง<strong>หดแต่ไม่หาย</strong> — โมเดลอ่านกลุ่มผ่าน proxy แทน ลองแก้ 0.8/0.2 เป็น 0.5/0.5 (proxy เลิกสัมพันธ์กับกลุ่ม) แล้วรันใหม่ ช่องว่างจะหายเกลี้ยง</li>
+      <li>รอบ 3: พอป้ายกำกับยุติธรรม โมเดล<strong>เดิม</strong>เรียนได้เกณฑ์เดียวกันทั้งสองกลุ่มทันที — ยืนยันบทเรียนของวิดเจ็ต: อคติอยู่ในข้อมูล ไม่ได้อยู่ในอัลกอริทึม</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — ไล่ต้นตอ bias</div>
+    <p>ระบบ AI ประเมินราคาบ้านให้ราคาต่ำผิดปกติในย่านผู้มีรายได้น้อย ทั้งที่สภาพบ้านเท่ากัน
+    จงไล่ว่า bias นี้เข้ามาในระบบได้ทางไหนบ้าง (อย่างน้อย 3 ทาง) โดยอ้างขั้นตอนการสร้างโมเดลที่เรียนมา</p>
+    <details class="answer">
+      <summary>แนวคำตอบ</summary>
+      (1) ข้อมูลฝึก: ราคาซื้อขายในอดีตสะท้อนการกดราคาเชิงสังคมอยู่แล้ว — โมเดลเรียน "ทำนายอดีตต่อ" |
+      (2) การเลือก feature: ใส่ "รหัสไปรษณีย์" = ใส่ตัวแทนของฐานะ/เชื้อชาติทางอ้อม |
+      (3) เป้าหมาย loss: ทำนาย "ราคาตลาด" แม่น ≠ ทำนาย "มูลค่าที่เป็นธรรม" |
+      (4) วัดผล: test set จากแหล่งเดียวกับ train ก็มี bias เดียวกัน — accuracy สูงไม่ได้แปลว่ายุติธรรม
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — นโยบายใช้ AI ของห้องเรา</div>
+    <p>กลุ่มละ 4 คน ร่าง "นโยบายการใช้ AI ในวิชาเรียน" 5 ข้อ ที่ทั้งอนุญาตให้ใช้ประโยชน์และกันการโกง
+    แต่ละข้อต้องระบุ "เพราะกลไกของ AI เป็นแบบนี้... จึงควร..." — โหวตเลือกนโยบายที่ดีที่สุดของห้อง</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — วิเคราะห์ข่าวจริง</div>
+    <p>หาข่าว AI ก่อปัญหาจริง 1 ข่าว (ภายใน 2 ปีที่ผ่านมา) เขียนวิเคราะห์ 1 หน้า:
+    (1) เกิดอะไร (2) กลไกทางเทคนิคเบื้องหลังคืออะไร (3) ป้องกันได้ตรงขั้นตอนไหนของการพัฒนา
+    (4) ความเห็นของคุณ — ใครควรรับผิดชอบ</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — จดหมายถึงตัวเองในอนาคต</div>
+    <p>เขียนครึ่งหน้า: "ในอาชีพที่ฉันจะทำ AI จะเปลี่ยนอะไร และฉันจะวางตัวอย่างไร"
+    โดยอ้างความสามารถ/ข้อจำกัดจริงของ AI ที่เรียนมา ไม่ใช่จากหนังหรือข่าวพาดหัว
+    (เก็บไว้อ่านอีกทีตอนเรียนจบ)</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้ปิดวงจรอะไร:</strong><br>
+    เป้าหมายของวิชาไม่ใช่แค่ "รู้ว่า AI ทำงานอย่างไร" แต่คือ "อยู่กับ AI อย่างคนที่รู้ทัน" —
+    วิจารณ์ได้โดยชี้กลไก ใช้ได้โดยรู้ขีดจำกัด และตัดสินใจเชิงจริยธรรมได้บนข้อเท็จจริง
+    ไม่ใช่ความกลัวหรือความเห่อ<br>
+    <strong>สัปดาห์หน้า:</strong> เวทีของพวกคุณ — นำเสนอโปรเจกต์ปลายภาค
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">MIT</span> <a href="https://ocw.mit.edu/courses/res-tll-008-social-and-ethical-responsibilities-of-computing-serc-fall-2022/" target="_blank">Social and Ethical Responsibilities of Computing (SERC)</a> — เคสจริงพร้อมกรอบวิเคราะห์แบบเดียวกับศาลจำลองของเรา</li>
+      <li><span class="src">ProPublica</span> <a href="https://www.propublica.org/article/machine-bias-risk-assessments-in-criminal-sentencing" target="_blank">Machine Bias (รายงาน COMPAS)</a> — งานข่าวสืบสวนที่จุดประเด็น fairness ทั้งวงการ (อ่านประกอบ deepdive)</li>
+      <li><span class="src">Anthropic</span> <a href="https://www.anthropic.com/research" target="_blank">Research: Alignment &amp; Interpretability</a> — งานวิจัยจริงด้านความปลอดภัย AI สำหรับคนอยากต่อยอดสายนี้</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week17.html">← Diffusion &amp; Multimodal</a>
+    <a href="week19.html">โปรเจกต์ปลายภาค →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" — 6 ประตูที่อคติแอบเข้า =====
+const gates = ['เป้าหมาย', 'เก็บข้อมูล', 'เลือก feature', 'เทรน', 'วัดผล', 'ใช้งานจริง'];
+// แต่ละประตูมีปุ่ม 🛡️ กดสลับดู "วิธีกัน" ได้
+const gateScene = (i, msg, fix) => s => {
+  s.innerHTML = '<div class="big">' + gates.map((g, j) =>
+    `<span class="chip${j === i ? ' bad' : ''}" style="animation-delay:${j * .12}s">${j === i ? '🚪💥 ' : ''}ประตู ${j + 1}: ${g}</span>`).join('') +
+    '</div><div class="note" id="g14m">' + msg + '</div>' +
+    '<button class="mini-btn" id="g14f">🛡️ ดูวิธีกัน</button>';
+  let showFix = false;
+  s.querySelector('#g14f').onclick = () => {
+    showFix = !showFix;
+    s.querySelector('#g14m').innerHTML = showFix ? '🛡️ <strong>วิธีกัน:</strong> ' + fix : msg;
+    s.querySelector('#g14f').textContent = showFix ? '🚪 กลับไปดูปัญหา' : '🛡️ ดูวิธีกัน';
+  };
+};
+window.stepScenes = [
+  gateScene(0, 'สั่งให้เลียนแบบ "พนักงานที่สำเร็จในอดีต" — ถ้าอดีตมีอคติ นี่คือคำสั่งให้ทำซ้ำอคติอย่างแม่นยำ ปัญหาเริ่มก่อนเขียนโค้ดบรรทัดแรก',
+    'ตั้งเป้าที่วัด "ความสามารถทำงาน" ตรงๆ (ทดสอบทักษะ) แทนการเลียนแบบการตัดสินใจในอดีต'),
+  gateScene(1, 'ใครไม่เคยถูกเรียกสัมภาษณ์ ก็ไม่มีข้อมูลว่า "จ้างแล้วเวิร์กไหม" — กลุ่มที่เคยถูกมองข้าม หายไปจากข้อมูลตั้งแต่ต้น',
+    'ตรวจการกระจายของข้อมูลก่อนเทรน + เก็บข้อมูลเสริมจากกลุ่มที่ขาด'),
+  gateScene(2, 'ลบช่อง "เพศ" แล้วแต่โมเดลเรียนจากตัวแทนทางอ้อม (proxy): ชื่อชมรม กีฬา ปีเว้นช่วงงาน — เคส Amazon จับคำว่า "women\'s" เป็นสัญญาณลบ',
+    'ไล่หา proxy อย่างเป็นระบบ (วัด correlation ระหว่าง feature กับกลุ่ม) แล้วตัด/ปรับ'),
+  gateScene(3, 'gradient descent ซื่อสัตย์ต่อข้อมูล: ลด loss = เลียนแบบแพตเทิร์น — มันไม่รู้และไม่สนว่าแพตเทิร์นนั้นคืออคติหรือความจริง',
+    'เพิ่มเงื่อนไขความเป็นธรรมเข้าไปใน loss (fairness constraints) — มีเทคนิควิจัยรองรับแล้ว'),
+  gateScene(4, 'รายงาน "accuracy 94%" จาก test ที่ตัดจากข้อมูลอดีตชุดเดียวกัน — ตัวเลขสวยยืนยันว่าเลียนแบบอดีตเก่ง ไม่ได้ยืนยันว่ายุติธรรม',
+    'รายงาน error แยกรายกลุ่มเสมอ (เพศ พื้นที่ อายุ) — ค่าเฉลี่ยรวมซ่อนปัญหาได้'),
+  gateScene(5, 'ปัดกลุ่ม A ตก → ไม่ถูกจ้าง → ข้อมูลปีหน้ายิ่งไม่มีกลุ่ม A → รุ่นถัดไปยิ่งมั่นใจ — อคติตอกย้ำตัวเอง (feedback loop) อันตรายสุดเพราะโตเองได้',
+    'มีช่องอุทธรณ์โดยมนุษย์ + สุ่มหลุดจากคำตัดสินของระบบบางส่วนเพื่อเก็บข้อมูลถ่วงดุล + audit ประจำปี'),
+];
+
+const QUIZ = [
+  { s: 'LLM มีฐานข้อมูลข้อเท็จจริงภายใน ที่มันค้นหาคำตอบก่อนตอบทุกครั้ง',
+    real: false,
+    why: 'มโน — LLM ไม่มีฐานข้อมูล มีแต่ weight ที่ทำนาย token ถัดไป (นี่คือเหตุที่มัน hallucinate ได้)' },
+  { s: 'เคยมีทนายความยื่นเอกสารต่อศาลโดยอ้างคำพิพากษาที่ ChatGPT แต่งขึ้น และถูกศาลลงโทษ',
+    real: true,
+    why: 'จริง — เคส Mata v. Avianca (สหรัฐฯ ปี 2023) เป็นเคสคลาสสิกของการเชื่อ AI โดยไม่ตรวจ' },
+  { s: 'การเทรน GPT ใช้อัลกอริทึมลับเฉพาะที่ต่างจาก gradient descent ที่สอนในมหาวิทยาลัย',
+    real: false,
+    why: 'มโน — แกนคือ backprop + gradient descent ตัวเดียวกับที่เราคำนวณมือในเรื่อง Backpropagation' },
+  { s: 'Amazon เคยยกเลิกระบบ AI คัดใบสมัครงาน เพราะพบว่ามันให้คะแนนผู้หญิงต่ำกว่าอย่างเป็นระบบ',
+    real: true,
+    why: 'จริง (ข่าวปี 2018) — โมเดลเรียนจากประวัติการจ้างในอดีตที่ชายเป็นส่วนใหญ่ = bias จากข้อมูลฝึก' },
+  { s: 'ถ้าตั้ง temperature = 0 แล้ว LLM จะไม่มีทาง hallucinate เพราะมันเลือกคำที่มั่นใจที่สุดเสมอ',
+    real: false,
+    why: 'มโน — T=0 แค่ทำให้ตอบซ้ำเดิม คำที่ "น่าจะเป็นไปได้สูงสุด" ก็ยังผิดได้ถ้าความรู้ใน weight ผิด' },
+  { s: 'โมเดลสร้างภาพเริ่มวาดจาก noise สุ่มล้วนๆ แล้วค่อยๆ ลบ noise ออกจนเป็นภาพ',
+    real: true,
+    why: 'จริง — คือหลัก diffusion ที่เรียนสัปดาห์ที่แล้วเป๊ะ' }
+];
+let answered = 0, correct = 0;
+
+document.getElementById('quiz').innerHTML = QUIZ.map((q, i) => `
+  <div class="exercise" id="qz${i}" style="margin:10px 0">
+    <p style="margin:0 0 8px">${i + 1}. ${q.s}</p>
+    <button onclick="answer(${i}, true)">จริง</button>
+    <button onclick="answer(${i}, false)">มโน (hallucination)</button>
+    <div id="fb${i}" style="margin-top:8px"></div>
+  </div>`).join('');
+
+function answer(i, guess) {
+  const q = QUIZ[i], fb = document.getElementById('fb' + i);
+  if (fb.dataset.done) return;
+  fb.dataset.done = '1';
+  answered++;
+  const right = guess === q.real;
+  if (right) correct++;
+  fb.innerHTML = `<div style="background:${right ? 'var(--green-soft)' : '#fde3e3'}; border-radius:8px; padding:8px 12px">
+    ${right ? '✅ ถูก!' : '❌ พลาด'} — ${q.real ? 'เรื่องจริง' : 'มโน'}: ${q.why}</div>`;
+  if (answered === QUIZ.length)
+    document.getElementById('score').innerHTML =
+      `คะแนน: <strong>${correct}/${QUIZ.length}</strong> — ` +
+      (correct >= 5 ? 'เยี่ยม! คุณแยกของจริงจากของเนียนได้แล้ว'
+                    : 'สังเกต: ข้อที่หลอกได้ มักเป็นข้อที่ "ฟังดูสมเหตุสมผล" ที่สุด — นิสัยเดียวกับ hallucination');
+}
+</script>
+
+<script>
+/*W16-CORE-BEGIN*/
+// ===== แกนคำนวณของวิดเจ็ต (ล้วนๆ ไม่มี DOM — ทดสอบซ้ำได้) =====
+window.W16LAB = (function () {
+  // PRNG กำหนด seed ได้ — ผลรันซ้ำได้เป๊ะ
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  // ผู้สมัคร n คน: กลุ่ม g (0=น้ำเงิน,1=ส้ม) อย่างละครึ่ง — "ฝีมือจริง" แจกแจงเดียวกันทั้งสองกลุ่ม
+  // proxy (ชมรม/มหาวิทยาลัย) ไม่เกี่ยวกับฝีมือ แต่สัมพันธ์กับกลุ่ม: P(proxy=1) = 0.8 (น้ำเงิน) / 0.2 (ส้ม)
+  function genPool(rand, n) {
+    const pool = [];
+    for (let i = 0; i < n; i++) {
+      const g = i % 2;
+      const skill = (rand() + rand() + rand()) / 3 * 100;      // โค้งระฆังกลางๆ 50
+      const proxy = rand() < (g === 0 ? 0.8 : 0.2) ? 1 : 0;
+      pool.push({ g, skill, proxy, jy: rand() });
+    }
+    return pool;
+  }
+  // ป้ายกำกับ "การจ้างในอดีต": เกณฑ์กลาง 60 แต่ลำเอียง ±15×bias ตามกลุ่ม (fair=true = ตัดสินจากฝีมือล้วน)
+  function labelHistory(pool, bias, fair) {
+    return pool.map(c =>
+      c.skill >= 60 + (fair ? 0 : (c.g === 0 ? -15 * bias : 15 * bias)) ? 1 : 0);
+  }
+  // "เทรนแบบนับ": ไล่หาเกณฑ์คะแนนที่เลียนแบบคำตัดสินในอดีตได้ผิดน้อยที่สุด — โปร่งใส 100%
+  function fitThreshold(rows) {
+    if (!rows.length) return null;
+    let best = 60, bestErr = Infinity;
+    for (let t = 0; t <= 101; t += 0.5) {
+      let err = 0;
+      for (const r of rows) if ((r.skill >= t ? 1 : 0) !== r.y) err++;
+      if (err < bestErr) { bestErr = err; best = t; }
+    }
+    return best;
+  }
+  // โมเดล = เกณฑ์แยกตามค่า feature (group หรือ proxy) ที่ฟิตจากประวัติศาสตร์
+  function train(pool, labels, feat) {
+    const rowsFor = v => pool
+      .map((c, i) => ({ skill: c.skill, y: labels[i], v: feat === 'group' ? c.g : c.proxy }))
+      .filter(r => r.v === v);
+    const tAll = fitThreshold(pool.map((c, i) => ({ skill: c.skill, y: labels[i] })));
+    const t0 = fitThreshold(rowsFor(0)), t1 = fitThreshold(rowsFor(1));
+    return { feat, t0: t0 === null ? tAll : t0, t1: t1 === null ? tAll : t1 };
+  }
+  function predict(model, c) {
+    const v = model.feat === 'group' ? c.g : c.proxy;
+    return c.skill >= (v === 0 ? model.t0 : model.t1);
+  }
+  // วิธี ข) โควตา: บังคับอัตรารับต่อกลุ่ม = อัตรารับรวมของโมเดล (รับเรียงตามฝีมือภายในกลุ่ม)
+  function quotaAccept(pool, model) {
+    const base = pool.map(c => predict(model, c));
+    const target = base.filter(Boolean).length / pool.length;
+    const accepted = new Array(pool.length).fill(false);
+    let overrides = 0;
+    const tEff = [101, 101];
+    for (const g of [0, 1]) {
+      const idx = pool.map((c, i) => i).filter(i => pool[i].g === g)
+        .sort((a, b) => pool[b].skill - pool[a].skill);
+      const k = Math.round(target * idx.length);
+      idx.forEach((i, rank) => { accepted[i] = rank < k; });
+      if (k > 0) tEff[g] = pool[idx[k - 1]].skill;
+      idx.forEach(i => { if (accepted[i] !== base[i]) overrides++; });
+    }
+    return { accepted, overrides, tEff };
+  }
+  // สรุปผลรายกลุ่ม: อัตรารับรวม + ฝีมือเฉลี่ยของคนที่ถูกรับ
+  function summarize(pool, accepted) {
+    return [0, 1].map(g => {
+      const mine = pool.map((c, i) => ({ c, a: accepted[i] })).filter(x => x.c.g === g);
+      const acc = mine.filter(x => x.a);
+      return {
+        n: mine.length, nAcc: acc.length,
+        rate: mine.length ? acc.length / mine.length : 0,
+        meanSkill: acc.length ? acc.reduce((s, x) => s + x.c.skill, 0) / acc.length : null
+      };
+    });
+  }
+  // "โอกาสถูกรับที่ฝีมือเท่ากัน": ประเมิน *นโยบาย* ที่โมเดลใช้ บนตารางฝีมือ 50–70 ชุดเดียวกันเป๊ะทั้งสองกลุ่ม
+  // (คนสมมุติฝีมือเท่ากันทุกจุด — เหลือแค่ผลของนโยบาย ไม่มี noise จากการสุ่มตัวอย่าง)
+  function policyBandRate(model, g, quota) {
+    const pProxy1 = g === 0 ? 0.8 : 0.2;   // การกระจาย proxy ตามกลุ่ม (ตามที่สร้างข้อมูล)
+    let s = 0, n = 0;
+    for (let sk = 50; sk <= 70.001; sk += 0.5) {
+      n++;
+      if (quota) s += sk >= quota.tEff[g] ? 1 : 0;
+      else if (model.feat === 'group') s += sk >= (g === 0 ? model.t0 : model.t1) ? 1 : 0;
+      else s += pProxy1 * (sk >= model.t1 ? 1 : 0) + (1 - pProxy1) * (sk >= model.t0 ? 1 : 0);
+    }
+    return s / n;
+  }
+  // รันครบวงจร: สร้างอดีต → ติดป้าย (ลำเอียง/แก้แล้ว) → เทรน → ใช้ตัดสินผู้สมัครรอบใหม่
+  function run(bias, fix, seed) {
+    const rand = mulberry32(seed);
+    const hist = genPool(rand, 200);
+    const fresh = genPool(rand, 200);
+    const labels = labelHistory(hist, bias, fix === 'relabel');
+    const model = train(hist, labels, fix === 'drop' ? 'proxy' : 'group');
+    let accepted, quota = null;
+    if (fix === 'quota') { quota = quotaAccept(fresh, model); accepted = quota.accepted; }
+    else accepted = fresh.map(c => predict(model, c));
+    const summary = summarize(fresh, accepted);
+    summary.forEach((s, g) => { s.bandRate = policyBandRate(model, g, quota); });
+    return { fresh, model, accepted, quota, summary };
+  }
+  return { mulberry32, genPool, labelHistory, fitThreshold, train, predict, quotaAccept, summarize, policyBandRate, run };
+})();
+
+window.W16FX = (function () {
+  // normal CDF (สูตรประมาณ Abramowitz–Stegun — คลาดเคลื่อน < 1e-7)
+  function ncdf(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989422804 * Math.exp(-x * x / 2);
+    const p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    return x > 0 ? 1 - p : p;
+  }
+  // โมเดลตัวเดียวกันทั้งสองกลุ่ม: คะแนนคนไม่ทำผิดซ้ำ ~N(40,12), คนทำผิดซ้ำ ~N(65,12)
+  const MU_NEG = 40, MU_POS = 65, SD = 12;
+  const tpr = t => 1 - ncdf((t - MU_POS) / SD);   // จับคนทำผิดซ้ำได้
+  const fpr = t => 1 - ncdf((t - MU_NEG) / SD);   // กล่าวหาคนบริสุทธิ์ผิด
+  // calibration (PPV): ในบรรดาคนที่ถูกชี้ "เสี่ยงสูง" มีสัดส่วนทำผิดซ้ำจริงเท่าไร — ขึ้นกับอัตราฐาน p ของกลุ่ม!
+  function ppv(p, t) {
+    const a = p * tpr(t), b = (1 - p) * fpr(t);
+    return a + b > 0 ? a / (a + b) : 1;
+  }
+  function metrics(pA, pB, tA, tB) {
+    return { ppvA: ppv(pA, tA), ppvB: ppv(pB, tB), fprA: fpr(tA), fprB: fpr(tB) };
+  }
+  // พรีเซ็ต "calibration เท่า": กลุ่มที่ PPV ต่ำกว่า ต้องยกเกณฑ์ขึ้นจนแม่นเท่าอีกกลุ่ม (PPV ชันขึ้นตามเกณฑ์ → binary search)
+  function solveCalibration(pA, pB, tA, tB) {
+    const a = ppv(pA, tA), b = ppv(pB, tB);
+    const target = Math.max(a, b);
+    const adjustB = a >= b;
+    const p = adjustB ? pB : pA;
+    let lo = 20, hi = 95;
+    for (let i = 0; i < 60; i++) {
+      const mid = (lo + hi) / 2;
+      if (ppv(p, mid) < target) lo = mid; else hi = mid;
+    }
+    const t = (lo + hi) / 2;
+    return adjustB ? { tA, tB: t } : { tA: t, tB };
+  }
+  // พรีเซ็ต "FPR เท่า": FPR ขึ้นกับเกณฑ์อย่างเดียว (โมเดลแจกคะแนนเหมือนกัน) → ใช้เกณฑ์เดียวกันจบ
+  function solveFpr(pA, pB, tA, tB) { return { tA, tB: tA }; }
+  return { ncdf, tpr, fpr, ppv, metrics, solveCalibration, solveFpr, MU_NEG, MU_POS, SD };
+})();
+/*W16-CORE-END*/
+</script>
+
+<script>
+// ===== ⚖️ ห้องแล็บอคติ — ส่วนติดต่อผู้ใช้ =====
+(function () {
+  const L = window.W16LAB;
+  const cv = document.getElementById('blCv');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const biasEl = document.getElementById('blBias'), biasV = document.getElementById('blBiasV');
+  const fixSeg = document.getElementById('blFix');
+  const learnEl = document.getElementById('blLearn'), barsEl = document.getElementById('blBars');
+  const tilesEl = document.getElementById('blTiles'), msgEl = document.getElementById('blMsg');
+  let fix = 'none', seed = 20260703, sweep = null, R = null;
+
+  const CB = '#2456e6', CO = '#e8871e', GRAY = '#cfd6e4', MUT = '#5b6475';
+  const X0 = 48, X1 = 735, sx = s => X0 + s / 100 * (X1 - X0);
+  const BANDS = [[46, 136], [176, 266]];   // แถวบน = น้ำเงิน, แถวล่าง = ส้ม
+  const pct = v => (v * 100).toFixed(0) + '%';
+  const f1 = v => v === null ? '—' : v.toFixed(1);
+
+  function dashLine(x, y0, y1, color) {
+    ctx.save(); ctx.strokeStyle = color; ctx.setLineDash([6, 4]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke(); ctx.restore();
+  }
+
+  function draw(progress) {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.font = '12px Kanit, sans-serif';
+    // เส้นกริด + เลขแกนฝีมือ
+    ctx.textAlign = 'center';
+    for (let s = 0; s <= 100; s += 20) {
+      ctx.strokeStyle = '#edf0f6'; ctx.beginPath();
+      ctx.moveTo(sx(s), 34); ctx.lineTo(sx(s), 284); ctx.stroke();
+      ctx.fillStyle = MUT; ctx.fillText(s, sx(s), 300);
+    }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = MUT; ctx.fillText('คะแนนความสามารถจริง →', X0, 16);
+    ctx.fillStyle = CB; ctx.fillText('กลุ่มน้ำเงิน 🔵', 6, BANDS[0][0] - 6);
+    ctx.fillStyle = CO; ctx.fillText('กลุ่มส้ม 🟠', 6, BANDS[1][0] - 6);
+    // เส้นเกณฑ์ที่โมเดลเรียนได้ / เกณฑ์ที่เกิดจริง
+    if (R) {
+      const m = R.model;
+      if (fix === 'quota' && R.quota) {
+        dashLine(sx(R.quota.tEff[0]), BANDS[0][0] - 14, BANDS[0][1] + 8, CB);
+        dashLine(sx(R.quota.tEff[1]), BANDS[1][0] - 14, BANDS[1][1] + 8, CO);
+        ctx.fillStyle = MUT;
+        ctx.fillText('เกณฑ์จริงหลังโควตา', Math.min(sx(R.quota.tEff[0]) + 5, 600), BANDS[0][0] - 4);
+      } else if (m.feat === 'group') {
+        dashLine(sx(m.t0), BANDS[0][0] - 14, BANDS[0][1] + 8, CB);
+        dashLine(sx(m.t1), BANDS[1][0] - 14, BANDS[1][1] + 8, CO);
+        ctx.fillStyle = CB; ctx.fillText('เกณฑ์ 🔵 = ' + m.t0.toFixed(1), Math.min(sx(m.t0) + 5, 620), BANDS[0][0] - 2);
+        ctx.fillStyle = CO; ctx.fillText('เกณฑ์ 🟠 = ' + m.t1.toFixed(1), Math.min(sx(m.t1) + 5, 620), BANDS[1][0] - 2);
+      } else {
+        dashLine(sx(m.t1), 34, 284, '#8b5cf6');
+        dashLine(sx(m.t0), 34, 284, '#94a3b8');
+        ctx.fillStyle = '#8b5cf6'; ctx.fillText('เกณฑ์คนมี proxy = ' + m.t1.toFixed(1), Math.min(sx(m.t1) + 5, 590), 30);
+        ctx.fillStyle = '#94a3b8'; ctx.fillText('เกณฑ์คนไม่มี proxy = ' + m.t0.toFixed(1), Math.min(sx(m.t0) + 5, 580), 46);
+      }
+    }
+    // จุดผู้สมัครรอบใหม่ — จัดหมวดตามแนวสแกน
+    if (R) {
+      const scanS = progress * 100;
+      R.fresh.forEach((c, i) => {
+        const [y0, y1] = BANDS[c.g];
+        const x = sx(c.skill), y = y0 + 8 + c.jy * (y1 - y0 - 16);
+        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+        if (c.skill <= scanS) {
+          if (R.accepted[i]) { ctx.fillStyle = c.g === 0 ? CB : CO; ctx.fill(); }
+          else { ctx.strokeStyle = GRAY; ctx.lineWidth = 1.6; ctx.stroke(); }
+        } else { ctx.fillStyle = '#e6eaf2'; ctx.fill(); }
+      });
+      if (progress > 0 && progress < 1) {
+        ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(sx(scanS), 34); ctx.lineTo(sx(scanS), 284); ctx.stroke();
+      }
+    }
+    // คำอธิบายสัญลักษณ์
+    ctx.fillStyle = MUT; ctx.fillText('● ทึบ = ถูกรับ   ○ โปร่ง = ถูกปัดตก   (ผู้สมัครรอบใหม่ 200 คน)', X0, 158);
+  }
+
+  function bar(lbl, v, color) {
+    return '<div class="w16bar"><span class="lbl">' + lbl + '</span>' +
+      '<span class="trk"><span class="fill" style="background:' + color + ';width:' + (v * 100).toFixed(1) + '%"></span></span>' +
+      '<span class="val">' + pct(v) + '</span></div>';
+  }
+
+  function updateReadouts() {
+    const m = R.model, S = R.summary;
+    // สิ่งที่โมเดลเรียนได้
+    if (m.feat === 'group') {
+      let t = '🧠 <strong>สิ่งที่โมเดลเรียนจากอดีต:</strong> รับ 🔵 เมื่อคะแนน ≥ <strong>' + m.t0.toFixed(1) +
+        '</strong> แต่รับ 🟠 เมื่อคะแนน ≥ <strong>' + m.t1.toFixed(1) + '</strong>' +
+        (Math.abs(m.t1 - m.t0) < 2 ? ' — เกณฑ์เดียวกัน = ยุติธรรม' : ' — สองมาตรฐานที่เรียนมาจากป้ายกำกับ ไม่มีใครเขียนโค้ดสั่ง');
+      if (fix === 'quota' && R.quota)
+        t += '<br>➕ โควตา override คำตัดสินโมเดล: เกณฑ์ที่เกิดจริง 🔵 ≥ ' + R.quota.tEff[0].toFixed(1) +
+          ' | 🟠 ≥ ' + R.quota.tEff[1].toFixed(1);
+      learnEl.innerHTML = t;
+    } else {
+      learnEl.innerHTML = '🧠 <strong>โมเดลไม่เห็นคอลัมน์กลุ่มแล้ว</strong> แต่ไปเรียนเกณฑ์ต่างกันตาม proxy แทน: ' +
+        'คน "มีกิจกรรม/มหาวิทยาลัยสายที่ 🔵 นิยม" ≥ <strong>' + m.t1.toFixed(1) +
+        '</strong> | คนไม่มี ≥ <strong>' + m.t0.toFixed(1) + '</strong> — อคติเดินอ้อมเข้ามาทางข้อมูลที่สัมพันธ์กับกลุ่ม';
+    }
+    barsEl.innerHTML =
+      bar('อัตราถูกรับ 🔵', S[0].rate, CB) + bar('อัตราถูกรับ 🟠', S[1].rate, CO) +
+      bar('ถูกรับเมื่อฝีมือเท่ากัน (50–70) 🔵', S[0].bandRate, CB) +
+      bar('ถูกรับเมื่อฝีมือเท่ากัน (50–70) 🟠', S[1].bandRate, CO);
+    const gap = Math.abs(S[0].bandRate - S[1].bandRate);
+    tilesEl.innerHTML =
+      '<div class="w16tile"><div class="t">ฝีมือเฉลี่ยของคนที่ถูกรับ 🔵</div><div class="n">' + f1(S[0].meanSkill) + '</div></div>' +
+      '<div class="w16tile"><div class="t">ฝีมือเฉลี่ยของคนที่ถูกรับ 🟠</div><div class="n">' + f1(S[1].meanSkill) + '</div></div>' +
+      '<div class="w16tile"><div class="t">ที่ฝีมือเท่ากัน โอกาสต่างกัน</div><div class="n">' +
+      (gap * 100).toFixed(0) + ' จุด <span class="w16pill ' + (gap <= 0.05 ? 'ok">✓ แฟร์' : 'bad">✗ ไม่แฟร์') + '</span></div></div>' +
+      (fix === 'quota' && R.quota
+        ? '<div class="w16tile"><div class="t">คำตัดสินโมเดลที่ถูก override</div><div class="n">' + R.quota.overrides + ' คน</div></div>'
+        : '');
+    const MSG = {
+      none: 'โมเดล<strong>ไม่ได้ชั่ว</strong> — gradient descent (ที่นี่คือการนับ) แค่เลียนแบบป้ายกำกับอดีตอย่างซื่อสัตย์ ' +
+        'อคติในข้อมูลจึงกลายเป็นอคติในโมเดลแบบวัดได้: ที่ฝีมือเท่ากัน โอกาสถูกรับต่างกัน ' + (gap * 100).toFixed(0) + ' จุด (ประตูที่ 1–2)',
+      drop: 'ลบคอลัมน์กลุ่มแล้ว ช่องว่าง<strong>หดลงแต่ไม่หาย</strong> — เพราะ proxy (กิจกรรม/มหาวิทยาลัย) สัมพันธ์กับกลุ่ม ' +
+        'โมเดลจึง "อ่านกลุ่มทางอ้อม" ได้อยู่ดี — บทเรียน: <strong>ลบ feature ไม่พอ เพราะ proxy รั่ว</strong> (ประตูที่ 3 — เคส Amazon จับคำว่า women\'s)',
+      quota: 'อัตรารับเท่ากันแล้ว ✓ — แต่ดูราคาที่จ่าย: ต้อง override คำตัดสินโมเดล <strong>' +
+        (R.quota ? R.quota.overrides : 0) + ' คน</strong> และโมเดลข้างในยังให้คะแนนสองมาตรฐานเหมือนเดิม ' +
+        '— นี่คือการ<strong>ปิดอาการที่ปลายทาง</strong>: ถอดโควตาเมื่อไร อคติกลับมาทันที และโควตาการันตีแค่<strong>สัดส่วนรวม</strong> ' +
+        'ไม่ได้การันตีความแฟร์รายบุคคล (เกณฑ์จริงของสองกลุ่มยังไม่จำเป็นต้องตรงกันเป๊ะ — ดูเส้นประบนภาพ)',
+      relabel: 'พอ<strong>แก้ป้ายกำกับอดีต</strong>ให้ตัดสินจากฝีมือล้วน โมเดลเดิมเป๊ะก็เรียนได้เกณฑ์เกือบเดียวกันทั้งสองกลุ่มทันที ' +
+        '— วิธีเดียวที่แก้ที่ต้นเหตุ แต่ในโลกจริงคือวิธีที่<strong>ยากที่สุด</strong>: ต้องยอมรับก่อนว่าอดีตไม่ยุติธรรม แล้วลงแรงติดป้ายใหม่'
+    };
+    msgEl.innerHTML = '💬 ' + MSG[fix];
+  }
+
+  function render() {
+    R = L.run(+biasEl.value / 100, fix, seed);
+    biasV.textContent = biasEl.value + '%';
+    updateReadouts();
+    clearInterval(sweep);
+    let step = 0;
+    const total = 36;
+    draw(0);
+    sweep = setInterval(() => {
+      step++;
+      draw(Math.min(step / total, 1));
+      if (step >= total) clearInterval(sweep);
+    }, 22);
+  }
+
+  biasEl.addEventListener('input', render);
+  fixSeg.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    fix = b.dataset.f;
+    fixSeg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    render();
+  });
+  document.getElementById('blRun').addEventListener('click', () => { seed = (seed * 1664525 + 1013904223) >>> 0; render(); });
+  render();
+})();
+</script>
+
+<script>
+// ===== 🎯 ความยุติธรรมที่เลือกได้ทีละอย่าง — ส่วนติดต่อผู้ใช้ =====
+(function () {
+  const F = window.W16FX;
+  const cv = document.getElementById('fxCv');
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  const el = id => document.getElementById(id);
+  const baseA = el('fxBaseA'), baseB = el('fxBaseB'), tA = el('fxTA'), tB = el('fxTB');
+  const barsEl = el('fxBars'), msgEl = el('fxMsg');
+  let lastPreset = null;
+
+  const X0 = 50, X1 = 730, sx = s => X0 + s / 100 * (X1 - X0);
+  const PANELS = [[30, 145], [185, 300]];   // [top, bottom] ของกราฟกลุ่ม A / B
+  const pdf = (s, mu) => Math.exp(-((s - mu) * (s - mu)) / (2 * F.SD * F.SD)) / (F.SD * Math.sqrt(2 * Math.PI));
+  const KH = 3050;                            // สเกลความสูงโค้ง
+  const pctf = (v, d) => (v * 100).toFixed(d === undefined ? 1 : d) + '%';
+
+  function curvePath(p, mu, weight, y1) {
+    ctx.beginPath(); ctx.moveTo(sx(0), y1);
+    for (let s = 0; s <= 100; s += 1) ctx.lineTo(sx(s), y1 - weight * pdf(s, mu) * KH);
+    ctx.lineTo(sx(100), y1); ctx.closePath();
+  }
+  function clippedFill(p, mu, weight, y1, from) {
+    ctx.save(); ctx.beginPath();
+    ctx.rect(sx(from), 0, cv.width - sx(from), cv.height); ctx.clip();
+    curvePath(p, mu, weight, y1); ctx.fill(); ctx.restore();
+  }
+
+  function draw(pA, pB, thA, thB) {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.font = '12px Kanit, sans-serif';
+    [[pA, thA, 'กลุ่ม A'], [pB, thB, 'กลุ่ม B']].forEach(([p, th, name], gi) => {
+      const [y0, y1] = PANELS[gi];
+      // แกน
+      ctx.strokeStyle = '#e3e7ef'; ctx.beginPath(); ctx.moveTo(sx(0), y1); ctx.lineTo(sx(100), y1); ctx.stroke();
+      ctx.fillStyle = '#5b6475'; ctx.textAlign = 'center';
+      for (let s = 0; s <= 100; s += 20) ctx.fillText(s, sx(s), y1 + 14);
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#1f2533';
+      ctx.fillText(name + ' — อัตราฐาน ' + (p * 100).toFixed(0) + '%', 6, y0 + 4);
+      // โค้งคนบริสุทธิ์ (เทา) + ส่วนที่ถูกกล่าวหาผิด (แดง) / โค้งคนทำผิดซ้ำ (ส้ม) + ส่วนที่ถูกจับได้ (เขียว)
+      ctx.fillStyle = 'rgba(148,163,184,.35)'; curvePath(p, F.MU_NEG, 1 - p, y1); ctx.fill();
+      ctx.fillStyle = 'rgba(214,69,69,.5)'; clippedFill(p, F.MU_NEG, 1 - p, y1, th);
+      ctx.fillStyle = 'rgba(232,135,30,.3)'; curvePath(p, F.MU_POS, p, y1); ctx.fill();
+      ctx.fillStyle = 'rgba(29,155,108,.4)'; clippedFill(p, F.MU_POS, p, y1, th);
+      // เส้นเกณฑ์
+      ctx.save(); ctx.strokeStyle = '#2456e6'; ctx.setLineDash([6, 4]); ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx(th), y0); ctx.lineTo(sx(th), y1); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = '#2456e6';
+      ctx.fillText('เกณฑ์ = ' + th, Math.min(sx(th) + 5, 660), y0 + 16);
+    });
+    ctx.fillStyle = '#5b6475';
+    ctx.fillText('⬛ เทา = ไม่ทำผิดซ้ำ (🟥 ส่วนที่ถูกกล่าวหาผิด)   🟧 ส้ม = ทำผิดซ้ำจริง (🟩 ส่วนที่ถูกจับได้)   →คะแนนความเสี่ยง', X0, 334);
+  }
+
+  function bar(lbl, v, color) {
+    return '<div class="w16bar"><span class="lbl">' + lbl + '</span>' +
+      '<span class="trk"><span class="fill" style="background:' + color + ';width:' + Math.min(v * 100, 100).toFixed(1) + '%"></span></span>' +
+      '<span class="val">' + pctf(v) + '</span></div>';
+  }
+
+  function render() {
+    const pA = +baseA.value / 100, pB = +baseB.value / 100, thA = +tA.value, thB = +tB.value;
+    el('fxBaseAV').textContent = baseA.value + '%'; el('fxBaseBV').textContent = baseB.value + '%';
+    el('fxTAV').textContent = (+tA.value).toFixed(1); el('fxTBV').textContent = (+tB.value).toFixed(1);
+    draw(pA, pB, thA, thB);
+    const M = F.metrics(pA, pB, thA, thB);
+    const gapCal = Math.abs(M.ppvA - M.ppvB);
+    const fLo = Math.min(M.fprA, M.fprB), fHi = Math.max(M.fprA, M.fprB);
+    const okCal = gapCal <= 0.015;
+    // FPR เทียบแบบสัดส่วน — เกณฑ์สูงๆ ช่องว่างสัมบูรณ์เล็ก แต่คนบริสุทธิ์กลุ่มหนึ่งอาจโดนบ่อยกว่าหลายสิบเท่า
+    const okFpr = (fHi - fLo <= 0.0015) || (fLo > 0 && fHi / fLo <= 1.25);
+    const fprTxt = fLo > 0 && fHi / fLo >= 2 ? 'ต่าง ' + (fHi / fLo).toFixed(1) + ' เท่า'
+      : 'ต่าง ' + ((fHi - fLo) * 100).toFixed(1) + ' จุด';
+    barsEl.innerHTML =
+      '<div class="w16bar"><span class="lbl" style="font-weight:700">ก) แม่นเมื่อชี้ว่าเสี่ยง (calibration)</span>' +
+      '<span class="trk" style="border:none;background:transparent"></span>' +
+      '<span class="w16pill ' + (okCal ? 'ok">✓ เท่ากัน' : 'bad">✗ ต่าง ' + (gapCal * 100).toFixed(1) + ' จุด') + '</span></div>' +
+      bar('· กลุ่ม A', M.ppvA, '#2456e6') + bar('· กลุ่ม B', M.ppvB, '#8b5cf6') +
+      '<div class="w16bar" style="margin-top:6px"><span class="lbl" style="font-weight:700">ข) กล่าวหาคนบริสุทธิ์ผิด (FPR)</span>' +
+      '<span class="trk" style="border:none;background:transparent"></span>' +
+      '<span class="w16pill ' + (okFpr ? 'ok">✓ เท่ากัน' : 'bad">✗ ' + fprTxt) + '</span></div>' +
+      bar('· กลุ่ม A', M.fprA, '#d64545') + bar('· กลุ่ม B', M.fprB, '#e8871e');
+    const per1k = f => { const v = f * 1000; return v >= 10 ? Math.round(v) : v.toFixed(1); };
+    const inn = 'ในคนบริสุทธิ์ 1,000 คน จะถูกชี้ว่า "เสี่ยงสูง": A ' + per1k(M.fprA) +
+      ' คน / B ' + per1k(M.fprB) + ' คน';
+    if (Math.abs(pA - pB) < 0.02)
+      msgEl.innerHTML = '💬 ตอนนี้อัตราฐานสองกลุ่ม<strong>เกือบเท่ากัน</strong> → สองนิยามอยู่ร่วมกันได้สบาย ' +
+        'ลองลากอัตราฐานให้ต่างกันมากๆ แล้วกดพรีเซ็ตดู — ความขัดแย้งจะโผล่ทันที';
+    else if (lastPreset === 'cal')
+      msgEl.innerHTML = '💬 calibration เท่ากันแล้ว ✓ — แต่ดูแถว FPR: ' + inn +
+        ' — กลุ่มที่อัตราฐานสูงกว่าโดนกล่าวหาผิด<strong>มากกว่าหลายเท่า</strong> นี่คือสิ่งที่ ProPublica ชี้ในเคส COMPAS ' +
+        '(ฝั่งบริษัทตอบว่า "ก็เรา calibrate เท่ากันแล้ว" — ถูกทั้งคู่ พร้อมกันไม่ได้)';
+    else if (lastPreset === 'fpr')
+      msgEl.innerHTML = '💬 FPR เท่ากันแล้ว ✓ (' + inn + ') — แต่ดูแถว calibration: คำว่า "เสี่ยงสูง" ของสองกลุ่ม' +
+        '<strong>แม่นไม่เท่ากัน</strong> — ผู้พิพากษาที่อ่านคะแนนกลุ่ม A กับ B ต้องตีความคนละแบบ ซึ่งก็ไม่แฟร์อีกแบบ';
+    else
+      msgEl.innerHTML = '💬 ' + inn + ' — ลองลากเกณฑ์สองกลุ่มให้เมตริกข้อ ก) เท่ากันก่อน แล้วดูว่าข้อ ข) เป็นอะไร ' +
+        '(หรือกดพรีเซ็ตให้คำนวณเป๊ะๆ ให้)';
+  }
+
+  [baseA, baseB, tA, tB].forEach(s => s.addEventListener('input', () => { lastPreset = null; render(); }));
+  el('fxPreCal').addEventListener('click', () => {
+    const r = F.solveCalibration(+baseA.value / 100, +baseB.value / 100, +tA.value, +tB.value);
+    tA.value = r.tA; tB.value = r.tB; lastPreset = 'cal'; render();
+  });
+  el('fxPreFpr').addEventListener('click', () => {
+    const r = F.solveFpr(+baseA.value / 100, +baseB.value / 100, +tA.value, +tB.value);
+    tA.value = r.tA; tB.value = r.tB; lastPreset = 'fpr'; render();
+  });
+  render();
+})();
+</script>
+
+<script>
+// ===== 🕵️ hallucination ระดับกลไก — ส่วนติดต่อผู้ใช้ =====
+(function () {
+  const el = id => document.getElementById(id);
+  const tabs = el('hlTabs');
+  if (!tabs) return;
+  // แจกแจงความน่าจะเป็น "แต่งขึ้นเพื่อสอน" (จำลองกลไก) — fab:1 = token ตัวเลขที่กำลังมโน
+  const MODES = [
+    {
+      prompt: '🧑‍💻 <strong>Prompt:</strong> "ISBN ของหนังสือ Harry Potter ภาคแรกคือ?"',
+      steps: [
+        { pick: 0, cands: [['978', .72, 1], ['0', .08, 1], ['หนังสือ', .06, 0], ['ไม่แน่ใจ', .02, 0], ['(อื่นๆ รวม)', .12, 0]],
+          note: 'แพตเทิร์น "ISBN คือ 978-…" แรงมากในข้อมูลฝึก → โมเดลมั่นใจ 72% ว่า token ถัดไปคือ "978" ทั้งที่ยังไม่รู้เลขจริงสักหลัก — ปุ่ม "ไม่แน่ใจ" มีแค่ 2%' },
+        { pick: 0, cands: [['-0', .46, 1], ['-1', .21, 1], ['-6', .11, 1], ['-9', .07, 1], ['(อื่นๆ รวม)', .15, 0]],
+          note: 'เลขกลุ่มภาษา: ผู้ท้าชิงอันดับต้น<strong>ล้วนเป็นตัวเลข</strong> ความน่าจะเป็นเกลี่ยกัน = โมเดลกำลังเดา แต่ softmax บังคับให้เลือกสักตัวเสมอ' },
+        { pick: 0, cands: [['-7432', .19, 1], ['-5539', .16, 1], ['-1408', .13, 1], ['-330', .11, 1], ['(อื่นๆ รวม)', .41, 0]],
+          note: 'เลขสำนักพิมพ์: อันดับหนึ่งมีแค่ 19% — แทบจะโยนเหรียญ แต่มันก็พ่นออกมาหน้าตาเฉย เพราะกลไกไม่มีจังหวะ "หยุดคิดว่าจำได้จริงไหม"' },
+        { pick: 0, cands: [['-2131-4', .22, 1], ['-0819-7', .18, 1], ['-4520-2', .14, 1], ['-9946-0', .10, 1], ['(อื่นๆ รวม)', .36, 0]],
+          note: 'ปิดท้ายด้วยเลขลำดับ + เลขตรวจสอบที่ "หน้าตาถูกแพตเทิร์น" — ทุกหลักดูสมจริง เพราะโมเดลเก่งเรื่อง<strong>รูปร่าง</strong>ของ ISBN แม้จำ<strong>ค่า</strong>ไม่ได้' }
+      ],
+      done: '🚨 ได้ "978-0-7432-2131-4" — เนียนกริบแต่<strong>แต่งขึ้นล้วนๆ</strong> (ISBN จริงของฉบับ Bloomsbury คือ 978-0-7475-3269-9) ' +
+        'สังเกต: ความมั่นใจของแต่ละ token สูงตลอดทาง เพราะมันมั่นใจใน "แพตเทิร์น" ไม่ใช่ใน "ข้อเท็จจริง" — โมเดลไม่มีสัญญาณภายในบอกว่าตัวเองกำลังเดา'
+    },
+    {
+      prompt: '🧑‍💻 <strong>Prompt:</strong> "ISBN ของหนังสือ Harry Potter ภาคแรกคือ? <u>ถ้าไม่แน่ใจให้ตอบว่าไม่แน่ใจ</u>"',
+      steps: [
+        { pick: 0, cands: [['ผม', .38, 0], ['ไม่', .27, 0], ['978', .14, 1], ['ขอโทษ', .09, 0], ['(อื่นๆ รวม)', .12, 0]],
+          note: 'ประโยค "ถ้าไม่แน่ใจ…" ในบริบท เปลี่ยนการแจกแจงทั้งกระดาน: มวลความน่าจะเป็นของ "978" หด 72% → 14% เพราะข้อมูลฝึก (และ RLHF — ส.13) มีตัวอย่าง "คำถามแบบนี้ + คำตอบถ่อมตัว" อยู่มาก' },
+        { pick: 0, cands: [['ไม่แน่ใจ', .66, 0], ['จำ', .12, 0], ['คิดว่า', .09, 0], ['978', .05, 1], ['(อื่นๆ รวม)', .08, 0]],
+          note: 'พอขึ้นต้นด้วย "ผม" เส้นทาง "ผมไม่แน่ใจ…" ยิ่งแรงขึ้น — การทำนายคำถัดไปตัวเดิมเป๊ะ แค่บริบทเปลี่ยน' },
+        { pick: 0, cands: [['ครับ', .80, 0], ['ว่า', .08, 0], ['จริงๆ', .06, 0], ['978', .03, 1], ['(อื่นๆ รวม)', .03, 0]],
+          note: 'เส้นทางนี้แทบไม่เหลือที่ให้ตัวเลขแล้ว — ความน่าจะเป็นของ "978" เหลือ 3%' },
+        { pick: 0, cands: [['แนะนำให้ดูจากปกหนังสือ', .50, 0], ['ลองค้นฐานข้อมูล ISBN', .27, 0], ['978', .03, 1], ['ตอบมั่วๆ', .08, 0], ['(อื่นๆ รวม)', .12, 0]],
+          note: 'จบด้วยการชี้แหล่งตรวจสอบ — คำตอบ "ปลอดภัย" ที่ RLHF เคยให้รางวัลไว้' }
+      ],
+      done: '✅ ได้ "ผมไม่แน่ใจครับ แนะนำให้ดูจากปกหนังสือ" — <strong>ระวัง:</strong> โมเดลไม่ได้ "รู้ตัวว่าไม่รู้" ' +
+        'มันแค่ทำนายว่าในบริบทนี้ประโยคแบบไหนน่าจะตามมา — แต่ผลลัพธ์ปลอดภัยขึ้นจริง: นี่คือเหตุผลเชิงกลไกที่ prompt แบบ "เปิดทางหนี" ช่วยลดการมโนได้'
+    }
+  ];
+  let mode = 0, step = -1;
+  const promptEl = el('hlPrompt'), outEl = el('hlOut'), candsEl = el('hlCands'), msgEl = el('hlMsg');
+
+  function reset() {
+    step = -1;
+    promptEl.innerHTML = MODES[mode].prompt;
+    outEl.innerHTML = '<em style="color:var(--muted)">…ยังไม่มี token…</em>';
+    candsEl.innerHTML = '';
+    msgEl.innerHTML = '👆 กด "สร้าง token ถัดไป" แล้วดูแท่งความน่าจะเป็นของผู้ท้าชิงแต่ละตัว (🎲 = token ตัวเลขที่โมเดลกำลัง "เดา")';
+  }
+  function next() {
+    const M = MODES[mode];
+    if (step >= M.steps.length - 1) { msgEl.innerHTML = M.done; return; }
+    step++;
+    const st = M.steps[step];
+    outEl.innerHTML = M.steps.slice(0, step + 1).map(s => {
+      const [tok, , fab] = s.cands[s.pick];
+      return '<span class="hl-chip' + (fab ? ' fab' : '') + '">' + tok + '</span>';
+    }).join('');
+    candsEl.innerHTML = st.cands.map(([tok, p, fab], i) =>
+      '<div class="hl-cand' + (i === st.pick ? ' win' : '') + '">' +
+      '<span class="tk">' + (fab ? '🎲 ' : '') + tok + '</span>' +
+      '<span class="trk"><span class="fill" data-w="' + (p * 100).toFixed(0) + '%"></span></span>' +
+      '<span class="pv">' + (p * 100).toFixed(0) + '%</span></div>').join('');
+    // ยืดแท่งหลังใส่ DOM แล้ว (ให้ transition ทำงาน)
+    requestAnimationFrame(() => requestAnimationFrame(() =>
+      candsEl.querySelectorAll('.fill').forEach(f => { f.style.width = f.dataset.w; })));
+    msgEl.innerHTML = '<strong>token ที่ ' + (step + 1) + '/' + M.steps.length + ':</strong> ' + st.note +
+      (step === M.steps.length - 1 ? '<br>👉 กดอีกครั้งเพื่อดูบทสรุป' : '');
+  }
+  tabs.addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    mode = +b.dataset.m;
+    tabs.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    reset();
+  });
+  el('hlNext').addEventListener('click', next);
+  el('hlReset').addEventListener('click', reset);
+  reset();
+})();
+</script>
+
+<script>
+// ===== 💻 ปุ่มคัดลอกโค้ด + ระบายสีคอมเมนต์ (แบบเดียวกับเรื่อง Attention &amp; Transformer) =====
+(function () {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  document.querySelectorAll('.code-wrap code').forEach(code => {
+    code.innerHTML = code.textContent.split('\n').map(line => {
+      const i = line.indexOf('#');
+      if (i < 0) return esc(line);
+      return esc(line.slice(0, i)) + '<span class="cm">' + esc(line.slice(i)) + '</span>';
+    }).join('\n');
+  });
+  document.querySelectorAll('.code-copy').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const txt = document.getElementById(btn.dataset.code).textContent;
+      const ok = () => {
+        const old = btn.textContent;
+        btn.textContent = '✓ คัดลอกแล้ว';
+        setTimeout(() => { btn.textContent = old; }, 1600);
+      };
+      const fallback = () => {
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); ok(); } catch (_) {}
+        document.body.removeChild(ta);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(txt).then(ok, fallback);
+      else fallback();
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

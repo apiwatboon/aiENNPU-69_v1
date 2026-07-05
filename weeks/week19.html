@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>โปรเจกต์ปลายภาค | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<script defer src="../assets/anim.js"></script>
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ===== กล่อง "ลองเอง" ใน .demo (เลียนแบบ ol.steps .try) ===== */
+  .demo .try {
+    background: var(--amber-soft); border-radius: 8px; padding: 8px 12px;
+    margin-top: 12px; font-size: .95rem;
+  }
+  .demo .try::before { content: "✍️ ลองเอง: "; font-weight: 700; color: var(--amber); }
+  .demo .w17-note { color: var(--muted); font-size: .88rem; margin-top: 6px; }
+
+  /* ═══════ 1) ควิซเลือกเส้นทาง ═══════ */
+  .pq-q { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 8px 0; background: var(--card); }
+  .pq-q .pq-t { font-weight: 700; margin-bottom: 6px; }
+  .pq-choice {
+    display: block; width: 100%; text-align: left; margin: 4px 0; padding: 7px 12px;
+    background: var(--bg); color: var(--ink); border: 1px solid var(--border); border-radius: 8px;
+    font-size: .92rem; cursor: pointer; box-shadow: none; transition: all .15s;
+  }
+  .pq-choice:hover { border-color: var(--accent); transform: none; box-shadow: none; filter: none; }
+  .pq-choice.sel { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+  .pq-bar-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+  .pq-bar-row .lbl { flex: 0 0 130px; font-weight: 700; font-size: .9rem; }
+  .pq-bar-track { flex: 1; height: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .pq-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), #8b5cf6); transition: width .5s; }
+  .pq-bar-fill.win { background: linear-gradient(90deg, var(--green), #3ecf96); }
+  .pq-bar-row .num { flex: 0 0 34px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pq-reco { font-size: 1.05rem; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+
+  /* ═══════ 2) เครื่องปั่นไอเดีย ═══════ */
+  .sp-slots { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; margin: 10px 0; }
+  .sp-slot { flex: 1 1 150px; min-width: 140px; }
+  .sp-cap { font-size: .8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-align: center; }
+  .sp-win {
+    border: 2px solid var(--border); border-radius: 10px; background: var(--card);
+    min-height: 58px; display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 8px 10px; font-weight: 700; font-size: .95rem; transition: border-color .2s, box-shadow .2s;
+  }
+  .sp-win.spin { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); color: var(--muted); font-weight: 500; }
+  .sp-win.lock { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+  .sp-x { align-self: center; font-weight: 700; color: var(--muted); flex: 0 0 auto; }
+  .sp-pin-item {
+    display: flex; align-items: center; gap: 8px; background: var(--amber-soft);
+    border-radius: 8px; padding: 6px 10px; margin: 5px 0; font-size: .92rem;
+  }
+  .sp-pin-item button {
+    flex: 0 0 auto; background: transparent; color: var(--muted); border: none; box-shadow: none;
+    padding: 2px 6px; font-size: .9rem; cursor: pointer;
+  }
+  .sp-pin-item button:hover { color: #c0392b; transform: none; box-shadow: none; filter: none; }
+  .sp-verdict { margin-top: 8px; font-size: .95rem; }
+
+  /* ═══════ 3) เครื่องคิดคะแนน rubric ═══════ */
+  .rb-grid { display: grid; grid-template-columns: 1fr; gap: 14px; margin: 10px 0; }
+  @media (min-width: 780px) { .rb-grid { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+  .rb-row { margin: 8px 0; }
+  .rb-row .rb-lbl { display: flex; justify-content: space-between; font-size: .92rem; font-weight: 700; }
+  .rb-row .rb-lbl .v { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .rb-row input[type=range] { width: 100%; accent-color: var(--accent); }
+  .rb-total { font-size: 1.15rem; font-weight: 700; }
+  .rb-band { font-weight: 700; }
+  .rb-advice { margin: 6px 0 0; padding-left: 20px; font-size: .92rem; }
+  .rb-advice li { margin: 3px 0; }
+  .rb-cmp { background: var(--green-soft); border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: .92rem; }
+
+  /* ═══════ 4) เช็คลิสต์ 4 สัปดาห์ ═══════ */
+  .ck-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin: 10px 0; }
+  @media (min-width: 760px) { .ck-grid { grid-template-columns: 1fr 1fr; } }
+  .ck-week { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: 10px 12px; }
+  .ck-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .ck-head svg { flex: 0 0 auto; }
+  .ck-head .t { font-weight: 700; font-size: .95rem; }
+  .ck-head .ring-txt { font-size: .78rem; fill: var(--ink); font-weight: 700; }
+  .ck-item { display: flex; align-items: flex-start; gap: 7px; margin: 5px 0; font-size: .9rem; cursor: pointer; }
+  .ck-item input { margin-top: 3px; accent-color: var(--green); cursor: pointer; }
+  .ck-item.done { color: var(--muted); text-decoration: line-through; }
+  .ck-focus { color: var(--accent); font-weight: 700; }
+
+  /* ═══════ 5) สุ่มลำดับนำเสนอ ═══════ */
+  .pr-ctl { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 8px 0; font-size: .92rem; font-weight: 600; }
+  .pr-ctl input { width: 90px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--ink); font-size: .92rem; }
+  #prList { padding-left: 0; list-style: none; margin: 10px 0 0; }
+  #prList li {
+    display: flex; align-items: center; gap: 10px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); padding: 7px 12px; margin: 5px 0; font-size: .95rem;
+  }
+  #prList .ord { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem; display: flex; align-items: center; justify-content: center; }
+  #prList .slot { flex: 0 0 auto; font-variant-numeric: tabular-nums; color: var(--muted); font-size: .88rem; min-width: 96px; }
+  #prList .nm { font-weight: 700; }
+  #prList li.spin .nm { color: var(--muted); font-weight: 500; }
+  #prList li.lock { border-color: var(--green); background: var(--green-soft); }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>นำเสนอโปรเจกต์ปลายภาค</h1>
+    <p class="subtitle">โจทย์เดียว: เลือกระบบ AI หนึ่งอย่าง แล้วอธิบาย "ข้างใน" ให้เพื่อนเข้าใจ</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 โจทย์โปรเจกต์ (กลุ่ม 3–4 คน, 20% ของคะแนนรวม):</strong><br>
+    เลือกทำ <strong>หนึ่ง</strong> ใน 3 เส้นทาง — ทุกเส้นทางต้องมีหัวใจเดียวกัน:
+    <em>แสดงว่าคุณเข้าใจกลไกข้างใน ไม่ใช่แค่ใช้เป็น</em>
+  </div>
+
+  <h2>เส้นทางที่เลือกได้</h2>
+
+  <div class="card">
+    <h3>🛠️ เส้นทาง A — สร้าง (Build)</h3>
+    <p>สร้างระบบ ML/AI เล็กๆ ของตัวเอง แล้วผ่าให้ดูว่าข้างในเกิดอะไร เช่น:</p>
+    <ul>
+      <li>เทรนโมเดลจำแนกอะไรสักอย่างใน Colab (ภาพ/ข้อความ/เสียง) พร้อมแสดงการทดลอง:
+      กราฟ loss, จุด overfit, ผลของการปรับ hyperparameter</li>
+      <li>เขียน language model จิ๋วของตัวเอง (n-gram หรือ NN เล็กๆ) เทรนกับข้อความที่เลือกเอง
+      แล้ววิเคราะห์ผลที่ได้ด้วยแนวคิดจากชั้นเรียน</li>
+      <li>สร้างระบบ RAG ตอบคำถามจากเอกสารชุดหนึ่ง (เช่น คู่มือนักศึกษา) พร้อมทดสอบว่า
+      ลด hallucination ได้จริงไหม เทียบก่อน-หลัง</li>
+    </ul>
+    <h3>🔬 เส้นทาง B — ผ่าพิสูจน์ (Probe)</h3>
+    <p>ออกแบบ "ชุดการทดลอง" กับ AI จริงเพื่อพิสูจน์กลไกที่เรียนมา เช่น:</p>
+    <ul>
+      <li>ทดสอบขีดจำกัด tokenization: ออกแบบชุดคำถามที่ทำให้ LLM พลาดเพราะมองไม่เห็นตัวอักษร
+      แล้วอธิบาย + หาวิธี prompt หลบ</li>
+      <li>ศึกษา hallucination อย่างเป็นระบบ: คำถามแบบไหนกระตุ้นการมโนมากที่สุด วัดเป็นสถิติ</li>
+      <li>เปรียบเทียบ LLM 2–3 ตัวบนงานภาษาไทยชุดเดียวกัน พร้อมตั้งสมมุติฐานว่าทำไมต่าง</li>
+    </ul>
+    <h3>📖 เส้นทาง C — สื่อสาร (Explain)</h3>
+    <p>ผลิตสื่ออธิบาย "AI ทำงานอย่างไร" สำหรับคนทั่วไป ที่ถูกต้องเชิงกลไก เช่น:</p>
+    <ul>
+      <li>วิดีโอ/อินโฟกราฟิก/เว็บ interactive อธิบาย attention หรือ diffusion สำหรับเด็กมัธยม</li>
+      <li>คู่มือ "ใช้ AI อย่างรู้ทัน" สำหรับคนในอาชีพหนึ่ง (ครู หมอ นักบัญชี) ที่อ้างกลไกจริงทุกข้อแนะนำ</li>
+    </ul>
+  </div>
+
+  <div class="demo" id="pathQuiz">
+    <h3 style="margin-top:0">🧭 ควิซเลือกเส้นทาง — A, B หรือ C ดี?</h3>
+    <p style="margin-top:0">ยังลังเลว่ากลุ่มควรไปทางไหน? ตอบ 5 ข้อตามจริง แล้วดูว่าจุดแข็งของกลุ่มเอียงไปเส้นทางไหน</p>
+    <div id="pqQs"></div>
+    <div class="output" id="pqResult" style="display:none"></div>
+    <div class="try">ให้สมาชิกทุกคนทำคนละรอบแล้วเทียบผลกัน — ถ้าผลออกมาต่างกันมาก นั่นแหละคือวาระแรกของการประชุมกลุ่ม</div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 ทำโปรเจกต์ทีละขั้น — จากศูนย์ถึงวันนำเสนอ ใน 6 ขั้น</h3>
+    <ol class="steps">
+      <li><strong>เลือกเส้นทางจากจุดแข็งของกลุ่ม (เรื่อง Diffusion)</strong>
+        ชอบลงมือโค้ด → A | ชอบตั้งคำถามแล้วทดลอง → B | ชอบเล่า/ออกแบบ → C<br>
+        เขียนหัวข้อเป็น 1 ย่อหน้า: ทำอะไร + ใช้แนวคิดจากสัปดาห์ไหน + วัดความสำเร็จจากอะไร — ส่งรับ feedback</li>
+      <li><strong>ตีกรอบให้เล็กจนเสร็จแน่ (กับดักอันดับ 1 ของทุกปี)</strong>
+        ตัดสเกลลงครึ่งหนึ่งจากที่คิดครั้งแรกเสมอ — "จำแนกภาพ 2 ชนิด accuracy วัดได้" ชนะ "ระบบ AI ครบวงจร" ที่ทำไม่จบ
+        กฎ: ต้องมีชิ้นที่<em>เดินได้จริง</em>ภายในสัปดาห์แรกของการลงมือ แล้วค่อยต่อยอด</li>
+      <li><strong>ลงมือพร้อมจดบันทึกการทดลอง</strong>
+        ทุกครั้งที่ลอง: จดว่า ตั้งสมมุติฐานอะไร → ทำอะไร → ผลเป็นไง → สรุปอะไร
+        (รูปแบบเดียวกับกราฟ loss เรื่อง Overfitting หรือสมุด prompt เรื่อง Prompting &amp; RAG) — บันทึกนี้คือเนื้อรายงานสำเร็จรูป</li>
+      <li><strong>ใช้ AI ช่วยแบบมืออาชีพ</strong>
+        ใช้ได้เต็มที่ แต่ทุกครั้งจด: ใช้ทำอะไร + มันช่วย/พลาดตรงไหน + ตรวจสอบยังไง
+        (15 คะแนนอยู่ตรงนี้ และข้อพลาดของ AI ที่จับได้ มักเป็นช่วงที่กรรมการชอบที่สุดตอนนำเสนอ)
+        <div class="try">เทคนิค: ให้ AI อธิบายกลไกของสิ่งที่กลุ่มทำ แล้วจับผิดมันด้วยความรู้จากวิชานี้ — เจอจุดผิดเมื่อไหร่ ใส่รายงานได้เลย</div></li>
+      <li><strong>ซ้อมนำเสนอด้วยกฎ "ทำไม 3 ชั้น"</strong>
+        ให้เพื่อนถาม "ทำไม" ลึกลงไป 3 ชั้นกับทุกการตัดสินใจ (ทำไมใช้โมเดลนี้ → ทำไมมันเหมาะ → กลไกข้างในคืออะไร)
+        — ตอบได้ครบ = คะแนนความเข้าใจกลไก (40 คะแนน) อยู่ในมือ</li>
+      <li><strong>โครงนำเสนอ 10 นาทีที่ได้ผล</strong>
+        1 นาที: ปัญหา/คำถาม | 2 นาที: ออกแบบยังไง เชื่อมแนวคิดสัปดาห์ไหน | 4 นาที: demo/ผลการทดลองจริง |
+        2 นาที: อะไรเวิร์ก อะไรพัง เรียนรู้อะไร | 1 นาที: ถ้ามีเวลาต่อจะทำอะไร — จบแบบมั่นใจ ไม่ต้องขอโทษที่ "ยังไม่สมบูรณ์"</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหัวข้อที่ "ขนาดกำลังดี" — เทียบกับหัวข้อที่มักทำไม่จบ</h3>
+    <details class="example">
+      <summary>เส้นทาง A (สร้าง) — ✅ "ทำนายสอบผ่าน/ตกจากพฤติกรรมการเรียน"</summary>
+      <p>ใช้ข้อมูลจำลอง/แบบสอบถามเพื่อน ~200 แถว (ชั่วโมงอ่าน, การเข้าเรียน, ชั่วโมงมือถือ) เทรน logistic regression ใน Colab
+      แสดงกราฟ loss, ทดลองให้ overfit แล้วแก้, สรุปว่า feature ไหนมีผลสุด</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คความเป็นไปได้ของข้อมูล:</strong> แบบสอบถามเพื่อน/ข้อมูลจำลอง 200 แถว — หาได้เองใน 1 สัปดาห์ ✓<br>
+      <strong>ขั้น 2 — เช็คเครื่องมือ:</strong> logistic regression = ของที่เรียนตรงๆ (ส.3) + การวินิจฉัย overfit (ส.6) — ไม่ต้องเรียนอะไรใหม่ ✓<br>
+      <strong>ขั้น 3 — เช็คว่ามีอะไรให้ "เล่า":</strong> การทดลองให้ overfit แล้วแก้ + feature ไหนมีผลสุด + มุมจริยธรรมแถม (ควรใช้ทำนายคนจริงไหม? — ส.14) ✓<br>
+      ✅ <strong>สรุป:</strong> ครบสามเช็ค = ขนาดกำลังดี | ❌ เวอร์ชันที่มักไม่จบ: "ระบบ AI แนะแนวครบวงจรพร้อมแอป" —
+      ใหญ่เกิน 10 เท่า เหลือเวลาทำโมเดลจริงแค่ 10%</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง B (ผ่าพิสูจน์) — ✅ "LLM 3 ตัว กับสุภาษิตไทย 30 ข้อ: เข้าใจหรือท่องจำ?"</summary>
+      <p>ออกแบบชุดทดสอบ: สุภาษิตตรงตัว / แปลงคำเล็กน้อย / แต่งสุภาษิตปลอมที่ฟังเหมือนจริง —
+      วัดว่าแต่ละโมเดลตอบความหมายถูกกี่ % ต่อกลุ่ม แล้วอธิบายผลด้วยกลไก (ข้อมูลฝึก, token, hallucination)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คเครื่องมือ:</strong> แค่บัญชีแชทบอท 3 เจ้า + ตารางบันทึก — ไม่ต้องเขียนโค้ดเลยก็ได้ ✓<br>
+      <strong>ขั้น 2 — เช็คความเป็นวิทยาศาสตร์:</strong> ชุดทดสอบ 3 กลุ่ม (ตรงตัว/แปลงคำ/ปลอม) มีโครงสร้างควบคุม → ได้ตารางสถิติจริง ✓<br>
+      <strong>ขั้น 3 — เช็คจุดขาย:</strong> ผลมัก "หักมุม" (สุภาษิตปลอมหลอกโมเดลได้บ่อย!) นำเสนอสนุก และคำถามวิจัยคม:
+      ความเข้าใจ vs การท่องจำ คือหัวข้อวิจัยจริงของวงการ ✓<br>
+      ✅ <strong>สรุป:</strong> โปรเจกต์วิจัยจริงในขนาดนักศึกษา | ❌ เวอร์ชันที่มักไม่จบ: "วัดความฉลาดของ AI ทุกด้าน" — ไม่มีนิยาม ไม่มีวันวัดเสร็จ</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง C (สื่อสาร) — ✅ "เว็บอธิบาย attention สำหรับ ม.ปลาย ด้วยอุปมาห้องเรียน"</summary>
+      <p>เว็บหน้าเดียว: อุปมา "นักเรียนหันไปฟังเพื่อนตอนติวสอบ" + ตัวเลขคำนวณตามได้ 1 ชุด + quiz 3 ข้อ
+      ทดสอบกับน้อง ม.ปลายจริง 5 คน แล้วรายงานว่าตรงไหนเข้าใจ/ไม่เข้าใจ พร้อมรอบแก้</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คขอบเขต:</strong> 1 แนวคิด (attention) 1 กลุ่มเป้าหมาย (ม.ปลาย) 1 หน้าเว็บ — ชัดและจบได้ ✓<br>
+      <strong>ขั้น 2 — เช็คส่วน "การทดลอง":</strong> ทดสอบกับน้อง ม.ปลายจริง 5 คน + รายงานจุดที่เข้าใจ/ไม่เข้าใจ + รอบแก้ —
+      นี่คือผลการทดลองที่ทำให้งานเกินคำว่า "สวยงาม" ✓<br>
+      <strong>ขั้น 3 — เช็คความแม่นของอุปมา:</strong> "นักเรียนหันไปฟังเพื่อนตอนติวสอบ" ต้อง map ได้จริง: ใครคือ Q ใครคือ K น้ำหนักการฟังคือ softmax ✓<br>
+      ✅ <strong>สรุป:</strong> เกณฑ์ 40 คะแนนวัดจากความถูกต้องของอุปมา ไม่ใช่ความสวย |
+      ❌ เวอร์ชันที่มักไม่จบ: "คอร์สสอน AI ออนไลน์ครบทุกบท" — สเกลเท่าวิชาทั้งเทอม</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง A — ✅ "ตัวจำแนกขยะรีไซเคิล 4 ประเภท ด้วย transfer learning"</summary>
+      <p>ถ่ายรูปขยะรอบมหาวิทยาลัยเอง ~100 ใบ/ประเภท → ยืมโมเดล ImageNet เปลี่ยนชั้นท้าย (สูตรจากตัวอย่างเรื่อง CNN) → รายงาน accuracy + confusion matrix + เคสที่มันสับสนพร้อมคำอธิบาย</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คข้อมูล:</strong> ถ่ายรูปขยะรอบมหาวิทยาลัย ~100 ใบ/ประเภท — เก็บเองได้ใน 2 วัน ✓<br>
+      <strong>ขั้น 2 — เช็คเทคนิค:</strong> transfer learning (สูตรจากตัวอย่างเรื่อง CNN) ทำให้ข้อมูลน้อยก็ accuracy ดี — ไม่ต้องเทรนจากศูนย์ ✓<br>
+      <strong>ขั้น 3 — เช็คเนื้อวิเคราะห์:</strong> confusion matrix + "เคสที่จำแนกผิด" คือทองคำ: แก้วใส vs พลาสติกใส — ทำไมโมเดลงง? อธิบายด้วย feature ที่มันมองเห็น ✓<br>
+      ✅ <strong>สรุป:</strong> จบได้ใน 3 สัปดาห์พร้อมเรื่องเล่า | ❌ เวอร์ชันที่ไม่จบ: "ถังขยะอัจฉริยะพร้อมแขนกล" — ฮาร์ดแวร์กินเวลาทั้งเทอม</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง A — ✅ "โมเดลภาษาภาษาถิ่นบ้านเกิด"</summary>
+      <p>เก็บประโยคภาษาถิ่น (อีสาน/เหนือ/ใต้) จากครอบครัว ~300 ประโยค → เทรน n-gram หลายระดับ (โค้ดจาก demo เรื่อง Language Model &amp; RNN ต่อยอดได้เลย) → วิเคราะห์: n เท่าไหร่เริ่มท่องจำ, คำไหนเป็นเอกลักษณ์ถิ่น</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คข้อมูล:</strong> เก็บประโยคจากครอบครัว/ชุมชน ~300 ประโยค — ได้ corpus ที่<strong>ไม่ซ้ำใครในโลก</strong> (LLM ใหญ่ๆ ยังอ่อนภาษาถิ่นไทย!) ✓<br>
+      <strong>ขั้น 2 — เช็คเครื่องมือ:</strong> โค้ด n-gram จาก demo เรื่อง Language Model &amp; RNN ต่อยอดได้เลย — วิเคราะห์: n เท่าไหร่เริ่มท่องจำ, คำไหนเป็นเอกลักษณ์ถิ่น ✓<br>
+      <strong>ขั้น 3 — เช็คจุดขาย:</strong> มิติวัฒนธรรมทำให้การนำเสนอมีชีวิต + โบนัสเด็ด: เทียบให้ดูว่า ChatGPT แต่งภาษาถิ่นเดียวกัน
+      ได้แย่กว่าโมเดลจิ๋วของคุณแค่ไหน — ผลมักพลิกความคาดหมาย ✓<br>
+      ✅ <strong>สรุป:</strong> งานเล็กที่มีเอกลักษณ์ระดับไม่มีใครทำซ้ำได้ — สูตรของโปรเจกต์ที่กรรมการจำได้</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง B — ✅ "วัด hallucination กับข้อมูลมหาวิทยาลัยเราเอง"</summary>
+      <p>รวบรวมข้อเท็จจริงของมหาวิทยาลัย 50 ข้อที่รู้เฉลยแน่ (ปีก่อตั้ง ชื่อตึก ค่าเทอม) → ถาม LLM 2–3 ตัว → จัดหมวดคำตอบ: ถูก / ผิดแบบมโน / ปฏิเสธว่าไม่รู้ → วิเคราะห์ว่าคำถามแบบไหนกระตุ้นการมโน</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คจุดแข็งเชิงวิธีวิจัย:</strong> มี ground truth ชัดทั้ง 50 ข้อ (รู้เฉลยจริง) — จุดที่งานวัด LLM ส่วนใหญ่อ่อน ✓<br>
+      <strong>ขั้น 2 — เช็คการวัด:</strong> จัดหมวดคำตอบ 3 แบบ (ถูก / มโน / ยอมรับว่าไม่รู้) × หลายโมเดล → ตารางสถิติเปรียบเทียบจริง ✓<br>
+      <strong>ขั้น 3 — เช็คคุณค่า:</strong> ข้อค้นพบใช้ได้จริงกับรุ่นน้อง ("อย่าถามเรื่องมหาลัยกับ AI ตัวนี้") ✓<br>
+      ✅ <strong>สรุป:</strong> เคล็ดที่ทำให้ข้อนี้คม: สถาบันเล็ก/ท้องถิ่นคือสนามทดสอบ hallucination ชั้นเยี่ยม —
+      ข้อมูลฝึกมีน้อยแต่โมเดลไม่ยอมรับว่าไม่รู้ (กลไกจากเรื่อง LLM เต็มๆ)</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง B — ✅ "tokenizer ลำเอียงภาษาไหม: นับ token ไทย vs อังกฤษ"</summary>
+      <p>เอาประโยคความหมายเดียวกัน 100 คู่ (ไทย/อังกฤษ) ใส่ Tiktokenizer → นับ token เปรียบเทียบ → คำนวณผลต่างค่าใช้จ่ายจริงถ้าเป็นองค์กรไทยใช้ AI รายวัน</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คเครื่องมือ:</strong> Tiktokenizer ฟรี 100% ไม่ต้องสมัครอะไร — อุปสรรคทางเทคนิคเป็นศูนย์ ✓<br>
+      <strong>ขั้น 2 — เช็ควิธีวัด:</strong> ประโยคความหมายเดียวกัน 100 คู่ (ไทย/อังกฤษ) → นับ token → กราฟแจกแจง + ค่าเฉลี่ย — สถิติชัด ✓<br>
+      <strong>ขั้น 3 — เช็คข้อสรุป:</strong> แปลงเป็นเงินจริง: "องค์กรไทยใช้ AI จ่ายแพงกว่า x เท่า" → ข้อเสนอเชิงนโยบาย
+      (โครงสร้างพื้นฐาน AI ภาษาไทยสำคัญ) ✓<br>
+      ✅ <strong>สรุป:</strong> โปรเจกต์เล็กที่จบด้วยประเด็นใหญ่ — ต่อยอดได้: เทียบ tokenizer หลายเจ้า (GPT vs Claude vs โมเดลไทย)
+      เจ้าไหนแฟร์กับภาษาไทยสุด</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง C — ✅ "การ์ตูนช่องอธิบาย gradient descent"</summary>
+      <p>การ์ตูน 10–15 ช่อง เล่าเรื่อง "คนตาบอดหาทางลงเขา" ที่<strong>แม่นเชิงกลไกทุกช่อง</strong> (ความชัน, ขนาดก้าว, หลุมตื้น, ก้าวใหญ่เกินแล้วเด้ง) → ทดสอบกับคนนอกสายวิทย์ 5 คน ว่าอ่านจบแล้วอธิบายกลับได้ไหม</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คขอบเขต:</strong> 1 แนวคิด (gradient descent) 1 กลุ่มเป้าหมาย — ไม่บานปลาย ✓<br>
+      <strong>ขั้น 2 — เช็คส่วน "การทดลอง":</strong> ทดสอบกับคนนอกสายวิทย์ 5 คน + รอบแก้ — นี่คือสิ่งที่ทำให้งานเกินคำว่า "วาดสวย" ✓<br>
+      <strong>ขั้น 3 — เช็คความแม่นเชิงกลไกทุกช่อง:</strong> ช่อง "เด้งข้ามหุบ" ต้องสื่อ lr ใหญ่เกินจริงๆ, ช่องสุดท้ายต้องสื่อว่าก้าวสั้นลงเองตามความชัน ✓<br>
+      ✅ <strong>สรุป:</strong> เกณฑ์ 40 คะแนนวัดที่ความแม่นของอุปมา — ระวังอุปมาสวยแต่ผิด เช่น "AI ลองทุกทางแล้วเลือกทางดีสุด"
+      (ผิด! มันดูความชันเฉพาะที่ใต้เท้า) — จุดที่กรรมการจะจี้ถามแน่นอน</div>
+    </details>
+    <details class="example">
+      <summary>เส้นทาง C — ✅ "คู่มือใช้ AI อย่างรู้ทัน สำหรับร้านค้าออนไลน์"</summary>
+      <p>คู่มือ 8–10 หน้าสำหรับแม่ค้าออนไลน์: ใช้ AI เขียนแคปชัน/ตอบลูกค้า/ทำรูปสินค้าอย่างไร พร้อม "ข้อควรระวังที่อ้างกลไกจริง" ทุกข้อ (มโนสเปกสินค้า, ลิขสิทธิ์ภาพ, ข้อมูลลูกค้า)</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คกลุ่มเป้าหมาย:</strong> แม่ค้าออนไลน์หาง่ายมาก (ครอบครัว/ร้านแถวบ้าน) — เอาคู่มือไปให้ใช้จริงแล้วเก็บ feedback ได้ ✓<br>
+      <strong>ขั้น 2 — เช็คเงื่อนไขคุณภาพ:</strong> ทุกคำแนะนำผูกกลไก เช่น "อย่าให้ AI แต่งสเปกสินค้า เพราะมันเติมคำที่ฟังลื่น
+      โดยไม่รู้ข้อเท็จจริง (hallucination — ส.11)" — ไม่ใช่ลิสต์ทิปลอยๆ ✓<br>
+      <strong>ขั้น 3 — เช็คขอบเขต:</strong> 1 อาชีพ 8–10 หน้า — แคบพอที่จะลึก ✓<br>
+      ✅ <strong>สรุป:</strong> สื่อสารเก่ง + กลไกแม่น = ตรงเกณฑ์เส้นทาง C เต็มๆ | ❌ เวอร์ชันที่ไม่จบ: "คู่มือ AI สำหรับ SME ทุกประเภท" — กว้างจนกลายเป็นน้ำ</div>
+    </details>
+    <details class="example">
+      <summary>ไอเดียโจ๊กเกอร์ — ✅ "สร้าง demo ของวิชานี้เวอร์ชันที่ดีกว่า"</summary>
+      <p>เลือก demo ในเว็บวิชานี้ 1 ตัว (bigram, gradient descent, attention ฯลฯ) แล้วสร้างเวอร์ชันของตัวเองที่ดีกว่า — เพิ่มฟีเจอร์ แก้จุดที่เพื่อนงง ทำให้สวยขึ้น — พร้อมอธิบายโค้ดทุกบรรทัดได้</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คจุดเริ่ม:</strong> มีต้นแบบที่ทำงานได้จริงให้เริ่ม — ไม่ต้องเริ่มจากศูนย์ ความเสี่ยง "ทำไม่จบ" ต่ำมาก ✓<br>
+      <strong>ขั้น 2 — เช็คความเข้าใจ:</strong> เงื่อนไข "อธิบายโค้ดทุกบรรทัดได้" บังคับให้แกะกลไกจริง ไม่ใช่ก๊อปมาแปะ ✓<br>
+      <strong>ขั้น 3 — เช็คแรงจูงใจ:</strong> ผลงานถูกใช้สอนรุ่นถัดไปจริง — ความภูมิใจที่หัวข้ออื่นให้ไม่ได้ ✓<br>
+      ✅ <strong>สรุป:</strong> เงื่อนไขสำคัญที่ทำให้ได้คะแนน: ระบุชัดว่าเพิ่ม/แก้อะไรจากต้นแบบ และทำไมการแก้นั้น<strong>ช่วยการเรียนรู้</strong>
+      (เช่น "เพิ่มปุ่มชะลอความเร็วเพราะเพื่อนบอกว่าแอนิเมชันเร็วเกินตามไม่ทัน") — ไม่ใช่แค่เปลี่ยนสี</div>
+    </details>
+  </div>
+
+  <div class="demo" id="ideaSpin">
+    <h3 style="margin-top:0">💡 เครื่องปั่นไอเดีย — หมุน 3 วงล้อ ได้ 1 หัวข้อ</h3>
+    <p style="margin-top:0">ยังนึกหัวข้อไม่ออก? กด ▶ ให้เครื่องจับ <strong>โดเมน × เทคนิคจากคอร์ส × มุมโปรเจกต์</strong> มาชนกัน แล้วดูว่าคู่นี้เข้ากันไหม</p>
+    <div class="sp-slots">
+      <div class="sp-slot"><div class="sp-cap">โดเมน</div><div class="sp-win" id="spD">?</div></div>
+      <div class="sp-x">×</div>
+      <div class="sp-slot"><div class="sp-cap">เทคนิคจากคอร์ส</div><div class="sp-win" id="spT">?</div></div>
+      <div class="sp-x">×</div>
+      <div class="sp-slot"><div class="sp-cap">มุมโปรเจกต์</div><div class="sp-win" id="spA">?</div></div>
+    </div>
+    <button id="spGo">▶ หมุน!</button>
+    <button id="spPin" disabled>📌 ปักหมุดไอเดียนี้</button>
+    <div class="output" id="spOut" style="display:none"></div>
+    <div id="spPins" style="margin-top:10px"></div>
+    <div class="try">หมุนจนได้คู่ที่ "เข้ากันดี" สัก 2–3 ไอเดีย ปักหมุดไว้ แล้วเอาไปเข้าเช็ค 3 ขั้น (ข้อมูล–เครื่องมือ–เรื่องเล่า) แบบตัวอย่างข้างบน</div>
+  </div>
+
+  <h2>เกณฑ์ให้คะแนน (100 คะแนน)</h2>
+
+  <div class="card">
+    <table class="simple">
+      <tr><th>เกณฑ์</th><th>น้ำหนัก</th><th>ดูจากอะไร</th></tr>
+      <tr><td>ความเข้าใจกลไก</td><td>40</td><td>อธิบาย "ทำไม" ได้ทุกครั้งที่ถูกถาม เชื่อมโยงกับแนวคิดในวิชาได้ถูกต้อง</td></tr>
+      <tr><td>คุณภาพการลงมือ</td><td>25</td><td>ชิ้นงาน/การทดลองทำจริง มีหลักฐาน ทำซ้ำได้</td></tr>
+      <tr><td>การนำเสนอ</td><td>20</td><td>10 นาที + ถาม-ตอบ 5 นาที — เพื่อนร่วมห้องฟังรู้เรื่อง</td></tr>
+      <tr><td>การใช้ AI อย่างโปร่งใส</td><td>15</td><td>แนบบันทึกว่าใช้ AI ช่วยตรงไหนบ้าง พร้อมรีวิวว่ามันช่วย/พลาดอย่างไร</td></tr>
+    </table>
+    <p style="margin-bottom:0">💡 ข้อสุดท้ายตั้งใจให้ใช้ AI ช่วยทำโปรเจกต์ได้เต็มที่ —
+    แต่ต้อง<strong>ใช้อย่างมืออาชีพ</strong>: บอกได้ว่าใช้ตรงไหน ตรวจสอบอย่างไร และรับผิดชอบผลลัพธ์เอง
+    (นี่คือทักษะการทำงานจริงในยุค AI)</p>
+  </div>
+
+  <div class="demo" id="rubCalc">
+    <h3 style="margin-top:0">📊 เครื่องคิดคะแนน rubric ล่วงหน้า — ประเมินกลุ่มตัวเองวันนี้</h3>
+    <p style="margin-top:0">เลื่อนให้ตรงสถานะจริงของกลุ่มตามเกณฑ์ 4 ข้อข้างบน แล้วดูคะแนนรวม + คำแนะนำว่าควรอุดตรงไหนก่อน</p>
+    <div class="rb-grid">
+      <div>
+        <div id="rbRows"></div>
+        <div class="output" id="rbOut"></div>
+        <button id="rbSave" style="margin-top:8px">💾 บันทึกเป้าหมาย</button>
+        <div id="rbCmp"></div>
+      </div>
+      <canvas id="rbCanvas" width="420" height="330" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+    </div>
+    <div class="try">ตั้งค่าที่ "อยากไปให้ถึง" ก่อนแล้วกดบันทึกเป้าหมาย — พอใกล้วันนำเสนอ กลับมาเลื่อนค่าจริง แล้วดูช่องว่าง "เป้า vs ตอนนี้" ว่าต้องเร่งข้อไหน</div>
+  </div>
+
+  <h2>กำหนดการ</h2>
+
+  <div class="card">
+    <table class="simple">
+      <tr><th>เมื่อไหร่</th><th>อะไร</th></tr>
+      <tr><td>เรื่อง Diffusion</td><td>ส่งหัวข้อ (ย่อหน้าเดียว) — อาจารย์ feedback</td></tr>
+      <tr><td>เรื่อง จริยธรรม AI</td><td>ปรึกษานอกรอบ (ไม่บังคับ)</td></tr>
+      <tr><td>เรื่อง โปรเจกต์ปลายภาค ในคาบ</td><td>นำเสนอกลุ่มละ 10 + 5 นาที</td></tr>
+      <tr><td>ก่อนสอบปลายภาค</td><td>ส่งรายงาน + ชิ้นงาน + บันทึกการใช้ AI</td></tr>
+    </table>
+  </div>
+
+  <div class="demo" id="ck4w">
+    <h3 style="margin-top:0">✅ เช็คลิสต์ 4 สัปดาห์สุดท้าย — ติ๊กแล้วเว็บจำให้</h3>
+    <p style="margin-top:0">แผนถอยหลังที่แตกมาจากกำหนดการและ 6 ขั้นข้างบน — ติ๊กในเครื่องนี้แล้วกลับมาดูความคืบหน้าได้ตลอด</p>
+    <div class="output" id="ckHint"></div>
+    <div class="ck-grid" id="ckWeeks"></div>
+    <div class="try">เปิดหน้านี้ทุกต้นสัปดาห์แค่ 1 นาที — ถ้าสัปดาห์ก่อนหน้ายังติ๊กไม่ครบ นั่นคือสัญญาณให้ "ตัดสเกลลงครึ่งหนึ่ง" (ขั้น 2) ทันที</div>
+  </div>
+
+  <div class="demo" id="presRnd">
+    <h3 style="margin-top:0">🎤 วันนำเสนอ — สุ่มลำดับ + ตารางเวลาอัตโนมัติ</h3>
+    <p style="margin-top:0">ใส่ชื่อกลุ่ม (บรรทัดละกลุ่ม) หรือปล่อยว่างแล้วใช้จำนวนกลุ่ม จากนั้นกดสุ่ม — ลุ้นทีละช่องพร้อมช่วงเวลาของแต่ละกลุ่ม</p>
+    <textarea id="prNames" rows="3" placeholder="กลุ่มหมูกรอบ&#10;กลุ่มข้าวมันไก่&#10;(เว้นว่างได้ ถ้าจะใช้ช่อง 'จำนวนกลุ่ม' ด้านล่าง)"></textarea>
+    <div class="pr-ctl">
+      <span>จำนวนกลุ่ม <input type="number" id="prN" value="6" min="1" max="40"></span>
+      <span>เริ่มเวลา <input type="time" id="prStart" value="09:00"></span>
+      <span>นาที/กลุ่ม <input type="number" id="prMin" value="15" min="1" max="120"></span>
+    </div>
+    <button id="prGo">🎲 สุ่มลำดับ!</button>
+    <button id="prCopy" style="display:none">📋 คัดลอกรายชื่อ</button>
+    <span id="prMsg" class="w17-note"></span>
+    <ol id="prList"></ol>
+    <div class="try">มาตรฐานวิชานี้คือ นำเสนอ 10 + ถาม-ตอบ 5 นาที → ตั้ง "นาที/กลุ่ม" = 15 พอดี — ลองสุ่มดูว่ากลุ่มคุณจะได้พูดกี่โมง</div>
+  </div>
+
+  <h2>ปิดเทอม — มองกลับลงบันได</h2>
+
+  <div class="ladder-box">
+    <strong>🪜 16 สัปดาห์ที่แล้ว</strong> เราเริ่มจากคำถาม "ChatGPT ฉลาดเพราะอะไร"
+    ด้วยโมเดล bigram ที่นับตัวอักษรบนกระดาษ — วันนี้ทุกคนตอบได้เป็นเรื่องราวเดียวตั้งแต่
+    การนับสถิติ จนถึง RLHF และวิจารณ์มันได้อย่างมีหลักการ<br><br>
+    สิ่งเดียวที่อยากฝากไว้: โมเดลจะเปลี่ยนชื่อไปเรื่อยๆ ทุกปี
+    แต่แก่นที่เรียนมา — <em>เครื่องทำนายที่เรียนรู้จากข้อมูล, loss, gradient, attention, ข้อจำกัดของข้อมูลฝึก</em> —
+    จะยังใช้แกะ AI ตัวใหม่ได้อีกหลายสิบปี ขอให้เป็นคนที่ "รู้ทันเครื่องมือของยุคตัวเอง" เสมอ 🎓
+  </div>
+
+  <div class="resources">
+    <h3>📚 คลังเครื่องมือทำโปรเจกต์</h3>
+    <ul>
+      <li><span class="src">เส้นทาง A</span> <a href="https://colab.research.google.com" target="_blank">Google Colab</a> (GPU ฟรี) + <a href="https://www.kaggle.com/datasets" target="_blank">Kaggle Datasets</a> (ชุดข้อมูลทุกหัวข้อ) + <a href="https://huggingface.co" target="_blank">Hugging Face</a> (โมเดลสำเร็จรูปให้ต่อยอด)</li>
+      <li><span class="src">เส้นทาง B</span> <a href="https://tiktokenizer.vercel.app" target="_blank">Tiktokenizer</a> (ส่องการหั่น token) + <a href="https://lmarena.ai" target="_blank">LM Arena</a> (เทียบ LLM หลายตัวเคียงกัน)</li>
+      <li><span class="src">เส้นทาง C</span> <a href="https://poloclub.github.io/transformer-explainer/" target="_blank">Transformer Explainer</a> + <a href="https://www.youtube.com/c/3blue1brown" target="_blank">3Blue1Brown</a> — ตัวอย่าง "สื่ออธิบายที่ถูกต้องเชิงกลไก" ระดับที่ควรเล็งเป็นเป้า</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week18.html">← จริยธรรมและข้อจำกัด</a>
+    <a href="../index.html">กลับหน้าหลัก →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "ทำโปรเจกต์ทีละขั้น" =====
+window.stepScenes = [
+  s => {
+    const P = {
+      '🛠️ A สร้าง': 'เหมาะกับสายลงมือโค้ด — เช่น ทำนายสอบผ่าน/ตก, จำแนกขยะรีไซเคิล, โมเดลภาษาถิ่น',
+      '🔬 B ผ่าพิสูจน์': 'เหมาะกับสายตั้งคำถาม — เช่น วัด hallucination 50 ข้อ, token ไทยแพงกว่าอังกฤษ, สุภาษิต 3 โมเดล',
+      '📖 C สื่อสาร': 'เหมาะกับสายเล่าเรื่อง — เช่น การ์ตูน gradient descent, เว็บสอน attention ม.ปลาย, คู่มือแม่ค้าออนไลน์',
+    };
+    s.innerHTML = '<div class="note" style="margin:0 0 4px">👆 กดเลือกตามจุดแข็งของกลุ่ม:</div>' +
+      '<div id="s15b"></div><div id="s15o" class="note" style="font-size:.95rem"></div>';
+    s.querySelector('#s15b').innerHTML = Object.keys(P).map(k =>
+      '<button class="mini-btn" data-k="' + k + '">' + k + '</button>').join('');
+    s.querySelectorAll('.mini-btn').forEach(b => b.onclick = () => {
+      s.querySelectorAll('.mini-btn').forEach(x => x.classList.toggle('sel', x === b));
+      s.querySelector('#s15o').textContent = P[b.dataset.k];
+    });
+    s.querySelector('.mini-btn').click();
+  },
+  s => s.innerHTML = '<div class="big"><span class="chip bad" style="animation-delay:.1s">💭 ระบบ AI ครบวงจร + แอป + แขนกล</span>' +
+    '<span class="arrow">✂️</span><span class="chip ok" style="animation-delay:.6s">🎯 จำแนก 2 ชนิด วัดผลได้</span></div>' +
+    '<div class="note">ตัดสเกลลงครึ่งจากที่คิดครั้งแรกเสมอ — ต้องมีชิ้นที่เดินได้จริงภายในสัปดาห์แรก</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">🤔 สมมุติฐาน</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.4s">🧪 ทำ</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.7s">📊 ผล</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:1s">📝 สรุป</span></div>' +
+    '<div class="note">จดทุกครั้งที่ลอง — บันทึกนี้คือเนื้อรายงานสำเร็จรูป</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">บันทึกการใช้ AI (15 คะแนน):</div>' +
+    '<span class="chip" style="animation-delay:.1s">ใช้ทำอะไร</span>' +
+    '<span class="chip ok" style="animation-delay:.4s">มันช่วยตรงไหน</span>' +
+    '<span class="chip bad" style="animation-delay:.7s">มันพลาดตรงไหน</span>' +
+    '<span class="chip win" style="animation-delay:1s">เราตรวจยังไง</span>' +
+    '<div class="note">ข้อพลาดของ AI ที่จับได้ มักเป็นช่วงที่กรรมการชอบที่สุด</div>',
+  s => s.innerHTML = '<div class="big"><span class="chip" style="animation-delay:.1s">ทำไมใช้โมเดลนี้?</span><span class="arrow">→</span>' +
+    '<span class="chip" style="animation-delay:.5s">ทำไมมันเหมาะ?</span><span class="arrow">→</span>' +
+    '<span class="chip win" style="animation-delay:.9s">กลไกข้างในคืออะไร?</span></div>' +
+    '<div class="note">ซ้อมให้เพื่อนถาม "ทำไม" 3 ชั้น — ตอบครบ = 40 คะแนนความเข้าใจกลไกอยู่ในมือ</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">โครง 10 นาที:</div>' +
+    '<div class="bar-row"><span class="lbl">ปัญหา</span><span class="bar" data-w="9%"></span>1 นาที</div>' +
+    '<div class="bar-row"><span class="lbl">ออกแบบ</span><span class="bar" data-w="18%"></span>2 นาที</div>' +
+    '<div class="bar-row"><span class="lbl">demo/ผล</span><span class="bar" data-w="36%" style="background:linear-gradient(90deg,#1d9b6c,#3ecf96)"></span>4 นาที</div>' +
+    '<div class="bar-row"><span class="lbl">เรียนรู้</span><span class="bar" data-w="18%"></span>2 นาที</div>' +
+    '<div class="bar-row"><span class="lbl">ต่อยอด</span><span class="bar" data-w="9%"></span>1 นาที</div>' +
+    '<div class="note">จบแบบมั่นใจ — ไม่ต้องขอโทษที่ "ยังไม่สมบูรณ์"</div>',
+];
+</script>
+
+<script id="w17-logic">
+// ===== W17 logic ล้วน (ทดสอบใน Node ได้ — ไม่มี DOM) =====
+(function (root) {
+  'use strict';
+  var W17 = {};
+
+  // ---- localStorage แบบกันพัง (Node ไม่มี localStorage) ----
+  W17.lsGet = function (k) {
+    try {
+      if (typeof localStorage === 'undefined' || !localStorage) return null;
+      return localStorage.getItem(k);
+    } catch (e) { return null; }
+  };
+  W17.lsSet = function (k, v) {
+    try {
+      if (typeof localStorage === 'undefined' || !localStorage) return false;
+      localStorage.setItem(k, v);
+      return true;
+    } catch (e) { return false; }
+  };
+
+  // ---- 1) ควิซเลือกเส้นทาง ----
+  W17.QUIZ = [
+    { q: '1. ชอบเขียนโค้ดไหม?', choices: [
+      { t: 'ชอบมาก นั่งโค้ดได้ทั้งวัน', w: { A: 2 } },
+      { t: 'พอได้ แต่สนุกกับการตั้งคำถามมากกว่า', w: { B: 2 } },
+      { t: 'ไม่ค่อยถนัด — ถนัดออกแบบ/เรียบเรียงมากกว่า', w: { C: 2 } },
+    ]},
+    { q: '2. จบโปรเจกต์แล้วอยากได้อะไรกลับไปมากกว่ากัน?', choices: [
+      { t: 'ผลงานจับต้องได้ — โมเดล/ระบบที่รันจริง', w: { A: 2 } },
+      { t: 'ความเข้าใจลึก + ข้อค้นพบจากการทดลอง', w: { B: 2 } },
+      { t: 'ชิ้นสื่อที่คนอื่นเอาไปใช้เรียนรู้ต่อได้', w: { C: 2 } },
+    ]},
+    { q: '3. ถนัดเล่าเรื่องให้คนนอกสายฟังไหม?', choices: [
+      { t: 'เฉยๆ — ขอโชว์ demo ที่รันจริงดีกว่า', w: { A: 2 } },
+      { t: 'ถนัดเล่าผ่านตาราง/กราฟผลการทดลอง', w: { B: 2 } },
+      { t: 'ถนัดมาก — อุปมา ภาพ และเรื่องเล่าคือของถนัด', w: { C: 2, B: 1 } },
+    ]},
+    { q: '4. กลุ่มมีเวลาให้โปรเจกต์แค่ไหน?', choices: [
+      { t: 'เยอะ — พร้อมลุยเก็บข้อมูล/เทรนโมเดลเอง', w: { A: 2 } },
+      { t: 'ปานกลาง — ชอบงานที่ออกแบบดีแล้ววัดผลได้ไว', w: { B: 2, C: 1 } },
+      { t: 'น้อย — ต้องเลือกงานที่คุมขอบเขตได้ง่ายที่สุด', w: { C: 2 } },
+    ]},
+    { q: '5. สนใจ "ข้อมูล" หรือ "พฤติกรรมโมเดล" มากกว่ากัน?', choices: [
+      { t: 'ข้อมูล — อยากเก็บเอง เทรนเอง เห็นมันเรียนรู้', w: { A: 2 } },
+      { t: 'พฤติกรรมโมเดล — อยากจับผิด/ทดสอบขีดจำกัดมัน', w: { B: 2 } },
+      { t: 'สนใจว่าจะ "อธิบาย" สิ่งเหล่านี้ให้คนทั่วไปเข้าใจยังไง', w: { C: 2 } },
+    ]},
+  ];
+
+  // answers = อาร์เรย์ index คำตอบ (0/1/2) ยาว 5 — ข้อที่ยังไม่ตอบเป็น null
+  W17.scoreQuiz = function (answers) {
+    var s = { A: 0, B: 0, C: 0 };
+    for (var i = 0; i < W17.QUIZ.length; i++) {
+      var a = answers[i];
+      if (a === null || a === undefined) continue;
+      var w = W17.QUIZ[i].choices[a].w;
+      for (var k in w) s[k] += w[k];
+    }
+    var best = null, max = -1, tie = false;
+    ['A', 'B', 'C'].forEach(function (k) {
+      if (s[k] > max) { max = s[k]; best = k; tie = false; }
+      else if (s[k] === max) tie = true;
+    });
+    return { A: s.A, B: s.B, C: s.C, best: tie ? null : best, max: max };
+  };
+
+  W17.PATH_INFO = {
+    A: { name: '🛠️ เส้นทาง A — สร้าง (Build)',
+         reason: 'กลุ่มคุณชอบลงมือและอยากได้ผลงานที่รันได้จริง<br>โมเดลเล็กๆ ที่ผ่าให้ดูข้างใน (แบบตัวอย่าง ทำนายสอบผ่าน/ตก หรือจำแนกขยะ) คือสนามของคุณ' },
+    B: { name: '🔬 เส้นทาง B — ผ่าพิสูจน์ (Probe)',
+         reason: 'กลุ่มคุณชอบตั้งคำถามแล้วออกแบบการทดลองพิสูจน์<br>ชุดทดสอบที่มี ground truth ชัด (แบบวัด hallucination 50 ข้อ) จะทำให้งานคุณคม' },
+    C: { name: '📖 เส้นทาง C — สื่อสาร (Explain)',
+         reason: 'กลุ่มคุณถนัดเล่าเรื่องและออกแบบสื่อ<br>สื่อที่ "ถูกต้องเชิงกลไกทุกช่อง" (แบบการ์ตูน gradient descent) คือจุดที่คุณจะได้ 40 คะแนนกลไกเต็มๆ' },
+  };
+
+  // ---- 2) เครื่องปั่นไอเดีย ----
+  W17.DOMAINS = ['อาหารไทย', 'กีฬา', 'เพลง', 'สุขภาพ', 'การเงินนักศึกษา', 'สิ่งแวดล้อม', 'เกม', 'ภาษาไทย', 'การเกษตร', 'จราจร', 'ท่องเที่ยว', 'สัตว์เลี้ยง'];
+  W17.TECHS = [
+    { k: 'reg',   t: 'regression (ส.2–3)' },
+    { k: 'knn',   t: 'KNN (ส.4)' },
+    { k: 'km',    t: 'K-means (ส.5)' },
+    { k: 'nn',    t: 'neural network (ส.6–7)' },
+    { k: 'cnn',   t: 'CNN (ส.8)' },
+    { k: 'ngram', t: 'โมเดลภาษา n-gram (ส.11)' },
+    { k: 'rag',   t: 'prompting + RAG (ส.14)' },
+  ];
+  W17.ANGLES = [
+    { k: 'pred',  t: 'ทำนายตัวเลข',            tpl: function (d) { return 'ทำนายตัวเลขในเรื่อง "' + d + '"'; } },
+    { k: 'clus',  t: 'จัดกลุ่ม',                tpl: function (d) { return 'จัดกลุ่มข้อมูลเรื่อง "' + d + '"'; } },
+    { k: 'img',   t: 'จำแนกรูปภาพ',            tpl: function (d) { return 'จำแนกรูปภาพเกี่ยวกับ "' + d + '"'; } },
+    { k: 'chat',  t: 'แชตบอตตอบจากเอกสาร',    tpl: function (d) { return 'แชตบอตตอบคำถามจากเอกสารเรื่อง "' + d + '"'; } },
+    { k: 'bias',  t: 'วิเคราะห์อคติ/จุดพลาดของโมเดล', tpl: function (d) { return 'วิเคราะห์อคติ/จุดพลาดของโมเดลกับข้อมูลเรื่อง "' + d + '"'; } },
+    { k: 'teach', t: 'ทำสื่อสอนคนอื่น',         tpl: function (d) { return 'ทำสื่อสอนเพื่อนโดยใช้ตัวอย่างเรื่อง "' + d + '"'; } },
+  ];
+  // ความเข้ากันของ เทคนิค × มุมโปรเจกต์ (เขียนมือ)
+  W17.TECH_FIT = {
+    reg:   { good: ['pred', 'teach'], meh: ['bias'],
+             warn: 'regression เกิดมาเพื่อทำนายตัวเลขจาก feature — ไม่ได้เกิดมาเพื่องานนี้' },
+    knn:   { good: ['pred', 'teach'], meh: ['bias', 'clus'],
+             warn: 'KNN คือ "ดูเพื่อนบ้านแล้วตัดสิน" — เอาไปทำแชตบอต/รูปภาพความละเอียดสูงจะทรมานตัวเองเปล่าๆ' },
+    km:    { good: ['clus', 'teach'], meh: ['bias'],
+             warn: 'K-means จัดกลุ่มอย่างเดียว มันไม่รู้จักคำว่า "ทำนาย" หรือ "ตอบแชต" เลยสักนิด' },
+    nn:    { good: ['pred', 'teach'], meh: ['clus', 'bias', 'img'],
+             warn: 'NN ธรรมดาทำได้หลายอย่าง แต่คู่นี้มีเครื่องมือที่ตรงกว่าในคอร์ส — เช็คก่อนว่าทำไมไม่ใช้ตัวนั้น' },
+    cnn:   { good: ['img', 'teach'], meh: ['bias'],
+             warn: 'CNN ถนัด "มอง" รูปภาพ — เอาไปทำนายตัวเลขจากตารางหรือทำแชตบอตคือผิดสายอาชีพ' },
+    ngram: { good: ['teach', 'bias'], meh: ['pred'],
+             warn: 'n-gram เก่งเรื่อง "คำถัดไป" — จัดกลุ่มหรือจำแนกรูปไม่ใช่งานของมันแน่นอน' },
+    rag:   { good: ['chat', 'teach', 'bias'], meh: [],
+             warn: 'RAG คือการให้ LLM เปิดหนังสือตอบ — งานตัวเลข/รูปภาพล้วนๆ ไม่ใช่เวทีของมัน' },
+  };
+  // ข้อความพิเศษรายคู่ (ทับข้อความกลางถ้ามี)
+  W17.PAIR_MSG = {
+    'reg|pred':   'เข้ากันเป๊ะ — สายตรงจาก Regression เลย เหลือแค่หา feature ที่วัดได้จริง',
+    'km|clus':    'เข้ากันเป๊ะ — K-means เกิดมาเพื่อสิ่งนี้ อย่าลืมทดลองหลายค่า k แล้วอธิบายว่าทำไมเลือกค่านั้น',
+    'cnn|img':    'เข้ากันเป๊ะ — ใช้ transfer learning จากตัวอย่างเรื่อง CNN ข้อมูล ~100 รูป/ประเภทก็พอ',
+    'rag|chat':   'เข้ากันเป๊ะ — เหมือนตัวอย่างเส้นทาง A ข้อ RAG เลย อย่าลืมวัด hallucination ก่อน-หลังให้เห็นตัวเลข',
+    'ngram|bias': 'น่าสนใจมาก — วิเคราะห์ว่า n-gram ของคุณ "ท่องจำ" อะไรจากข้อมูลฝึก คือหัวใจเรื่อง Language Model &amp; RNN',
+    'ngram|teach': 'จับคู่สวย — n-gram คือโมเดลภาษาที่อธิบายบนกระดาษได้จริง เหมาะทำสื่อสอนสุดๆ',
+  };
+  W17.compatHint = function (techKey, angleKey) {
+    var fit = W17.TECH_FIT[techKey];
+    if (!fit) return { level: 1, msg: 'ลองเช็คกับอาจารย์ดูว่าคู่นี้ไปด้วยกันได้ไหม' };
+    var special = W17.PAIR_MSG[techKey + '|' + angleKey];
+    if (fit.good.indexOf(angleKey) >= 0)
+      return { level: 2, msg: '✅ คู่นี้เข้ากันดี — ' + (special || 'เทคนิคนี้รองรับมุมนี้ตรงๆ ตีกรอบให้เล็กแล้วลุยได้เลย') };
+    if (fit.meh.indexOf(angleKey) >= 0)
+      return { level: 1, msg: '⚠️ พอไปได้แต่ต้องตีกรอบดีๆ — ' + (special || 'คู่นี้ทำได้ แต่ต้องนิยามให้ชัดว่าจะวัดอะไร ปรึกษาอาจารย์ก่อนเริ่มจะปลอดภัยกว่า') };
+    return { level: 0, msg: '😅 คู่นี้ไม่ค่อยเข้ากัน — ' + fit.warn + ' → แนะนำกด "หมุน!" ใหม่อีกรอบ' };
+  };
+
+  // ---- 3) rubric ----
+  W17.RUBRIC = [
+    { key: 'mech',    name: 'ความเข้าใจกลไก',        short: 'กลไก',     max: 40,
+      advice: 'ส่วน "ทำไม" ยังอ่อน → ซ้อมตอบ "ทำไม 3 ชั้น" กับทุกการตัดสินใจ (ขั้น 5 ข้างบน) แล้วโยงกลับไปที่สัปดาห์ที่เรียนเรื่องนั้น' },
+    { key: 'work',    name: 'คุณภาพการลงมือ',        short: 'ลงมือ',    max: 25,
+      advice: 'ส่วนสาธิตยังอ่อน → เพิ่มหลักฐานการทดลองจริง: กราฟ loss, ตารางผล, confusion matrix หรือบันทึก สมมุติฐาน→ทำ→ผล→สรุป (ขั้น 3)' },
+    { key: 'present', name: 'การนำเสนอ',             short: 'นำเสนอ',   max: 20,
+      advice: 'การนำเสนอยังอ่อน → ซ้อมตามโครง 10 นาที (ขั้น 6) พร้อมจับเวลาจริงอย่างน้อย 2 รอบ และให้เพื่อนนอกกลุ่มลองฟัง' },
+    { key: 'ai',      name: 'การใช้ AI อย่างโปร่งใส', short: 'AI โปร่งใส', max: 15,
+      advice: 'บันทึกการใช้ AI ยังอ่อน → เริ่มจดตั้งแต่วันนี้: ใช้ทำอะไร / ช่วย-พลาดตรงไหน / ตรวจสอบยังไง (ขั้น 4) — 15 คะแนนอยู่ตรงนี้' },
+  ];
+  W17.rubricTotal = function (vals) {
+    var t = 0;
+    for (var i = 0; i < W17.RUBRIC.length; i++) {
+      var v = Number(vals[i]) || 0;
+      if (v < 0) v = 0;
+      if (v > W17.RUBRIC[i].max) v = W17.RUBRIC[i].max;
+      t += v;
+    }
+    return t;
+  };
+  W17.gradeBand = function (total) {
+    if (total >= 80) return { label: 'ดีเยี่ยม — โซนหน้าห้อง 🏆', color: 'var(--green)' };
+    if (total >= 70) return { label: 'ดี — เก็บรายละเอียดอีกนิดเดียว', color: 'var(--green)' };
+    if (total >= 60) return { label: 'พอใช้ — ยังมีช่องให้เก็บคะแนนอีกเยอะ', color: 'var(--amber)' };
+    if (total >= 50) return { label: 'ต้องเร่งแล้ว — เลือกข้อที่อ่อนสุดมาอุดก่อน', color: 'var(--amber)' };
+    return { label: 'โซนอันตราย — รีบตัดสเกลงานลงครึ่งหนึ่ง (ขั้น 2) แล้วโฟกัสของที่เดินได้จริง', color: '#c0392b' };
+  };
+
+  // ---- 4) เช็คลิสต์ 4 สัปดาห์ ----
+  // กำหนดการในหน้านี้ระบุเป็น "สัปดาห์ที่ 15/16/17" (ไม่มีวันที่จริง) → ใช้ตัวนับรายการคงเหลือแทนวันที่
+  W17.CHECKLIST = [
+    { wk: 'เรื่อง Prompting &amp; RAG', title: 'เลือกหัวข้อ + ข้อมูล', items: [
+      'เลือกเส้นทาง A/B/C จากจุดแข็งของกลุ่ม (ขั้น 1)',
+      'เขียนหัวข้อ 1 ย่อหน้า: ทำอะไร + แนวคิดจากสัปดาห์ไหน + วัดความสำเร็จจากอะไร',
+      'เช็คว่าหาข้อมูล/เครื่องมือได้จริงภายใน 1 สัปดาห์',
+      'ตัดสเกลลงครึ่งหนึ่งจากที่คิดครั้งแรก (ขั้น 2)',
+    ]},
+    { wk: 'เรื่อง Diffusion', title: 'ต้นแบบแรก', items: [
+      'ส่งหัวข้อ (ย่อหน้าเดียว) รับ feedback จากอาจารย์',
+      'มีชิ้นที่ "เดินได้จริง" ชิ้นแรก แม้จะเล็ก/ขี้เหร่',
+      'เริ่มจดบันทึกการทดลอง: สมมุติฐาน → ทำ → ผล → สรุป (ขั้น 3)',
+      'เริ่มจดบันทึกการใช้ AI ทุกครั้ง (ขั้น 4 — 15 คะแนน)',
+    ]},
+    { wk: 'เรื่อง จริยธรรม AI', title: 'ผลจริง + สไลด์', items: [
+      'เก็บผลการทดลองจริงครบพอเล่าได้ (กราฟ/ตาราง/เคสพลาด)',
+      'ร่างสไลด์ตามโครง 10 นาที: ปัญหา→ออกแบบ→demo→เรียนรู้→ต่อยอด (ขั้น 6)',
+      'เข้าปรึกษานอกรอบถ้ายังติดอะไรอยู่ (ไม่บังคับ แต่คุ้ม)',
+      'ให้เพื่อนถาม "ทำไม" 3 ชั้นกับทุกการตัดสินใจ (ขั้น 5)',
+    ]},
+    { wk: 'เรื่อง โปรเจกต์ปลายภาค', title: 'ซ้อมพูด + นำเสนอ', items: [
+      'ซ้อมพูดจับเวลา 10 นาทีจริง อย่างน้อย 2 รอบ',
+      'เตรียม demo สำรอง (วิดีโอ/ภาพหน้าจอ) เผื่อของจริงพังหน้างาน',
+      'นำเสนอในคาบ 10 + 5 นาที — จบแบบมั่นใจ',
+      'ส่งรายงาน + ชิ้นงาน + บันทึกการใช้ AI ก่อนสอบปลายภาค',
+    ]},
+  ];
+
+  // ---- 5) สุ่มลำดับนำเสนอ ----
+  W17.fmtHM = function (mins) {
+    mins = ((Math.round(mins) % 1440) + 1440) % 1440;
+    var h = Math.floor(mins / 60), m = mins % 60;
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  };
+  // 'HH:MM' + นาที/กลุ่ม + จำนวนกลุ่ม → ['09:00–09:15', ...]
+  W17.timeSlots = function (startHM, minutesPer, n) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(startHM || ''));
+    var start = m ? (Number(m[1]) * 60 + Number(m[2])) : 9 * 60;
+    minutesPer = Number(minutesPer) > 0 ? Number(minutesPer) : 15;
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var s = start + i * minutesPer;
+      out.push(W17.fmtHM(s) + '–' + W17.fmtHM(s + minutesPer));
+    }
+    return out;
+  };
+  W17.shuffle = function (arr, rnd) {
+    rnd = rnd || Math.random;
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(rnd() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  };
+
+  root.W17 = W17;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+
+<script>
+// ===== W17 ส่วนติดต่อผู้ใช้ (DOM) =====
+
+// ---------- 1) 🧭 ควิซเลือกเส้นทาง ----------
+(function () {
+  'use strict';
+  var W = window.W17;
+  var qsBox = document.getElementById('pqQs');
+  var out = document.getElementById('pqResult');
+  if (!qsBox || !out) return;
+  var answers = W.QUIZ.map(function () { return null; });
+
+  W.QUIZ.forEach(function (q, qi) {
+    var div = document.createElement('div');
+    div.className = 'pq-q';
+    var t = document.createElement('div');
+    t.className = 'pq-t';
+    t.textContent = q.q;
+    div.appendChild(t);
+    q.choices.forEach(function (c, ci) {
+      var b = document.createElement('button');
+      b.className = 'pq-choice';
+      b.type = 'button';
+      b.textContent = c.t;
+      b.onclick = function () {
+        answers[qi] = ci;
+        var sib = div.querySelectorAll('.pq-choice');
+        for (var i = 0; i < sib.length; i++) sib[i].classList.toggle('sel', sib[i] === b);
+        render();
+      };
+      div.appendChild(b);
+    });
+    qsBox.appendChild(div);
+  });
+
+  function render() {
+    var done = answers.every(function (a) { return a !== null; });
+    if (!done) {
+      var left = answers.filter(function (a) { return a === null; }).length;
+      out.style.display = 'block';
+      out.innerHTML = '<em>ตอบอีก ' + left + ' ข้อ แล้วผลจะโผล่ตรงนี้…</em>';
+      return;
+    }
+    var r = W.scoreQuiz(answers);
+    var maxBar = Math.max(r.A, r.B, r.C, 1);
+    var html = '';
+    if (r.best) {
+      html += '<div class="pq-reco">แนะนำ: ' + W.PATH_INFO[r.best].name + '</div>';
+    } else {
+      html += '<div class="pq-reco" style="color:var(--accent)">คะแนนก้ำกึ่ง — เลือกได้มากกว่าหนึ่งทาง!</div>';
+    }
+    ['A', 'B', 'C'].forEach(function (k) {
+      var pct = Math.round(r[k] / maxBar * 100);
+      html += '<div class="pq-bar-row"><span class="lbl">' + W.PATH_INFO[k].name.split(' — ')[0] + '</span>' +
+        '<span class="pq-bar-track"><span class="pq-bar-fill' + (k === r.best ? ' win' : '') + '" style="width:' + pct + '%"></span></span>' +
+        '<span class="num">' + r[k] + '</span></div>';
+    });
+    if (r.best) html += '<p style="margin:8px 0 0">' + W.PATH_INFO[r.best].reason + '</p>';
+    else html += '<p style="margin:8px 0 0">กลุ่มคุณมีจุดแข็งหลายด้าน — เปิดตัวอย่างหัวข้อของแต่ละเส้นทางข้างล่าง แล้วเลือกอันที่อ่านแล้ว "อยากทำ" ที่สุด</p>';
+    html += '<p style="margin:8px 0 0;color:var(--muted)">✳️ <strong>แต่เลือกทางไหนก็ได้คะแนนเต็มได้</strong> — เกณฑ์ 100 คะแนนเหมือนกันทุกเส้นทาง ควิซนี้แค่ชี้จุดแข็ง ไม่ได้ชี้ชะตา</p>';
+    out.style.display = 'block';
+    out.innerHTML = html;
+  }
+})();
+
+// ---------- 2) 💡 เครื่องปั่นไอเดีย ----------
+(function () {
+  'use strict';
+  var W = window.W17;
+  var elD = document.getElementById('spD'), elT = document.getElementById('spT'), elA = document.getElementById('spA');
+  var btn = document.getElementById('spGo'), pinBtn = document.getElementById('spPin');
+  var out = document.getElementById('spOut'), pinsBox = document.getElementById('spPins');
+  if (!elD || !btn) return;
+  var KEY = 'w17_ideas';
+  var current = null;
+  var timer = null;
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function loadPins() {
+    try { return JSON.parse(W.lsGet(KEY) || '[]') || []; } catch (e) { return []; }
+  }
+  function renderPins() {
+    var pins = loadPins();
+    if (!pins.length) { pinsBox.innerHTML = ''; return; }
+    var html = '<strong style="font-size:.9rem">📌 ไอเดียที่ปักหมุดไว้:</strong>';
+    pins.forEach(function (p, i) {
+      html += '<div class="sp-pin-item"><span style="flex:1">' + p + '</span>' +
+        '<button type="button" data-i="' + i + '" title="ลบ">✕</button></div>';
+    });
+    pinsBox.innerHTML = html;
+    var dels = pinsBox.querySelectorAll('button[data-i]');
+    for (var i = 0; i < dels.length; i++) {
+      dels[i].onclick = function () {
+        var arr = loadPins();
+        arr.splice(Number(this.dataset.i), 1);
+        W.lsSet(KEY, JSON.stringify(arr));
+        renderPins();
+      };
+    }
+  }
+
+  btn.onclick = function () {
+    if (timer) return;
+    btn.disabled = true;
+    pinBtn.disabled = true;
+    out.style.display = 'none';
+    [elD, elT, elA].forEach(function (el) { el.classList.add('spin'); el.classList.remove('lock'); });
+    var d = pick(W.DOMAINS), t = pick(W.TECHS), a = pick(W.ANGLES);
+    var tick = 0;
+    timer = setInterval(function () {
+      tick++;
+      if (tick <= 12) elD.textContent = pick(W.DOMAINS);
+      if (tick <= 20) elT.textContent = pick(W.TECHS).t;
+      if (tick <= 28) elA.textContent = pick(W.ANGLES).t;
+      if (tick === 12) { elD.textContent = d; elD.classList.remove('spin'); elD.classList.add('lock'); }
+      if (tick === 20) { elT.textContent = t.t; elT.classList.remove('spin'); elT.classList.add('lock'); }
+      if (tick === 28) {
+        elA.textContent = a.t;
+        elA.classList.remove('spin');
+        elA.classList.add('lock');
+        clearInterval(timer);
+        timer = null;
+        finish(d, t, a);
+      }
+    }, 75);
+  };
+
+  function finish(d, t, a) {
+    var idea = a.tpl(d) + ' ด้วย ' + t.t;
+    var hint = W.compatHint(t.k, a.k);
+    current = idea;
+    out.style.display = 'block';
+    out.innerHTML = '<strong style="font-size:1.05rem">💡 ' + idea + '</strong>' +
+      '<div class="sp-verdict">' + hint.msg + '</div>';
+    btn.disabled = false;
+    btn.textContent = '▶ หมุนใหม่!';
+    pinBtn.disabled = false;
+  }
+
+  pinBtn.onclick = function () {
+    if (!current) return;
+    var arr = loadPins();
+    if (arr.indexOf(current) < 0) arr.push(current);
+    if (!W.lsSet(KEY, JSON.stringify(arr))) {
+      out.innerHTML += '<div class="w17-note">⚠️ เบราว์เซอร์นี้บันทึกไม่ได้ (localStorage ถูกปิด)</div>';
+    }
+    renderPins();
+  };
+
+  renderPins();
+})();
+
+// ---------- 3) 📊 เครื่องคิดคะแนน rubric ----------
+(function () {
+  'use strict';
+  var W = window.W17;
+  var rows = document.getElementById('rbRows');
+  var out = document.getElementById('rbOut');
+  var canvas = document.getElementById('rbCanvas');
+  var saveBtn = document.getElementById('rbSave');
+  var cmpBox = document.getElementById('rbCmp');
+  if (!rows || !canvas) return;
+  var KEY = 'w17_rubric_goal';
+  var sliders = [];
+
+  W.RUBRIC.forEach(function (c, i) {
+    var div = document.createElement('div');
+    div.className = 'rb-row';
+    div.innerHTML = '<div class="rb-lbl"><span>' + c.name + ' (เต็ม ' + c.max + ')</span>' +
+      '<span class="v" id="rbV' + i + '">' + Math.round(c.max / 2) + '</span></div>';
+    var input = document.createElement('input');
+    input.type = 'range';
+    input.min = 0;
+    input.max = c.max;
+    input.step = 1;
+    input.value = Math.round(c.max / 2);
+    input.id = 'rbS' + i;
+    input.oninput = update;
+    div.appendChild(input);
+    rows.appendChild(div);
+    sliders.push(input);
+  });
+
+  function vals() { return sliders.map(function (s) { return Number(s.value); }); }
+  function loadGoal() {
+    try {
+      var g = JSON.parse(W.lsGet(KEY) || 'null');
+      return (g && g.length === W.RUBRIC.length) ? g : null;
+    } catch (e) { return null; }
+  }
+
+  function drawRadar(cur, goal) {
+    var ctx = canvas.getContext('2d');
+    var Wc = canvas.width, Hc = canvas.height;
+    var cx = Wc / 2, cy = Hc / 2 + 6, R = Math.min(Wc, Hc) / 2 - 52;
+    var n = W.RUBRIC.length;
+    ctx.clearRect(0, 0, Wc, Hc);
+    function pt(i, frac) {
+      var ang = -Math.PI / 2 + i * 2 * Math.PI / n;
+      return [cx + Math.cos(ang) * R * frac, cy + Math.sin(ang) * R * frac];
+    }
+    // วงตาราง 25/50/75/100%
+    ctx.strokeStyle = 'rgba(150,160,185,.35)';
+    ctx.lineWidth = 1;
+    for (var ring = 1; ring <= 4; ring++) {
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) {
+        var p = pt(i % n, ring / 4);
+        if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+      }
+      ctx.stroke();
+    }
+    // แกน + ป้าย
+    ctx.fillStyle = 'rgba(120,130,155,.95)';
+    ctx.font = '600 13px Kanit, sans-serif';
+    ctx.textAlign = 'center';
+    for (var i = 0; i < n; i++) {
+      var p = pt(i, 1);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(p[0], p[1]);
+      ctx.stroke();
+      var lp = pt(i, 1.22);
+      ctx.fillText(W.RUBRIC[i].short + ' ' + cur[i] + '/' + W.RUBRIC[i].max, lp[0], lp[1] + 4);
+    }
+    function poly(v, stroke, fill, dash) {
+      ctx.beginPath();
+      for (var i = 0; i <= n; i++) {
+        var frac = v[i % n] / W.RUBRIC[i % n].max;
+        var p = pt(i % n, Math.max(frac, 0.02));
+        if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+      }
+      ctx.setLineDash(dash || []);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (goal) poly(goal, 'rgba(29,155,108,.9)', 'rgba(29,155,108,.10)', [6, 4]);
+    poly(cur, 'rgba(36,86,230,.9)', 'rgba(36,86,230,.16)');
+    // คำอธิบายสี
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(36,86,230,.9)';
+    ctx.fillText('— ตอนนี้', 10, Hc - 24);
+    if (goal) { ctx.fillStyle = 'rgba(29,155,108,.9)'; ctx.fillText('- - เป้าหมาย', 10, Hc - 8); }
+  }
+
+  function update() {
+    var v = vals();
+    var total = W.rubricTotal(v);
+    var band = W.gradeBand(total);
+    sliders.forEach(function (s, i) { document.getElementById('rbV' + i).textContent = s.value; });
+    var html = '<span class="rb-total">รวม ' + total + ' / 100</span> — <span class="rb-band" style="color:' + band.color + '">' + band.label + '</span>';
+    var advice = [];
+    W.RUBRIC.forEach(function (c, i) { if (v[i] < c.max * 0.6) advice.push(c.advice); });
+    if (advice.length) {
+      html += '<ul class="rb-advice">' + advice.map(function (a) { return '<li>' + a + '</li>'; }).join('') + '</ul>';
+    } else {
+      html += '<div class="w17-note">ทุกเกณฑ์เกิน 60% แล้ว — เก็บรายละเอียดแล้วไปซ้อมพูดได้เลย 💪</div>';
+    }
+    out.innerHTML = html;
+    var goal = loadGoal();
+    drawRadar(v, goal);
+    renderCmp(v, goal);
+  }
+
+  function renderCmp(v, goal) {
+    if (!goal) { cmpBox.innerHTML = ''; return; }
+    var parts = W.RUBRIC.map(function (c, i) {
+      var diff = v[i] - goal[i];
+      var mark = diff >= 0 ? '✅' : '△';
+      return mark + ' ' + c.short + ': เป้า ' + goal[i] + ' / ตอนนี้ ' + v[i] +
+        (diff >= 0 ? '' : ' (ขาดอีก ' + (-diff) + ')');
+    });
+    cmpBox.innerHTML = '<div class="rb-cmp"><strong>🎯 เป้า vs ตอนนี้:</strong> ' + parts.join(' · ') +
+      ' — รวมเป้า ' + W.rubricTotal(goal) + ' / ตอนนี้ ' + W.rubricTotal(v) + '</div>';
+  }
+
+  saveBtn.onclick = function () {
+    if (W.lsSet(KEY, JSON.stringify(vals()))) {
+      saveBtn.textContent = '💾 บันทึกเป้าหมายแล้ว ✓';
+      setTimeout(function () { saveBtn.textContent = '💾 บันทึกเป้าหมาย'; }, 1600);
+    } else {
+      saveBtn.textContent = '⚠️ บันทึกไม่ได้ (localStorage ถูกปิด)';
+    }
+    update();
+  };
+
+  update();
+})();
+
+// ---------- 4) ✅ เช็คลิสต์ 4 สัปดาห์สุดท้าย ----------
+(function () {
+  'use strict';
+  var W = window.W17;
+  var grid = document.getElementById('ckWeeks');
+  var hint = document.getElementById('ckHint');
+  if (!grid || !hint) return;
+  var KEY = 'w17_check';
+
+  function loadState() {
+    try { return JSON.parse(W.lsGet(KEY) || '{}') || {}; } catch (e) { return {}; }
+  }
+  var state = loadState();
+
+  var RINGC = 2 * Math.PI * 15; // r=15
+  function ringSVG(id) {
+    return '<svg width="40" height="40" viewBox="0 0 40 40">' +
+      '<circle cx="20" cy="20" r="15" fill="none" stroke="var(--border)" stroke-width="5"></circle>' +
+      '<circle id="' + id + '" cx="20" cy="20" r="15" fill="none" stroke="var(--green)" stroke-width="5" ' +
+      'stroke-linecap="round" stroke-dasharray="' + RINGC.toFixed(2) + '" stroke-dashoffset="' + RINGC.toFixed(2) + '" ' +
+      'transform="rotate(-90 20 20)" style="transition:stroke-dashoffset .4s"></circle>' +
+      '<text x="20" y="24" text-anchor="middle" class="ring-txt" id="' + id + 't">0%</text></svg>';
+  }
+
+  W.CHECKLIST.forEach(function (wk, wi) {
+    var card = document.createElement('div');
+    card.className = 'ck-week';
+    var html = '<div class="ck-head">' + ringSVG('ckRing' + wi) +
+      '<span class="t">' + wk.wk + ' — ' + wk.title + '</span></div>';
+    wk.items.forEach(function (item, ii) {
+      var id = 'ck_' + wi + '_' + ii;
+      html += '<label class="ck-item" id="' + id + 'l"><input type="checkbox" id="' + id + '"><span>' + item + '</span></label>';
+    });
+    card.innerHTML = html;
+    grid.appendChild(card);
+    wk.items.forEach(function (_, ii) {
+      var id = 'ck_' + wi + '_' + ii;
+      var cb = document.getElementById(id);
+      cb.checked = !!state[id];
+      cb.onchange = function () {
+        state[id] = cb.checked;
+        W.lsSet(KEY, JSON.stringify(state));
+        refresh();
+      };
+    });
+  });
+
+  function refresh() {
+    var total = 0, done = 0, focusWk = null;
+    W.CHECKLIST.forEach(function (wk, wi) {
+      var wDone = 0;
+      wk.items.forEach(function (_, ii) {
+        var id = 'ck_' + wi + '_' + ii;
+        var cb = document.getElementById(id);
+        document.getElementById(id + 'l').classList.toggle('done', cb.checked);
+        total++;
+        if (cb.checked) { done++; wDone++; }
+      });
+      var frac = wDone / wk.items.length;
+      document.getElementById('ckRing' + wi).style.strokeDashoffset = (RINGC * (1 - frac)).toFixed(2);
+      document.getElementById('ckRing' + wi + 't').textContent = Math.round(frac * 100) + '%';
+      if (focusWk === null && wDone < wk.items.length) focusWk = wi;
+    });
+    var left = total - done;
+    var msg = '<strong>ความคืบหน้ารวม: ' + done + '/' + total + '</strong>';
+    if (left === 0) {
+      msg += ' — 🎉 ครบทุกรายการ! เหลืออย่างเดียว: ขึ้นเวทีแบบมั่นใจ';
+    } else {
+      msg += ' — เหลืออีก ' + left + ' รายการ';
+      if (focusWk !== null) {
+        msg += ' · ตอนนี้ควรโฟกัส: <span class="ck-focus">' + W.CHECKLIST[focusWk].wk + ' "' + W.CHECKLIST[focusWk].title + '"</span>';
+      }
+    }
+    hint.innerHTML = msg;
+  }
+
+  refresh();
+})();
+
+// ---------- 5) 🎤 สุ่มลำดับนำเสนอ ----------
+(function () {
+  'use strict';
+  var W = window.W17;
+  var namesEl = document.getElementById('prNames');
+  var nEl = document.getElementById('prN'), startEl = document.getElementById('prStart'), minEl = document.getElementById('prMin');
+  var goBtn = document.getElementById('prGo'), copyBtn = document.getElementById('prCopy'), msgEl = document.getElementById('prMsg');
+  var list = document.getElementById('prList');
+  if (!goBtn || !list) return;
+  var running = false;
+  var lastResult = null;
+
+  function getNames() {
+    var lines = namesEl.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    if (lines.length >= 2) return lines;
+    var n = Math.max(1, Math.min(40, Math.round(Number(nEl.value) || 6)));
+    var out = [];
+    for (var i = 1; i <= n; i++) out.push('กลุ่มที่ ' + i);
+    return out;
+  }
+
+  goBtn.onclick = function () {
+    if (running) return;
+    running = true;
+    goBtn.disabled = true;
+    copyBtn.style.display = 'none';
+    msgEl.textContent = '';
+    var names = getNames();
+    var order = W.shuffle(names);
+    var slots = W.timeSlots(startEl.value, minEl.value, order.length);
+    lastResult = order.map(function (nm, i) { return { i: i + 1, slot: slots[i], name: nm }; });
+
+    list.innerHTML = '';
+    var lis = [];
+    order.forEach(function (_, i) {
+      var li = document.createElement('li');
+      li.className = 'spin';
+      li.innerHTML = '<span class="ord">' + (i + 1) + '</span><span class="slot">' + slots[i] + '</span><span class="nm">❓</span>';
+      list.appendChild(li);
+      lis.push(li);
+    });
+
+    // เผยผลทีละช่อง: กะพริบชื่อสุ่มก่อนล็อกตัวจริง
+    var cur = 0, flick = 0;
+    var timer = setInterval(function () {
+      if (cur >= order.length) {
+        clearInterval(timer);
+        running = false;
+        goBtn.disabled = false;
+        goBtn.textContent = '🎲 สุ่มใหม่';
+        copyBtn.style.display = '';
+        return;
+      }
+      var nmEl = lis[cur].querySelector('.nm');
+      flick++;
+      if (flick < 7) {
+        nmEl.textContent = names[Math.floor(Math.random() * names.length)];
+      } else {
+        nmEl.textContent = order[cur];
+        lis[cur].classList.remove('spin');
+        lis[cur].classList.add('lock');
+        cur++;
+        flick = 0;
+      }
+    }, 90);
+  };
+
+  copyBtn.onclick = function () {
+    if (!lastResult) return;
+    var text = lastResult.map(function (r) { return 'ลำดับ ' + r.i + ' (' + r.slot + '): ' + r.name; }).join('\n');
+    function ok() { msgEl.textContent = 'คัดลอกแล้ว ✓'; setTimeout(function () { msgEl.textContent = ''; }, 1800); }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); ok(); }
+      catch (e) { msgEl.textContent = 'คัดลอกไม่ได้ — เลือกข้อความเองได้เลย'; }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(ok, fallback);
+    } else {
+      fallback();
+    }
+  };
+})();
+</script>
+
+</body>
+</html>

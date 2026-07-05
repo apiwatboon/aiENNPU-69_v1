@@ -1,0 +1,1224 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เทรนจริงให้เป็น | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  /* อังกฤษ/ตัวเลขใช้ Poppins · ไทยตกไปที่ Kanit · font-size-adjust ทำให้สองฟอนต์สมดุลกัน (แบบ week03/06) */
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .cdot { display:inline-block; width:.72em; height:.72em; border-radius:50%; vertical-align:middle; margin:0 1px; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button { font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s; }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* ═══════ 1) ห้องแล็บเทรนสด ═══════ */
+  .lab-grid { display:grid; grid-template-columns:1fr; gap:12px; margin-top:10px; }
+  @media(min-width:920px){ .lab-grid { grid-template-columns:1fr 340px; align-items:start; } }
+  .lab-stats { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  .lab-stat { border:1px solid var(--border); border-radius:10px; padding:5px 14px; background:var(--card);
+    font-size:.78rem; color:var(--muted); }
+  .lab-stat b { display:block; font-size:1.02rem; color:var(--ink); font-variant-numeric:tabular-nums; }
+  .lab-stat.tr b { color:#12a150; }
+  .lab-stat.va b { color:#e08a2e; }
+  .lab-chip { border-radius:999px; padding:8px 16px; font-weight:700; font-size:.88rem;
+    border:1.5px solid var(--border); background:var(--card); transition:all .3s; }
+  .lab-chip.learn { color:#2456e6; border-color:#2456e6; background:rgba(36,86,230,.07); }
+  .lab-chip.good  { color:#0e7f43; border-color:#12a150; background:rgba(18,161,80,.08); }
+  .lab-chip.bad   { color:#b91c1c; border-color:#e5484d; background:rgba(229,72,77,.08); animation:labShake .5s; }
+  @keyframes labShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+  .lab-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
+  #labPlay { background:linear-gradient(135deg,var(--accent),#8b5cf6); min-width:110px; }
+
+  /* ═══════ 2) แบ่งข้อมูล train/val/test ═══════ */
+  .sp-strip { display:flex; flex-wrap:wrap; gap:3px; margin:10px 0 6px; }
+  .sp-dot { width:14px; height:14px; border-radius:50%; border:3px solid #cbd2e0; box-sizing:content-box;
+    transition:border-color .15s; }
+  .sp-bar { display:flex; height:26px; border-radius:8px; overflow:hidden; margin:4px 0 8px; }
+  .sp-bar span { display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;
+    font-size:.74rem; white-space:nowrap; overflow:hidden; transition:width .12s; }
+  .sp-row { display:flex; align-items:center; gap:9px; font-size:.88rem; margin-top:6px; }
+  .sp-row label { min-width:140px; font-weight:600; }
+  .sp-row input[type=range] { flex:1; accent-color:var(--accent); }
+  .sp-warn { border:1.5px solid #f59e0b; background:rgba(245,158,11,.09); color:#92600a;
+    border-radius:10px; padding:7px 12px; font-size:.87rem; font-weight:600; margin-top:6px; }
+  [data-theme="dark"] .sp-warn { color:#f5c168; }
+  .sp-good { border:1.5px solid #12a150; background:rgba(18,161,80,.08); color:#0e7f43;
+    border-radius:10px; padding:7px 12px; font-size:.87rem; font-weight:600; margin-top:6px; }
+
+  /* ═══════ 3) dropout ═══════ */
+  .dp-wrap { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:4px; }
+  .dp-wrap svg { display:block; width:100%; height:auto; }
+  .dp-msg { margin:8px 0 0; font-size:.9rem; min-height:1.5em; }
+
+  /* ═══════ 5) กล่องโค้ด Colab ═══════ */
+  .code-wrap { position:relative; margin-top:10px; }
+  pre.codebox { background:#0d1424; border:1px solid #26304a; border-radius:12px; padding:16px 18px;
+    overflow-x:auto; margin:0; line-height:1.7; font-size:.84rem; color:#dbe4f5;
+    box-shadow:0 10px 26px -16px rgba(0,0,0,.6); }
+  .codebox, .codebox * { font-family: Consolas, Monaco, 'Courier New', monospace !important; font-size-adjust:none; }
+  .c-com { color:#7fb069; }
+  .c-str { color:#e8b268; }
+  .c-kw  { color:#7cb4ff; font-weight:600; }
+  #copyBtn { position:absolute; top:10px; right:10px; margin:0; font-size:.8rem; padding:6px 12px;
+    background:linear-gradient(135deg,#334155,#475569); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>เทรนจริงให้เป็น: Overfitting และการวัดผลโมเดล</h1>
+    <p class="subtitle">โมเดลที่ "จำข้อสอบ" vs โมเดลที่ "เข้าใจบทเรียน"</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong>🎯 เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบาย overfitting ด้วยตัวอย่างของตัวเองได้ และดูกราฟ train/test loss แล้วชี้จุดที่เริ่ม overfit ได้</li>
+      <li>บอกได้ว่าทำไมต้องแยกข้อมูล train/test และห้ามให้โมเดล "เห็นข้อสอบ" เด็ดขาด</li>
+      <li>เทรนโมเดลแรกของตัวเองใน Google Colab สำเร็จ</li>
+    </ol>
+  </div>
+
+  <h2>ส่วนที่ 1 — แนวคิด <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p>คำถามเปิดคาบ: <em>"เพื่อนสองคน คนแรกท่องเฉลยข้อสอบเก่าทุกข้อแบบจำเป๊ะ คนที่สองทำความเข้าใจหลักการ — ถ้าข้อสอบปีนี้เปลี่ยนโจทย์ ใครรอด?"</em></p>
+
+    <h3>Overfitting = จำข้อสอบ ไม่ได้เข้าใจบทเรียน</h3>
+    <p>โมเดลที่ซับซ้อนมาก (weight เยอะ) สามารถ "จำ" ข้อมูลฝึกได้หมดเปลือก
+    รวมถึง noise และความบังเอิญ — loss บนข้อมูลฝึกต่ำสวยงาม
+    แต่พอเจอข้อมูลใหม่กลับพังยับ นี่คือ <strong>overfitting</strong></p>
+    <ul>
+      <li><strong>Train set</strong> — ข้อมูลให้โมเดลเรียน (แบบฝึกหัด)</li>
+      <li><strong>Test set</strong> — ข้อมูลที่ซ่อนไว้วัดผล (ข้อสอบจริง) — โมเดลห้ามเห็นตอนเทรนเด็ดขาด</li>
+      <li><strong>สัญญาณ overfit:</strong> train loss ลงต่อเรื่อยๆ แต่ test loss เริ่มเงยหัวขึ้น</li>
+    </ul>
+    <p>วิธีสู้: เพิ่มข้อมูล, ลดขนาดโมเดล, regularization, dropout, early stopping
+    — แก่นเดียวกันหมดคือ "บังคับให้เรียนหลักการ อย่าให้จำ"</p>
+
+    <p><strong>จุดเชื่อมสู่ LLM:</strong> นี่คือคำตอบว่าทำไม LLM ต้องเทรนด้วยข้อความ
+    "ระดับทั้งอินเทอร์เน็ต" — โมเดลแสนล้าน parameter จำข้อมูลเล็กๆ ได้สบาย
+    ทางเดียวที่บังคับให้มัน "เข้าใจภาษา" คือป้อนข้อมูลมากจนจำไม่ไหว ต้องหากฎเอาเอง
+    และปรากฏการณ์ LLM ท่องข้อมูลส่วนตัว/ลิขสิทธิ์ออกมาได้ ก็คือ overfitting บางส่วนนั่นเอง</p>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">👣 เข้าใจทีละขั้น — สอนเครื่องไม่ให้จำข้อสอบ ใน 6 ขั้น</h3>
+    <p style="color:var(--muted); font-size:.95rem">ขั้นตอนนี้คือสิ่งที่วิศวกร ML ทำจริงทุกโปรเจกต์ — จำลำดับนี้ได้ = ทำงานเป็น</p>
+    <ol class="steps">
+      <li><strong>แบ่งข้อมูลก่อนทำอะไรทั้งสิ้น</strong>
+        มีข้อมูล 100 แถว → สุ่มแบ่งเป็น <strong>train 80 แถว</strong> (ให้โมเดลเรียน) กับ <strong>test 20 แถว</strong> (ซ่อนไว้ในลิ้นชัก)<br>
+        กฎเหล็ก: โมเดลห้ามเห็น test เด็ดขาด — เหมือนข้อสอบจริงที่ห้ามหลุดก่อนสอบ</li>
+      <li><strong>เทรนด้วย train เท่านั้น</strong>
+        ใช้ความรู้ที่ผ่านมา (ตั้งแต่ Regression จนถึง Backpropagation): ปรับ weight จน train loss ลดลงเรื่อยๆ — ตรงนี้โมเดลจะดูเก่งขึ้นเสมอ
+        (เหมือนนักเรียนที่ทำแบบฝึกหัดชุดเดิมซ้ำๆ คะแนนชุดนั้นย่อมดีขึ้น)</li>
+      <li><strong>เปิดลิ้นชัก: วัดด้วย test</strong>
+        เอาโมเดลไปทำนายข้อมูล 20 แถวที่มันไม่เคยเห็น แล้ววัด loss — ตัวเลขนี้คือ "ความเข้าใจจริง"</li>
+      <li><strong>อ่านอาการจากตัวเลขคู่เดียว</strong>
+        <table class="simple" style="max-width:520px">
+          <tr><th>train loss</th><th>test loss</th><th>วินิจฉัย</th></tr>
+          <tr><td>0.02</td><td>0.95</td><td>😵 overfit — จำข้อสอบ (เก่งเฉพาะที่เคยเห็น)</td></tr>
+          <tr><td>0.40</td><td>0.42</td><td>✅ พอดี — เข้าใจหลักการ</td></tr>
+          <tr><td>0.90</td><td>0.91</td><td>😴 underfit — โมเดลง่ายเกิน/เทรนน้อยเกิน</td></tr>
+        </table>
+        <div class="try">วินิจฉัยเอง: train 0.1 / test 0.6 เป็นอาการอะไร ควรทำอะไรต่อ?</div></li>
+      <li><strong>แก้ตามอาการ</strong>
+        overfit → เพิ่มข้อมูล / ลดขนาดโมเดล / dropout / หยุดเทรนตรงจุดที่ test loss เริ่มเงย (early stopping)<br>
+        underfit → ขยายโมเดล / เทรนนานขึ้น — สังเกตว่าวิธีแก้สองโรคนี้<em>ตรงข้ามกัน</em> วินิจฉัยผิด = แก้ผิดทาง</li>
+      <li><strong>เห็นด้วยตาตัวเอง</strong>
+        demo ข้างล่าง: จุดเขียว = train, จุดส้ม = test — เลื่อนดีกรีต่ำ (เส้นทื่อ พลาดทั้งคู่ = underfit)
+        ไปดีกรีสูง (เส้นบิดไล่เก็บจุดเขียวทุกจุด แต่พังกับจุดส้ม = overfit)
+        <div class="try">กด ▶ ไล่ดีกรีอัตโนมัติ แล้วจดว่า "ดีกรีไหน test error ต่ำสุด" — นั่นคือจุดพอดีของข้อมูลชุดนี้</div></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">🧩 ตัวอย่างหลายแบบ — ฝึกวินิจฉัยโมเดลเหมือนหมอ</h3>
+    <p style="color:var(--muted); font-size:.95rem">ทุกข้อ: วินิจฉัยก่อน (overfit / underfit / อื่นๆ) แล้วสั่งยา — ค่อยกางเฉลย</p>
+    <details class="example">
+      <summary>ตัวอย่าง 1 — แอปสแกนใบหน้าเข้างาน</summary>
+      <p>เทรนกับรูปพนักงานถ่ายในออฟฟิศตอนกลางวัน ได้ accuracy 99% (test set ก็รูปออฟฟิศกลางวัน)
+      พอใช้จริงตอนกะดึก สแกนไม่ผ่านเพียบ — เกิดอะไรขึ้น?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เช็คคู่ train/test ก่อน:</strong> 99% ทั้งคู่ ช่องว่างแคบ → ไม่ใช่ overfit แบบคลาสสิก<br>
+      <strong>ขั้น 2 — เทียบ "โลกของข้อมูล" กับ "โลกของงานจริง":</strong> ข้อมูลทั้งหมด = กลางวัน | งานจริง = มีกลางคืนด้วย — test ไม่ได้เป็นตัวแทนงานจริง<br>
+      <strong>ขั้น 3 — ตั้งชื่อโรค:</strong> distribution shift — ญาติสนิทของ overfitting: โมเดลเก่งเฉพาะสภาพแวดล้อมที่เคยเห็น<br>
+      ✅ <strong>คำตอบ:</strong> ตัวเลข 99% ไม่ได้โกหก แต่มันวัดผิดโลก — ยา: เก็บข้อมูลครอบคลุมสภาพใช้จริง (รวมกะดึก)
+      แล้วแบ่ง test ให้สะท้อนงานจริง</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 2 — โมเดลทำนายราคาหุ้น train loss 0.05 / test loss 0.90</summary>
+      <p>นักศึกษาคนหนึ่งภูมิใจว่า train loss ต่ำมาก — วินิจฉัย แล้วตอบเพิ่ม: ถ้าเพิ่มข้อมูลอีก 10 เท่า จะหายไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — วินิจฉัยตามตำรา:</strong> ช่องว่าง 0.05 ต่อ 0.90 กว้างมาก → overfit ชัดเจน (จำแพตเทิร์นเฉพาะของข้อมูลฝึก)<br>
+      <strong>ขั้น 2 — ตอบคำถามชั้นสอง: เพิ่มข้อมูล 10 เท่าหายไหม?</strong> ช่องว่างจะแคบลงจริง แต่ test loss อาจ<strong>ยังสูงอยู่ดี</strong><br>
+      <strong>ขั้น 3 — หาเหตุผล:</strong> ราคาหุ้นมี noise มหาศาลและแพตเทิร์นเปลี่ยนตลอด — ส่วนที่ "ทำนายได้จริง" มีน้อยมากโดยธรรมชาติ
+      ข้อมูลเพิ่มช่วยลดการจำ แต่สร้างสัญญาณที่ไม่มีอยู่จริงไม่ได้<br>
+      ✅ <strong>คำตอบ:</strong> overfit + โจทย์ที่เพดานต่ำ — บางโจทย์ขีดจำกัดอยู่ที่ธรรมชาติข้อมูล ไม่ใช่โมเดล
+      วิศวกรที่ดีรู้จักพูดว่า "โจทย์นี้ทำนายไม่ได้" ก่อนเผาเงินเพิ่ม</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 3 — เพื่อนสองคนเตรียมสอบ (overfitting ฉบับมนุษย์)</summary>
+      <p>คนแรกท่องเฉลยข้อสอบเก่า 100 ข้อจนจำได้ทุกตัวอักษร คนที่สองทำข้อสอบเก่าแค่ 30 ข้อแต่สรุปหลักการเอง
+      — ใครคือ overfit? แล้ว "ข้อสอบเก่าหลุดมาตรงๆ 1 ข้อ" ใครได้เปรียบ?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — เทียบนิยาม:</strong> คนแรก = train accuracy 100% (จำเฉลยเป๊ะ) แต่โจทย์พลิกนิดเดียวพัง → <strong>overfit</strong> | คนที่สอง = ทำข้อมูลฝึกได้ไม่เต็มแต่หลักการแน่น → <strong>generalize</strong><br>
+      <strong>ขั้น 2 — กรณีข้อสอบหลุดตรงๆ:</strong> คนแรกชนะข้อนั้นทันที — ความจำเป๊ะเอาชนะความเข้าใจ เมื่อข้อสอบ = แบบฝึกหัด<br>
+      <strong>ขั้น 3 — โยงเข้า ML:</strong> "ข้อสอบหลุด" = data leakage — โมเดล overfit ทำคะแนนสวยกับข้อมูลที่รั่วจาก train หลอกให้เราคิดว่ามันเก่ง<br>
+      ✅ <strong>คำตอบ:</strong> คนแรก overfit และได้เปรียบเฉพาะเมื่อข้อสอบรั่ว — นี่แหละเหตุผลที่ต้องแยก test ให้สะอาดจริงๆ
+      เพราะคะแนนจากข้อสอบรั่วไม่ได้วัดอะไรเลย</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 4 — ทำไมต้องมีชุดที่สาม (validation set)</summary>
+      <p>เราลองโมเดล 20 แบบ แล้วเลือกตัวที่ทำคะแนน test ดีสุด — ฟังดูถูกต้อง แต่มีกับดักอะไรซ่อนอยู่?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — มองการเลือกเป็นการเรียนรู้:</strong> ทุกครั้งที่ดูคะแนน test แล้วตัดสินใจ เราป้อนข้อมูลจาก test กลับเข้ากระบวนการ — 20 ครั้ง = เรียนจาก test ไป 20 รอบโดยไม่รู้ตัว<br>
+      <strong>ขั้น 2 — ดูผลเสีย:</strong> ตัวที่ชนะอาจแค่ "ฟลุกพอดีกับ test ชุดนี้" — คะแนนที่รายงานจะสวยเกินจริงเสมอ<br>
+      <strong>ขั้น 3 — วิธีถูก:</strong> แบ่งสามชุด train / validation / test (70/15/15) — validation ใช้เลือกโมเดลกี่รอบก็ได้ ส่วน test เปิดซอง<strong>ครั้งเดียวตอนจบ</strong>เพื่อรายงานผล<br>
+      ✅ <strong>คำตอบ:</strong> กับดักคือ "เลือกตาม test = แอบเรียนจาก test" — test คือข้อสอบจริงที่เปิดซองได้หนเดียว</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 5 — อ่านกราฟแล้วสั่งหยุด (early stopping)</summary>
+      <p>เทรน 50 epoch: val loss ลดมาตลอด ต่ำสุดที่ epoch 17 แล้วค่อยๆ เงยขึ้น — ควรใช้โมเดลของ epoch ไหน?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — หาจุดเปลี่ยนบนกราฟ:</strong> val loss ลงเรื่อยๆ จนต่ำสุดที่ epoch 17 แล้วเริ่มเงย — จุดเงยคือสัญญาณ "เริ่มจำข้อมูลฝึก"<br>
+      <strong>ขั้น 2 — ตีความสองช่วง:</strong> ก่อน 17: เรียนหลักการ (ดีขึ้นกับข้อมูลใหม่ด้วย) | หลัง 17: จำรายละเอียดเฉพาะ (train ลดต่อ แต่ val แย่ลง = ช่องว่างถ่าง)<br>
+      <strong>ขั้น 3 — เลือกโมเดล:</strong> ใช้เวอร์ชันที่เซฟไว้ตอน epoch <strong>17</strong> ไม่ใช่ตัวสุดท้าย<br>
+      ✅ <strong>คำตอบ:</strong> epoch 17 — เทคนิคจริง: เซฟทุกครั้งที่ val ทำสถิติใหม่ + หยุดเมื่อไม่ดีขึ้นติดต่อกัน n รอบ (patience)
+      กันโมเดลเสียฟรีแถมประหยัดค่าเครื่อง — ลองใส่ใน Colab การบ้านข้อ 3 ได้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 6 — dropout: ติวกลุ่มที่สมาชิกโดดเรียนสุ่มๆ</summary>
+      <p>dropout ปิดนิวรอนแบบสุ่ม 30% ทุกๆ รอบเทรน — ทำไมการ "ทำลายเครือข่ายชั่วคราว" ถึงช่วยลด overfit?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ดูปัญหาที่เกิดถ้าไม่มี dropout:</strong> นิวรอนบางตัว "รับจำ" ลายเฉพาะของข้อมูลฝึก ตัวอื่นพึ่งมันแล้วว่างงาน — ความรู้กระจุก เปราะบาง<br>
+      <strong>ขั้น 2 — ใส่ dropout:</strong> ทุกๆ รอบเทรน สุ่มปิดนิวรอน 30% — "ตัวรับจำ" หายไปบ้าง นิวรอนอื่นถูกบังคับให้ทำงานแทน<br>
+      <strong>ขั้น 3 — ผลระยะยาว:</strong> ไม่มีตัวไหนพึ่งตัวไหนได้ → ความรู้ถูกเกลี่ยทั่วเครือข่าย → เจอข้อมูลใหม่แล้วทนทานกว่า<br>
+      ✅ <strong>คำตอบ:</strong> เหมือนติวกลุ่มที่สมาชิกโดดเรียนไม่ซ้ำหน้าทุกนัด — ไม่มีใครพึ่ง "เพื่อนคนเก่งคนเดียว" ได้
+      ทุกคนเลยต้องเข้าใจเองหมด = เครือข่ายที่ generalize</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 7 — เสกข้อมูลเพิ่มฟรี (data augmentation) และจุดที่ห้ามใช้</summary>
+      <p>รูปแมว 1,000 ใบ → พลิกซ้ายขวา หมุนเล็กน้อย ครอป ปรับแสง = หลายหมื่นใบ — แล้วทำแบบเดียวกันกับรูป "ป้ายจราจร" ได้ไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตั้งคำถามทดสอบ:</strong> "หลังแปลงภาพแล้ว ป้ายคำตอบ (label) ยังถูกอยู่ไหม?"<br>
+      <strong>ขั้น 2 — เคสแมว:</strong> พลิกซ้ายขวา → ยังเป็นแมว ✓ หมุนนิด ครอป ปรับแสง → ยังเป็นแมว ✓ ใช้ได้หมด<br>
+      <strong>ขั้น 3 — เคสป้ายจราจร:</strong> ป้าย "เลี้ยวซ้าย" พลิกซ้ายขวา → กลายเป็นป้าย "เลี้ยวขวา" แต่ label ยังเขียนว่า "เลี้ยวซ้าย" — <strong>สอนโมเดลผิด!</strong> ✗<br>
+      ✅ <strong>คำตอบ:</strong> แมวได้ ป้ายจราจรไม่ได้ (สำหรับการพลิก) — กฎ: augmentation ต้องเป็นการแปลงที่ "ความหมายไม่เปลี่ยน" ในโจทย์นั้นๆ
+      เครื่องมือดีแค่ไหนก็ต้องคิดก่อนใช้</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 8 — ข้อมูลน้อยใช้ k-fold</summary>
+      <p>มีข้อมูลแค่ 100 แถว แบ่ง test 20 แถวก็เสียดาย ข้อมูลฝึกเหลือนิดเดียว — มีวิธีใช้ข้อมูลให้คุ้มกว่านี้ไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — แบ่งข้อมูล 100 แถวเป็น 5 ก้อน:</strong> ก้อนละ 20 แถว (A, B, C, D, E)<br>
+      <strong>ขั้น 2 — ผลัดกันเป็นข้อสอบ:</strong> รอบ 1: เทรนด้วย B–E สอบด้วย A | รอบ 2: เทรน A,C–E สอบ B | ... ครบ 5 รอบ<br>
+      <strong>ขั้น 3 — สรุปคะแนน:</strong> เฉลี่ยคะแนนสอบทั้ง 5 รอบ — ทุกแถวได้เป็นทั้งข้อมูลฝึกและข้อสอบ (คนละรอบ ไม่เคยซ้อนกัน)<br>
+      ✅ <strong>คำตอบ:</strong> 5-fold cross-validation — ผลวัดน่าเชื่อถือขึ้นมากสำหรับข้อมูลเล็ก แลกกับเวลาเทรน ×5
+      มาตรฐานของงานวิจัยที่ข้อมูลหายาก เช่น การแพทย์</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 9 — วินิจฉัยข้อยาก: train 55% / test 54% (เดาสุ่มได้ 50%)</summary>
+      <p>ไม่ overfit แน่ (ช่องว่างแคบนิดเดียว) — แต่โมเดลนี้โอเคหรือยัง? เป็นอาการอะไรได้บ้าง?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ตัดข้อสงสัยแรก:</strong> ช่องว่าง train/test แค่ 1% → ไม่ใช่ overfit แน่นอน<br>
+      <strong>ขั้น 2 — เทียบกับเส้นฐาน:</strong> เดาสุ่มได้ 50% โมเดลได้ 54–55% — ดีกว่าสุ่มแค่นิดเดียว = แทบไม่เรียนรู้อะไร<br>
+      <strong>ขั้น 3 — แยกสองสาเหตุที่เป็นไปได้:</strong> (1) underfit: โมเดลง่าย/เทรนน้อยเกิน (2) feature ไม่มีสัญญาณ: ต่อให้โมเดลเทพก็ทำนายไม่ได้ (เช่น ทำนายหวยจากวันเกิด)<br>
+      <strong>ขั้น 4 — วิธีทดสอบแยกโรค:</strong> ขยายโมเดล/เทรนนานขึ้น แล้วดู train accuracy — ถ้ายังไม่ขึ้น แสดงว่าเป็นข้อ (2)<br>
+      ✅ <strong>คำตอบ:</strong> underfit หรือ feature ไร้สัญญาณ — ถ้าเป็นอย่างหลัง ต้องเปลี่ยน feature ไม่ใช่เปลี่ยนโมเดล</div>
+    </details>
+    <details class="example">
+      <summary>ตัวอย่าง 10 — ข้อสอบรั่วระดับวงการ: LLM กับ benchmark</summary>
+      <p>LLM ถูกอวดว่าทำข้อสอบมาตรฐาน (benchmark) ได้คะแนนสูงมาก — แต่ข้อสอบพวกนั้นโพสต์อยู่ในอินเทอร์เน็ตที่โมเดลใช้เทรน... คุ้นๆ ไหม?</p>
+      <div class="ans">
+      <strong>ขั้น 1 — ไล่เส้นทางข้อมูล:</strong> ข้อสอบ benchmark ถูกโพสต์ในเว็บ/วารสาร → เว็บถูกกวาดมาเป็นข้อมูล pretrain → ข้อสอบ (และเฉลย) อยู่ในข้อมูลฝึกแล้ว<br>
+      <strong>ขั้น 2 — เทียบกับหลักสัปดาห์นี้:</strong> test ที่โมเดลเคยเห็นตอนเทรน = data leakage ตรงตามนิยาม — แค่สเกลระดับอินเทอร์เน็ต (เรียกว่า benchmark contamination)<br>
+      <strong>ขั้น 3 — ผลที่ตามมา:</strong> คะแนนสะท้อน "ความจำ" ไม่ใช่ "ความสามารถ" — เทียบระหว่างโมเดลก็ไม่แฟร์ (ใครกวาดเว็บใหม่กว่าได้เปรียบ)<br>
+      ✅ <strong>คำตอบ:</strong> วงการแก้ด้วยข้อสอบลับ/ข้อสอบสร้างใหม่สดๆ — บทเรียนติดตัว: เห็นตัวเลข benchmark ให้ถามเสมอว่า
+      "test สะอาดแค่ไหน" หลักการเดียวกับที่คุณใช้ตรวจ notebook เพื่อน</div>
+    </details>
+  </div>
+
+  <h2>ส่วนที่ 2 — ทดลองเล่น <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo">
+    <h3>🧪 เลือกความซับซ้อนของโมเดล: พอดี หรือ จำข้อสอบ?</h3>
+    <p style="margin-top:0">จุดเขียว = ข้อมูลฝึก, จุดส้ม = ข้อมูลทดสอบ (โมเดลไม่เคยเห็น)
+    — เลื่อน "ดีกรีของโมเดล" (ความซับซ้อน) แล้วเฝ้าดู error สองค่าแยกทางกัน</p>
+    <canvas id="fit" width="780" height="330" style="width:100%; border:1px solid var(--border); border-radius:8px"></canvas>
+    <div style="margin-top:10px">
+      ความซับซ้อนของโมเดล (ดีกรีพหุนาม): <input type="range" id="deg" min="1" max="11" step="1" value="1" style="width:40%" oninput="drawFit()">
+      <span id="degv"></span>
+    </div>
+    <div class="output" id="err"></div>
+    <button onclick="sweep()">▶ ไล่ความซับซ้อน 1→11 ให้ดูอัตโนมัติ</button>
+    <button onclick="resample()">🎲 สุ่มข้อมูลชุดใหม่</button>
+  </div>
+
+  <!-- ── 🎬 ห้องแล็บเทรนสด ── -->
+  <div class="demo" id="lab">
+    <h3 style="margin-top:0">🎬 ห้องแล็บเทรนสด — ดู overfitting เกิดต่อหน้าต่อตา</h3>
+    <p style="margin-top:0">demo ข้างบนเลื่อน "ความซับซ้อน" ด้วยมือ — คราวนี้มาดูของจริงกว่านั้น: <strong>ระหว่างเทรน ความซับซ้อนจะค่อยๆ เพิ่มเอง</strong>
+    กด <b>▶ เทรน</b> แล้วดูเส้น loss สองเส้นถูกวาดสดทีละ epoch:
+    <b style="color:#12a150">เขียว = train loss</b> (ลดลงตลอด เพราะโมเดลจำเก่งขึ้นเรื่อยๆ) ·
+    <b style="color:#e08a2e">ส้ม = validation loss</b> (ความเข้าใจจริง — ลดแล้ว<strong>เงยหัวขึ้น</strong>เมื่อโมเดลเริ่มจำ noise)
+    <br><span style="font-size:.85rem;color:var(--muted)">โปร่งใสเรื่องวิธีจำลอง: ทุก epoch เครื่อง fit โมเดลพหุนามกับข้อมูลจริงแล้ววัด loss จริงทั้งสองค่า
+    โดยจำลอง "การเทรนนานขึ้น" ด้วยการค่อยๆ คลาย regularization (เบรกกันจำ) ลง — พฤติกรรมเดียวกับ gradient descent ที่ยิ่งเทรนนานโมเดลยิ่งซับซ้อนขึ้น</span></p>
+    <div class="lab-grid">
+      <canvas id="labCv" width="780" height="340" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+      <div>
+        <canvas id="labFitCv" width="360" height="250" style="width:100%;border:1px solid var(--border);border-radius:8px"></canvas>
+        <p style="margin:6px 0 0;font-size:.82rem;color:var(--muted)">👆 โมเดลตอนนี้ (เส้นน้ำเงิน) ทาบกับข้อมูล —
+        พอเริ่ม overfit เส้นจะ "บิดตัวไล่เก็บ" จุดเขียว (train) ทีละจุด แล้วยิ่งพลาดจุดส้ม (val)</p>
+      </div>
+    </div>
+    <div class="lab-row">
+      <span style="font-weight:700">ขนาดโมเดล:</span>
+      <span class="seg" id="labSize">
+        <button data-s="s">เล็ก (ดีกรี 2)</button><button data-s="m">กลาง (ดีกรี 8)</button><button data-s="l" class="on">ใหญ่ (ดีกรี 13)</button>
+      </span>
+      <button id="labPlay">▶ เทรน</button>
+      <button id="labSpd" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+      <button id="labReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ รีเซ็ต</button>
+      <button id="labData" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🎲 สุ่มข้อมูลใหม่</button>
+    </div>
+    <div class="lab-stats">
+      <div class="lab-stat">epoch<b id="labEp">0</b></div>
+      <div class="lab-stat tr">train loss<b id="labTr">—</b></div>
+      <div class="lab-stat va">val loss<b id="labVa">—</b></div>
+      <div class="lab-stat">val ต่ำสุด<b id="labBest">—</b></div>
+      <span class="lab-chip" id="labChip">ยังไม่เริ่มเทรน</span>
+    </div>
+    <div class="try">ลอง: เทรนโมเดล "ใหญ่" จนจบ — พอเส้นส้มเงยขึ้นถาวร จะมีเส้นประ ✂️ ปรากฏ = จุดที่ early stopping ควรสั่งหยุด
+    แต่เราปล่อยเทรนต่อให้เห็นช่องว่างถ่างออกเรื่อยๆ · แล้วรีเซ็ตลอง "เล็ก" — ทำไมมันไม่ overfit เลย (แต่ loss ก็ตันอยู่สูง = underfit)?
+    · ปิดท้ายด้วย "กลาง" แล้วเทียบว่า <b>val ต่ำสุด</b> ของขนาดไหนดีที่สุดสำหรับข้อมูลชุดนี้</div>
+  </div>
+
+  <!-- ── ✂️ แบ่งข้อมูลเอง ── -->
+  <div class="demo" id="split">
+    <h3 style="margin-top:0">✂️ แบ่งข้อมูลเอง — train / validation / test</h3>
+    <p style="margin-top:0">ข้อมูล 40 จุด สองคลาส: <span class="cdot" style="background:#2456e6"></span> คลาส A (24 จุด) ·
+    <span class="cdot" style="background:#e5484d"></span> คลาส B (16 จุด) — <strong>สีขอบ</strong>ของแต่ละจุดบอกว่ามันถูกหั่นไปกองไหน:
+    <b style="color:#12a150">train</b> / <b style="color:#7c3aed">validation</b> / <b style="color:#e08a2e">test</b> ·
+    เลื่อนสไลเดอร์สองตัวเพื่อย้ายเส้นแบ่งเอง แล้วอ่านคำวินิจฉัยข้างล่าง</p>
+    <div class="sp-strip" id="spStrip"></div>
+    <div class="sp-bar" id="spBar"></div>
+    <div class="sp-row"><label>เส้นแบ่ง train | val</label><input type="range" id="spA" min="10" max="95" step="1" value="70"></div>
+    <div class="sp-row"><label>เส้นแบ่ง val | test</label><input type="range" id="spB" min="10" max="98" step="1" value="85"></div>
+    <div class="output" id="spRead"></div>
+    <div id="spWarn"></div>
+    <div class="lab-row">
+      <button id="spShuffle">🎲 สุ่มสับข้อมูลก่อนแบ่ง (วิธีที่ถูก)</button>
+      <button id="spSort" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เรียงตามคลาส (กับดัก)</button>
+    </div>
+    <div class="try">ตอนนี้ข้อมูล "เรียงตามคลาส" อยู่ — ดูคำเตือนสิ: test กลายเป็นคลาส B ล้วน! กด 🎲 สุ่มสับ แล้วดูสัดส่วนคลาสในทุกกองกลับมาใกล้ 60/40
+    · จากนั้นลองลากให้ test เหลือน้อยกว่า 10% แล้วอ่านคำเตือน — ข้อสอบแค่ 2–3 ข้อวัดอะไรไม่ได้จริง</div>
+  </div>
+
+  <!-- ── 🎲 dropout ── -->
+  <div class="demo" id="dropout">
+    <h3 style="margin-top:0">🎲 Dropout — ติวกลุ่มที่สมาชิกโดดเรียน</h3>
+    <p style="margin-top:0">จากตัวอย่างที่ 6 ข้างบน: dropout คือการ<strong>สุ่มปิดนิวรอนชั้นซ่อน</strong>ทุกรอบเทรน —
+    กด ▶ แล้วดูว่าแต่ละรอบ (0.7 วินาที = 1 รอบเทรน) ใคร "โดดเรียน" บ้าง เส้นที่ต่อกับคนโดดหายไปด้วย
+    ที่เหลือถูกบังคับให้ทำงานแทนกัน — ไม่มีใครได้พึ่ง "เพื่อนคนเก่งคนเดียว"</p>
+    <div class="dp-wrap"><svg id="dpSvg" viewBox="0 0 640 330"></svg></div>
+    <div class="lab-row">
+      <button id="dpPlay">▶ เทรนด้วย dropout</button>
+      <span style="font-weight:700">อัตราโดดเรียน:</span>
+      <input type="range" id="dpRate" min="0" max="70" step="5" value="30" style="width:160px;accent-color:var(--accent)">
+      <b id="dpRateV" style="color:var(--accent);min-width:42px">30%</b>
+    </div>
+    <p class="dp-msg" id="dpMsg">เครือข่าย 4-6-6-2 พร้อมแล้ว — ตอนนี้ทุกนิวรอนมาเรียนครบ</p>
+    <div class="try">ลอง: ตั้งอัตรา 0% (= ไม่ใช้ dropout) เทียบกับ 50% — ที่ 50% สังเกตว่าเครือข่ายที่เหลือแต่ละรอบ "หน้าตาไม่ซ้ำกันเลย"
+    เท่ากับเราเทรนเครือข่ายย่อยคนละตัวนับพันแบบแล้วเฉลี่ยรวมกัน · ตอนใช้งานจริง (inference) ไม่มีใครโดด แต่ต้องลดกำลังทุกคนลงตามอัตราที่เคยโดด</div>
+  </div>
+
+  <!-- ── 🏔️ ภูมิประเทศ loss 3D ── -->
+  <div class="demo" id="landscape">
+    <h3 style="margin-top:0">🏔️ ภูมิประเทศ loss แบบ 3D — หุบแคบ "จำ" หุบกว้าง "เข้าใจ"</h3>
+    <p style="margin-top:0">พื้นผิวนี้คือ loss ของ weight ทุกค่าที่เป็นไปได้ (ยิ่งต่ำยิ่งดี) — มี<strong>หุบแคบแต่ลึก</strong>
+    (weight ที่จำข้อมูลเทรนได้เป๊ะ loss ต่ำสุดๆ) กับ<strong>หุบกว้าง</strong> (weight ที่จับหลักการ) ·
+    <b>ลากเมาส์/นิ้วบนภาพเพื่อหมุนดู</b> · ปล่อยลูกบอล = เทรนจนไหลลงก้นหุบ ·
+    แล้วกด 🌊 สลับข้อมูล: <strong>ข้อมูลใหม่ทำให้ภูมิประเทศขยับนิดเดียว</strong> — ลูกบอล (weight) อยู่ที่เดิม
+    แต่ loss จะกระโดดแค่ไหน ขึ้นกับว่าก้นหุบที่เลือกไว้กว้างหรือแคบ</p>
+    <canvas id="lsCv" width="760" height="430" style="width:100%;border:1px solid var(--border);border-radius:8px;touch-action:none;cursor:grab"></canvas>
+    <div class="lab-row">
+      <button id="lsBallN" style="background:linear-gradient(135deg,#e5484d,#f97316)">🔴 ปล่อยบอลใกล้หุบแคบ</button>
+      <button id="lsBallW" style="background:linear-gradient(135deg,#2456e6,#4f7df7)">🔵 ปล่อยบอลใกล้หุบกว้าง</button>
+      <button id="lsShift" style="background:linear-gradient(135deg,#0e9aa7,#12a150)">🌊 สลับเป็นข้อมูลใหม่ (test)</button>
+      <button id="lsAuto" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🔄 หมุนออโต้: เปิด</button>
+      <button id="lsReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ รีเซ็ต</button>
+    </div>
+    <div class="output" id="lsRead">ยังไม่มีลูกบอล — กดปล่อยบอลสักลูก (หรือทั้งสองลูก จะได้เทียบกันชัดๆ)</div>
+    <div class="try">สูตรชมช็อต "โอ้โห": ปล่อยบอลทั้งสองลูก รอให้นิ่งก้นหุบ → กด 🌊 —
+    บอลแดง (หุบแคบ) loss พุ่งขึ้นหลายเท่าเพราะภูเขาขยับแล้วมันไปค้างบนผนังหุบ ส่วนบอลน้ำเงิน (หุบกว้าง) แทบไม่สะเทือน ·
+    นี่คือภาพเบื้องหลังว่าทำไมเทคนิคที่ดันโมเดลไปหาหุบกว้าง (dropout, ข้อมูลเยอะ, โมเดลไม่ใหญ่เกิน) ถึง generalize ดีกว่า</div>
+  </div>
+
+  <div class="demo">
+    <h3>🧪 ปฏิบัติการ Colab: เทรนโมเดลแรกของคุณ</h3>
+    <p style="margin-top:0">เปิด <a href="https://colab.research.google.com" target="_blank">Google Colab</a>
+    สร้าง notebook ใหม่ แล้วทำตามลำดับ (อาจารย์แจกลิงก์ notebook ตัวเต็มในคาบ):</p>
+    <ol>
+      <li>โหลดชุดข้อมูลลายมือเลข MNIST จาก <code>keras.datasets</code></li>
+      <li>สร้าง MLP เล็กๆ (Dense 128 → Dense 10 softmax) — โครงสร้างเดียวกับแบบฝึกหัดเรื่อง Neural Network ข้อ 4!</li>
+      <li>เทรน 20 epoch โดยใส่ <code>validation_split=0.2</code> แล้วพล็อตกราฟ train/val loss</li>
+      <li>ชี้ให้ได้ว่า epoch ไหนเริ่ม overfit</li>
+    </ol>
+    <p style="margin-bottom:0">ไม่อยากพิมพ์เอง? <strong>โค้ดตัวเต็มพร้อมรันอยู่ในส่วนที่ 3 ข้างล่าง</strong> — คัดลอกก้อนเดียววางแล้วกด Run ได้เลย</p>
+  </div>
+
+  <h2>ส่วนที่ 3 — โค้ดจริง: เอาไปรันใน Colab ได้เลย <span class="badge">ลงมือจริง</span></h2>
+
+  <div class="demo" id="code">
+    <h3 style="margin-top:0">💻 สคริปต์เดียวจบ — โมเดล "จำข้อสอบ" ปะทะ โมเดลใส่เกราะ Dropout + EarlyStopping</h3>
+    <p style="margin-top:0">คัดลอกทั้งก้อนไปวางใน <a href="https://colab.research.google.com" target="_blank">Google Colab</a>
+    แล้วกด Run ได้ทันที (ไม่ต้องแก้อะไรสักบรรทัด ใช้เวลา ~2–3 นาที) — นี่คือ "ห้องแล็บเทรนสด" เวอร์ชันของจริงบนข้อมูลลายมือ MNIST</p>
+    <div class="code-wrap">
+      <button id="copyBtn">📋 คัดลอกโค้ด</button>
+      <pre class="codebox"><code id="pyCode"># ============================================================
+# ดู overfitting ของจริง แล้วปราบด้วย Dropout + EarlyStopping
+# วางทั้งก้อนใน Google Colab แล้วกด Run ได้เลย (~2-3 นาที)
+# ============================================================
+import matplotlib.pyplot as plt
+from tensorflow import keras
+from tensorflow.keras import layers
+
+# 1) โหลดข้อมูลลายมือเลข MNIST แล้วสเกลพิกเซลเป็นช่วง 0-1
+(x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+x_train = x_train.reshape(-1, 784).astype("float32") / 255.0
+x_test  = x_test.reshape(-1, 784).astype("float32") / 255.0
+
+# ตั้งใจใช้แค่ 5,000 ภาพ — ข้อมูลน้อย + โมเดลใหญ่ = overfit ให้เห็นชัดๆ
+x_small, y_small = x_train[:5000], y_train[:5000]
+
+def build_model(use_dropout=False):
+    m = keras.Sequential([layers.Input(shape=(784,)),
+                          layers.Dense(512, activation="relu")])
+    if use_dropout:
+        m.add(layers.Dropout(0.5))   # ติวกลุ่มที่สมาชิกโดดเรียน 50%
+    m.add(layers.Dense(512, activation="relu"))
+    if use_dropout:
+        m.add(layers.Dropout(0.5))
+    m.add(layers.Dense(10, activation="softmax"))
+    m.compile(optimizer="adam", loss="sparse_categorical_crossentropy",
+              metrics=["accuracy"])
+    return m
+
+# 2) รุ่น A: โมเดลใหญ่ ไม่มีเกราะกันจำ — ปล่อยเทรนยาว 30 epoch
+model_a = build_model(use_dropout=False)
+hist_a = model_a.fit(x_small, y_small, epochs=30, batch_size=128,
+                     validation_split=0.2, verbose=0)
+
+# 3) รุ่น B: โมเดลเดียวกัน + Dropout + EarlyStopping (val ไม่ดีขึ้น 3 รอบติด = หยุด)
+early = keras.callbacks.EarlyStopping(monitor="val_loss", patience=3,
+                                      restore_best_weights=True)
+model_b = build_model(use_dropout=True)
+hist_b = model_b.fit(x_small, y_small, epochs=30, batch_size=128,
+                     validation_split=0.2, callbacks=[early], verbose=0)
+
+# 4) พล็อตเทียบ — ภาพเดียวกับ "ห้องแล็บเทรนสด" ในเว็บสัปดาห์นี้
+plt.figure(figsize=(10, 5))
+plt.plot(hist_a.history["loss"], "g--", label="A train")
+plt.plot(hist_a.history["val_loss"], "r-", lw=2.5, label="A val (overfit!)")
+plt.plot(hist_b.history["loss"], "c--", label="B train")
+plt.plot(hist_b.history["val_loss"], "b-", lw=2.5, label="B val (dropout + early stop)")
+plt.xlabel("epoch"); plt.ylabel("loss"); plt.legend(); plt.grid(alpha=0.3)
+plt.title("A: memorize  vs  B: dropout + early stopping")
+plt.show()
+
+# 5) เปิดซอง test ครั้งเดียวตอนจบ เพื่อรายงานผลจริง
+print("Test accuracy A:", round(model_a.evaluate(x_test, y_test, verbose=0)[1], 4))
+print("Test accuracy B:", round(model_b.evaluate(x_test, y_test, verbose=0)[1], 4))</code></pre>
+    </div>
+    <p style="margin:12px 0 4px"><strong>สิ่งที่ต้องสังเกตตอนรัน:</strong></p>
+    <ul style="margin-top:4px">
+      <li>กราฟรุ่น A: เส้น train (เขียวประ) ดิ่งเข้าใกล้ศูนย์ แต่ <b style="color:#e5484d">val (แดง) เงยหัวขึ้น</b>หลังไม่กี่ epoch —
+      ภาพเดียวกับ "ห้องแล็บเทรนสด" ข้างบนเป๊ะ ลองชี้จุดที่ควร early stop บนกราฟจริงดู</li>
+      <li>รุ่น B เส้นสั้นกว่า เพราะ EarlyStopping สั่งหยุดเองก่อนครบ 30 epoch (val ไม่ดีขึ้น 3 รอบติด) —
+      แถม val loss ของ B ต่ำกว่า A ทั้งที่ "เทรนน้อยกว่า"</li>
+      <li>สองบรรทัดสุดท้าย: test accuracy ของ B ควรชนะ A — และสังเกตว่าเราแตะ test แค่<strong>ครั้งเดียวตอนจบ</strong>เพื่อรายงานผล
+      ไม่เอามาเลือกโมเดล (หลักการจากตัวอย่างที่ 4)</li>
+    </ul>
+  </div>
+
+  <h2>ส่วนที่ 4 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 1 (ทำในคาบ) — อ่านกราฟวินิจฉัยโมเดล</div>
+    <p>โมเดล A: train loss 0.02, test loss 0.95 | โมเดล B: train loss 0.40, test loss 0.42 |
+    โมเดล C: train loss 0.90, test loss 0.91<br>
+    จงวินิจฉัยแต่ละโมเดล (overfit / พอดี / underfit) และเสนอวิธีแก้ของ A กับ C</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      A: <strong>overfit</strong> (train ดีเลิศ test แย่) → เพิ่มข้อมูล / ลดขนาดโมเดล / regularization<br>
+      B: <strong>พอดี</strong> (สองค่าใกล้กันและต่ำ)<br>
+      C: <strong>underfit</strong> (แย่ทั้งคู่ — โมเดลง่ายเกินหรือเทรนน้อยเกิน) → เพิ่มความซับซ้อน / เทรนนานขึ้น
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">📝 ข้อ 2 (ทำในคาบ) — จับผิดการแบ่งข้อมูล</div>
+    <p>นักวิจัยคนหนึ่งสร้างโมเดลทำนายราคาหุ้น เทรนด้วยข้อมูลปี 2020–2024 แล้วทดสอบด้วยข้อมูล...ปี 2022
+    ได้ accuracy 99% จึงประกาศความสำเร็จ — มีอะไรผิด และผลจริงจะเป็นอย่างไรเมื่อใช้งาน?</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ข้อมูลทดสอบ (2022) <strong>อยู่ในข้อมูลฝึกอยู่แล้ว</strong> — โมเดลแค่ "จำข้อสอบที่เคยเห็น"
+      (data leakage) เมื่อใช้จริงกับอนาคตที่ไม่เคยเห็น ผลจะแย่กว่า 99% มาก
+      วิธีถูก: ทดสอบด้วยช่วงเวลาที่อยู่<em>หลัง</em>ข้อมูลฝึกเสมอ
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 3 (การบ้าน) — รายงาน Colab</div>
+    <p>ส่ง notebook ที่เทรน MNIST สำเร็จ พร้อม (1) กราฟ train/val loss
+    (2) ระบุ epoch ที่เริ่ม overfit (3) ทดลองแก้ 1 วิธี (เช่น เพิ่ม Dropout หรือลดนิวรอน)
+    แล้วเทียบกราฟก่อน-หลัง พร้อมสรุป 3 ประโยค</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head">🏠 ข้อ 4 (การบ้าน) — overfitting ในชีวิตมนุษย์</div>
+    <p>ยกตัวอย่างพฤติกรรม "overfit" ของมนุษย์ 2 ตัวอย่าง (เช่น จำสูตรโดยไม่เข้าใจ แล้วพังเมื่อโจทย์พลิก)
+    และพฤติกรรม "generalize" ที่ดี 1 ตัวอย่าง พร้อมอธิบายว่าตรงกับแนวคิด ML อย่างไร</p>
+  </div>
+
+  <h2>ส่วนที่ 5 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+
+  <div class="ladder-box">
+    <strong>🪜 สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    ตอบคำถามใหญ่ได้แล้วว่า "ทำไม LLM ต้องกินข้อมูลทั้งอินเทอร์เน็ต" — เพราะโมเดลยิ่งใหญ่ยิ่งจำเก่ง
+    ต้องป้อนข้อมูลมากกว่าที่มันจำไหว มันถึงจะยอม "เข้าใจ" และเราเทรนโมเดลจริงเป็นแล้วด้วย Colab<br>
+    <strong>สัปดาห์หน้า:</strong> MLP มองภาพ 28×28 เป็นตัวเลขเรียงแถว 784 ช่อง — มันไม่รู้เลยว่า
+    pixel ข้างกันเกี่ยวข้องกัน เราต้องการสถาปัตยกรรมที่ "เข้าใจธรรมชาติของภาพ": CNN
+  </div>
+
+  <div class="resources">
+    <h3>📚 เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=EuBBz3bI-aA" target="_blank">Bias and Variance, Clearly Explained</a> — ภาพเดียวกับ demo ของเรา อธิบายช้าๆ ชัดๆ</li>
+      <li><span class="src">Karpathy</span> <a href="https://karpathy.github.io/2019/04/25/recipe/" target="_blank">A Recipe for Training Neural Networks</a> — บทความที่วิศวกร ML ทั่วโลกแชร์กันมากที่สุดเรื่อง "เทรนจริงให้เป็น" (ตรงชื่อสัปดาห์เราเป๊ะ)</li>
+      <li><span class="src">Colab</span> <a href="https://colab.research.google.com" target="_blank">Google Colab</a> — สนามฝึกของการบ้านข้อ 3 ใช้ GPU ฟรี</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week10.html">← CNN</a>
+    <a href="week12.html">สอบกลางภาค →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+// ===== ภาพประกอบรายขั้นของ "เข้าใจทีละขั้น" =====
+window.stepScenes = [
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">แบ่งข้อมูล 100 แถวก่อนทำอะไรทั้งสิ้น:</div>' +
+    '<div class="bar-row"><span class="lbl">train</span><span class="bar" data-w="70%"></span>80 แถว — ให้โมเดลเรียน</div>' +
+    '<div class="bar-row"><span class="lbl">test</span><span class="bar" data-w="17%" style="background:linear-gradient(90deg,#b97a0a,#e6b04e)"></span>20 แถว — 🔒 ซ่อนไว้</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">เทรนไป train loss ลดลงเสมอ:</div>' +
+    '<div class="bar-row"><span class="lbl">รอบ 1</span><span class="bar" data-w="80%"></span></div>' +
+    '<div class="bar-row"><span class="lbl">รอบ 10</span><span class="bar" data-w="45%"></span></div>' +
+    '<div class="bar-row"><span class="lbl">รอบ 50</span><span class="bar" data-w="12%"></span></div>' +
+    '<div class="note">เหมือนนักเรียนทำแบบฝึกหัดชุดเดิมซ้ำๆ — คะแนนชุดนั้นย่อมดีขึ้น แต่ยังสรุปอะไรไม่ได้</div>',
+  s => s.innerHTML = '<div class="big fade">🔓 เปิดลิ้นชัก — วัดด้วย 20 แถวที่โมเดลไม่เคยเห็น</div>' +
+    '<div class="note">ตัวเลขที่ได้คือ "ความเข้าใจจริง" ไม่ใช่ความจำ</div>',
+  s => s.innerHTML = '<table class="fade"><tr><th>train</th><th>test</th><th>วินิจฉัย</th></tr>' +
+    '<tr class="hl"><td>0.02</td><td>0.95</td><td>😵 overfit — จำข้อสอบ</td></tr>' +
+    '<tr class="hl-g"><td>0.40</td><td>0.42</td><td>✅ พอดี</td></tr>' +
+    '<tr class="hl"><td>0.90</td><td>0.91</td><td>😴 underfit</td></tr></table>' +
+    '<div class="note">ดูที่ "ช่องว่าง" ระหว่างสองตัวเลข ไม่ใช่ค่าเดี่ยวๆ</div>',
+  s => s.innerHTML = '<div class="note" style="margin:0 0 6px">ยาตามอาการ:</div>' +
+    '<span class="chip" style="animation-delay:.1s">เพิ่มข้อมูล</span><span class="chip" style="animation-delay:.3s">ลดขนาดโมเดล</span>' +
+    '<span class="chip" style="animation-delay:.5s">dropout</span><span class="chip" style="animation-delay:.7s">early stopping</span>' +
+    '<div class="note">ทั้งหมดคือ "บังคับให้เรียนหลักการ อย่าให้จำ" — ส่วน underfit รักษาตรงข้าม: ขยาย/เทรนนานขึ้น</div>',
+  s => {
+    const data = { 1: [0.55, 0.60, 'ง่ายเกิน — พลาดทั้งคู่ = underfit 😴'], 4: [0.18, 0.22, 'ช่องว่างแคบ ต่ำทั้งคู่ = พอดี ✅'], 11: [0.02, 0.95, 'train สวย test พัง = overfit 😵'] };
+    s.innerHTML = '<div id="s6b"></div><div id="s6o" style="margin-top:6px"></div>' +
+      '<div class="note">👆 กดเปลี่ยนความซับซ้อนของโมเดล — แล้วไปเล่นของจริงต่อใน demo ข้างล่าง</div>';
+    const render = d => {
+      const [tr, te, v] = data[d];
+      s.querySelector('#s6o').innerHTML =
+        '<div class="bar-row"><span class="lbl">train</span><span class="bar" style="width:' + (tr * 78) + '%"></span>' + tr.toFixed(2) + '</div>' +
+        '<div class="bar-row"><span class="lbl">test</span><span class="bar" style="width:' + (te * 78) + '%;background:linear-gradient(90deg,#b97a0a,#e6b04e)"></span>' + te.toFixed(2) + '</div>' +
+        '<div class="big" style="font-size:1rem">' + v + '</div>';
+      s.querySelectorAll('.mini-btn').forEach(b => b.classList.toggle('sel', +b.dataset.d === d));
+    };
+    s.querySelector('#s6b').innerHTML = [1, 4, 11].map(d => '<button class="mini-btn" data-d="' + d + '">ดีกรี ' + d + '</button>').join('');
+    s.querySelectorAll('.mini-btn').forEach(b => b.onclick = () => render(+b.dataset.d));
+    render(4);
+  },
+];
+
+// ข้อมูลจริงมาจาก sin + noise — โมเดลพหุนามดีกรีต่างๆ fit ด้วย least squares
+let trainPts = [], testPts = [];
+function resample() {
+  const f = x => Math.sin(x * 1.4) * 0.8 + 0.1 * x;
+  trainPts = []; testPts = [];
+  for (let i = 0; i < 12; i++) {
+    const x = -3 + 6 * i / 11 + (Math.random() - 0.5) * 0.3;
+    trainPts.push([x, f(x) + (Math.random() - 0.5) * 0.55]);
+  }
+  for (let i = 0; i < 8; i++) {
+    const x = -2.8 + 5.6 * Math.random();
+    testPts.push([x, f(x) + (Math.random() - 0.5) * 0.55]);
+  }
+  drawFit();
+}
+
+// แก้สมการ normal equations ด้วย Gaussian elimination
+function polyfit(pts, deg) {
+  const n = deg + 1;
+  const A = Array.from({length: n}, () => new Array(n + 1).fill(0));
+  for (const [x, y] of pts) {
+    const xp = [1];
+    for (let i = 1; i < 2 * n; i++) xp.push(xp[i - 1] * x);
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) A[r][c] += xp[r + c];
+      A[r][n] += y * xp[r];
+    }
+  }
+  for (let i = 0; i < n; i++) {
+    let p = i;
+    for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+    [A[i], A[p]] = [A[p], A[i]];
+    if (Math.abs(A[i][i]) < 1e-12) continue;
+    for (let r = 0; r < n; r++) {
+      if (r === i) continue;
+      const k = A[r][i] / A[i][i];
+      for (let c = i; c <= n; c++) A[r][c] -= k * A[i][c];
+    }
+  }
+  return A.map((row, i) => Math.abs(row[i]) < 1e-12 ? 0 : row[n] / row[i]);
+}
+function evalPoly(coef, x) {
+  let y = 0, xp = 1;
+  for (const c of coef) { y += c * xp; xp *= x; }
+  return y;
+}
+function mse(pts, coef) {
+  return pts.reduce((s, [x, y]) => s + (y - evalPoly(coef, x)) ** 2, 0) / pts.length;
+}
+
+const cv = document.getElementById('fit'), ctx = cv.getContext('2d');
+function toPx(x, y) { return [390 + x * 120, 165 - y * 95]; }
+
+function drawFit() {
+  const deg = +document.getElementById('deg').value;
+  document.getElementById('degv').textContent = ' = ' + deg +
+    (deg <= 2 ? ' (ง่าย)' : deg <= 6 ? ' (กลาง)' : ' (ซับซ้อนมาก)');
+  const coef = polyfit(trainPts, deg);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+
+  ctx.strokeStyle = '#2456e6'; ctx.lineWidth = 2.5; ctx.beginPath();
+  let first = true;
+  for (let x = -3.1; x <= 3.1; x += 0.03) {
+    let y = evalPoly(coef, x);
+    y = Math.max(-1.8, Math.min(1.8, y));
+    const [px, py] = toPx(x, y);
+    first ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    first = false;
+  }
+  ctx.stroke(); ctx.lineWidth = 1;
+
+  ctx.fillStyle = '#1d9b6c';
+  for (const [x, y] of trainPts) { const [px, py] = toPx(x, y); ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#e08a2e';
+  for (const [x, y] of testPts) { const [px, py] = toPx(x, y); ctx.beginPath(); ctx.arc(px, py, 6, 0, 7); ctx.fill(); }
+
+  const tr = mse(trainPts, coef), te = mse(testPts, coef);
+  let verdict = deg <= 2 ? 'อาจ underfit — โมเดลง่ายเกินกว่าจะตามรูปทรงข้อมูล' :
+                te > tr * 3 && deg >= 7 ? '⚠️ <strong>Overfitting!</strong> เส้นบิดตัวไล่เก็บทุกจุดฝึก แต่พังกับจุดทดสอบ' :
+                'กำลังดี — เส้นจับ "รูปทรงรวม" โดยไม่ไล่เก็บ noise';
+  document.getElementById('err').innerHTML =
+    `Train error = <strong>${tr.toFixed(3)}</strong> | Test error = <strong style="color:#e08a2e">${te.toFixed(3)}</strong><br>${verdict}`;
+}
+resample();
+
+// ไล่ดีกรี 1→11 ให้เห็น underfit → พอดี → overfit ในม้วนเดียว
+let sweepTimer = null;
+function sweep() {
+  clearInterval(sweepTimer);
+  const s = document.getElementById('deg');
+  s.value = 1;
+  drawFit();
+  sweepTimer = setInterval(() => {
+    s.value = +s.value + 1;
+    drawFit();
+    if (+s.value >= 11) clearInterval(sweepTimer);
+  }, 850);
+}
+
+/* ======================================================================
+   🎬 ห้องแล็บเทรนสด — overfitting เกิดต่อหน้าต่อตา
+   จริงทุก epoch: fit โมเดลกับข้อมูลจริง วัด train/val loss จริง
+   (จำลอง "เทรนนานขึ้น" ด้วยการคลาย ridge regularization ลงเรื่อยๆ)
+====================================================================== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const cv=$('labCv'); if(!cv) return;
+  const ctx=cv.getContext('2d'), W=780, H=340;
+  const fcv=$('labFitCv'), fctx=fcv.getContext('2d'), FW=360, FH=250;
+  const TRUE=x=>Math.sin(x*3.2)*0.7+0.22*x;   // ฟังก์ชันจริงที่ซ่อนอยู่หลัง noise
+  const MAXE=110;
+  const SIZES={ s:{deg:2, lam0:2,  dec:0.90},   // เล็ก: ยังไงก็จำไม่ไหว
+                m:{deg:8, lam0:8,  dec:0.88},   // กลาง: overfit ช้าและตื้น
+                l:{deg:13,lam0:20, dec:0.80} }; // ใหญ่: overfit เร็วและลึก
+  let tr=[], va=[], size='l', spd=1, timer=null, run;
+
+  function genData(){
+    tr=[]; va=[];
+    for(let i=0;i<14;i++){ const x=-0.95+1.9*i/13+(Math.random()-0.5)*0.10;
+      tr.push([x, TRUE(x)+(Math.random()-0.5)*0.7]); }
+    for(let i=0;i<8;i++){ const x=-1.0+2.0*Math.random();
+      va.push([x, TRUE(x)+(Math.random()-0.5)*0.7]); }
+    /* จุด val สองจุดอยู่ชายขอบนอกช่วง train นิดเดียว — ข้อมูลใหม่ไม่เคยตกจุดเดิมเป๊ะ
+       (นี่แหละจุดที่โมเดล "จำ" จะพังชัดสุด) */
+    for(const x of [-1.06, 1.06]) va.push([x, TRUE(x)+(Math.random()-0.5)*0.7]);
+  }
+  /* ridge regression — เหมือน polyfit ข้างบน แต่บวก λ บนแนวทแยง (เว้นพจน์คงที่) */
+  function ridgeFit(pts,deg,lam){
+    const n=deg+1;
+    const A=Array.from({length:n},()=>new Array(n+1).fill(0));
+    for(const [x,y] of pts){
+      const xp=[1]; for(let i=1;i<2*n;i++) xp.push(xp[i-1]*x);
+      for(let r=0;r<n;r++){ for(let c=0;c<n;c++) A[r][c]+=xp[r+c]; A[r][n]+=y*xp[r]; }
+    }
+    for(let d=1;d<n;d++) A[d][d]+=lam;
+    for(let i=0;i<n;i++){
+      let p=i;
+      for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r;
+      [A[i],A[p]]=[A[p],A[i]];
+      if(Math.abs(A[i][i])<1e-12) continue;
+      for(let r=0;r<n;r++){ if(r===i) continue;
+        const k=A[r][i]/A[i][i];
+        for(let c=i;c<=n;c++) A[r][c]-=k*A[i][c]; }
+    }
+    return A.map((row,i)=> Math.abs(row[i])<1e-12? 0 : row[n]/row[i]);
+  }
+
+  /* ---- กราฟ loss (แกน y เป็น log) ---- */
+  const ML=56, MR=14, MT=16, MB=32, LMIN=-3, LMAX=1.6;
+  const LX=e=> ML+(W-ML-MR)*e/MAXE;
+  const LY=l=>{ let t=(Math.log10(Math.max(1e-4,l))-LMIN)/(LMAX-LMIN);
+    t=Math.max(0,Math.min(1,t)); return H-MB-(H-MT-MB)*t; };
+  const fmtL=l=> l>=10? l.toFixed(1) : l>=1? l.toFixed(2) : l.toFixed(3);
+
+  function drawLoss(){
+    ctx.clearRect(0,0,W,H);
+    ctx.font='11px Poppins, Kanit, sans-serif'; ctx.fillStyle='#5b6475';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    for(const [lv,lb] of [[-3,'0.001'],[-2,'0.01'],[-1,'0.1'],[0,'1'],[1,'10']]){
+      const y=H-MB-(H-MT-MB)*((lv-LMIN)/(LMAX-LMIN));
+      ctx.strokeStyle='rgba(100,110,130,.16)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(ML,y); ctx.lineTo(W-MR,y); ctx.stroke();
+      ctx.fillText(lb, ML-7, y);
+    }
+    ctx.textAlign='center'; ctx.textBaseline='top';
+    for(let e=0;e<=MAXE;e+=20){
+      const x=LX(e);
+      ctx.strokeStyle='rgba(100,110,130,.10)';
+      ctx.beginPath(); ctx.moveTo(x,MT); ctx.lineTo(x,H-MB); ctx.stroke();
+      ctx.fillText(e, x, H-MB+7);
+    }
+    ctx.textAlign='left'; ctx.fillText('loss (สเกล log)', ML+4, 2);
+    ctx.textAlign='right'; ctx.fillText('epoch →', W-MR, H-MB+7);
+    const n=run.trL.length;
+    /* แรเงา "ช่องว่างของการจำ" หลังจุดที่ควรหยุด */
+    if(run.mark>0 && n>run.mark){
+      ctx.beginPath();
+      for(let i=run.mark;i<=n;i++){ const x=LX(i), y=LY(run.vaL[i-1]);
+        i===run.mark? ctx.moveTo(x,y) : ctx.lineTo(x,y); }
+      for(let i=n;i>=run.mark;i--) ctx.lineTo(LX(i), LY(run.trL[i-1]));
+      ctx.closePath(); ctx.fillStyle='rgba(229,72,77,.09)'; ctx.fill();
+    }
+    function line(arr,col){
+      if(!arr.length) return;
+      ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.beginPath();
+      arr.forEach((l,i)=>{ const x=LX(i+1), y=LY(l); i? ctx.lineTo(x,y) : ctx.moveTo(x,y); });
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(LX(arr.length), LY(arr[arr.length-1]), 4, 0, Math.PI*2);
+      ctx.fillStyle=col; ctx.fill();
+    }
+    line(run.trL,'#12a150'); line(run.vaL,'#e08a2e');
+    /* เส้นประ early stopping */
+    if(run.mark>0){
+      const x=LX(run.mark);
+      ctx.setLineDash([6,5]); ctx.strokeStyle='#7c3aed'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x,MT); ctx.lineTo(x,H-MB); ctx.stroke(); ctx.setLineDash([]);
+      const txt='✂️ early stopping ควรหยุดตรงนี้ (epoch '+run.mark+')';
+      ctx.font='700 12px Poppins, Kanit, sans-serif';
+      const tw=ctx.measureText(txt).width+14;
+      let bx=x+8; if(bx+tw>W-MR) bx=x-8-tw;
+      ctx.fillStyle='rgba(255,255,255,.93)';
+      ctx.beginPath(); ctx.roundRect(bx, MT+6, tw, 22, 7); ctx.fill();
+      ctx.strokeStyle='#7c3aed'; ctx.lineWidth=1.2; ctx.stroke();
+      ctx.fillStyle='#6d28d9'; ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillText(txt, bx+7, MT+17);
+      ctx.textBaseline='alphabetic';
+    }
+  }
+
+  function drawFitPanel(){
+    fctx.clearRect(0,0,FW,FH);
+    const fx=x=> FW*0.5+x*FW*0.44;
+    const fy=y=> FH*0.52 - Math.max(-1.7,Math.min(1.7,y))*68;
+    fctx.setLineDash([4,4]); fctx.strokeStyle='#9aa3b8'; fctx.lineWidth=1.4; fctx.beginPath();
+    for(let i=0;i<=80;i++){ const x=-1.05+2.1*i/80;
+      i? fctx.lineTo(fx(x),fy(TRUE(x))) : fctx.moveTo(fx(x),fy(TRUE(x))); }
+    fctx.stroke(); fctx.setLineDash([]);
+    if(run.coef){
+      fctx.strokeStyle='#2456e6'; fctx.lineWidth=2.2; fctx.lineJoin='round'; fctx.beginPath();
+      for(let i=0;i<=160;i++){ const x=-1.05+2.1*i/160, y=evalPoly(run.coef,x);
+        i? fctx.lineTo(fx(x),fy(y)) : fctx.moveTo(fx(x),fy(y)); }
+      fctx.stroke();
+    }
+    fctx.fillStyle='#12a150';
+    for(const [x,y] of tr){ fctx.beginPath(); fctx.arc(fx(x),fy(y),4.4,0,7); fctx.fill(); }
+    fctx.fillStyle='#e08a2e';
+    for(const [x,y] of va){ fctx.beginPath(); fctx.arc(fx(x),fy(y),4.4,0,7); fctx.fill(); }
+    fctx.fillStyle='#1f2533'; fctx.font='700 12px Poppins, Kanit, sans-serif'; fctx.textAlign='left';
+    fctx.fillText('โมเดล ณ epoch '+run.ep, 10, 17);
+  }
+
+  function updateRead(){
+    $('labEp').textContent=run.ep;
+    const n=run.trL.length;
+    $('labTr').textContent=n? fmtL(run.trL[n-1]) : '—';
+    $('labVa').textContent=n? fmtL(run.vaL[n-1]) : '—';
+    $('labBest').textContent=n? fmtL(run.best)+' @'+run.bestEp : '—';
+    const chip=$('labChip');
+    if(!n){ chip.className='lab-chip'; chip.textContent='ยังไม่เริ่มเทรน'; return; }
+    if(run.mark>0){ chip.className='lab-chip bad'; chip.textContent='⚠️ เริ่ม overfit! train ลงต่อ แต่ val เงยขึ้น'; }
+    else if(run.ep>10 && run.ep-run.bestEp>=3){ chip.className='lab-chip good'; chip.textContent='✅ ใกล้จุดพอดี — val เริ่มนิ่ง จับตาดู'; }
+    else { chip.className='lab-chip learn'; chip.textContent='📉 อยู่ระหว่างเรียน — loss ทั้งคู่กำลังลด'; }
+  }
+
+  function step(){
+    if(run.ep>=MAXE){ stopTrain(); return; }
+    run.ep++;
+    const S=SIZES[size];
+    const lam=Math.max(1e-6, S.lam0*Math.pow(S.dec, run.ep));
+    run.coef=ridgeFit(tr, S.deg, lam);
+    const tl=mse(tr,run.coef), vl=mse(va,run.coef);
+    run.trL.push(tl); run.vaL.push(vl);
+    if(vl<run.best){ run.best=vl; run.bestEp=run.ep; run.over=0; }
+    else if(vl>run.best*1.10 && vl>run.best+0.04) run.over++;   // ต้องเงยทั้งเชิงสัดส่วนและเชิงปริมาณ
+    if(run.mark<0 && run.over>=6 && run.bestEp>=8) run.mark=run.bestEp;
+    drawLoss(); drawFitPanel(); updateRead();
+  }
+  function stopTrain(){
+    if(timer){ clearInterval(timer); timer=null; }
+    $('labPlay').textContent = run.ep>=MAXE? '↺ เทรนใหม่' : (run.ep? '▶ เทรนต่อ' : '▶ เทรน');
+  }
+  function reset(){
+    if(timer){ clearInterval(timer); timer=null; }
+    run={ ep:0, trL:[], vaL:[], coef:null, best:Infinity, bestEp:0, over:0, mark:-1 };
+    drawLoss(); drawFitPanel(); updateRead();
+    $('labPlay').textContent='▶ เทรน';
+  }
+  $('labPlay').addEventListener('click',()=>{
+    if(timer){ stopTrain(); return; }
+    if(run.ep>=MAXE) reset();
+    timer=setInterval(step, 110/spd);
+    $('labPlay').textContent='⏸ พัก';
+  });
+  $('labSpd').addEventListener('click',function(){
+    spd = spd===1? 2 : 1;
+    this.textContent = spd===1? '🐢 ความเร็ว ×1' : '🐇 ความเร็ว ×2';
+    if(timer){ clearInterval(timer); timer=setInterval(step, 110/spd); }
+  });
+  $('labReset').addEventListener('click',reset);
+  $('labData').addEventListener('click',()=>{ genData(); reset(); });
+  $('labSize').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...$('labSize').children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    size=b.dataset.s; reset();
+  });
+  genData(); reset();
+})();
+
+/* ======================================================================
+   ✂️ แบ่งข้อมูลเอง — train / validation / test
+====================================================================== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const strip=$('spStrip'); if(!strip) return;
+  const N=40, NB=16;                      // คลาส B 16 จุด (40%)
+  const CLA='#2456e6', CLB='#e5484d';
+  const SEC=[['train','#12a150'],['val','#7c3aed'],['test','#e08a2e']];
+  let cls=[];
+  const dots=[];
+  for(let i=0;i<N;i++){ const d=document.createElement('div'); d.className='sp-dot';
+    strip.appendChild(d); dots.push(d); }
+  const spA=$('spA'), spB=$('spB');
+
+  function render(){
+    const a=+spA.value, b=+spB.value;
+    const c1=Math.round(N*a/100), c2=Math.round(N*b/100);
+    const cnt=[c1, c2-c1, N-c2], mixB=[0,0,0];
+    dots.forEach((d,i)=>{
+      const sc = i<c1? 0 : i<c2? 1 : 2;
+      d.style.background = cls[i]? CLB : CLA;
+      d.style.borderColor = SEC[sc][1];
+      if(cls[i]) mixB[sc]++;
+    });
+    $('spBar').innerHTML = SEC.map((S,k)=>{
+      const pct=cnt[k]/N*100;
+      const label = pct>=14? S[0]+' '+cnt[k]+' ('+Math.round(pct)+'%)' : (pct>=6? cnt[k] : '');
+      return '<span style="width:'+pct+'%;background:'+S[1]+'">'+label+'</span>';
+    }).join('');
+    $('spRead').innerHTML = SEC.map((S,k)=>{
+      const nA=cnt[k]-mixB[k];
+      return '<b style="color:'+S[1]+'">'+S[0]+'</b> '+cnt[k]+' จุด ('+Math.round(cnt[k]/N*100)+'%) — A '+nA+' / B '+mixB[k];
+    }).join(' &nbsp;·&nbsp; ');
+    /* วินิจฉัยการแบ่ง */
+    const warn=[];
+    const teP=cnt[2]/N*100, trP=cnt[0]/N*100;
+    if(cnt[2]===0) warn.push('ไม่มี test เลย! — ไม่มีข้อสอบ = ไม่มีทางรู้ว่าโมเดลเก่งจริงไหม');
+    else if(teP<10) warn.push('ข้อสอบน้อยเกิน ('+Math.round(teP)+'%) — วัดผลไม่น่าเชื่อถือ คะแนนแกว่งตามดวงของไม่กี่จุดที่สุ่มได้');
+    if(trP<50) warn.push('train เหลือแค่ '+Math.round(trP)+'% — ข้อมูลเรียนน้อยเกิน โมเดลเรียนไม่พอ (เสี่ยง underfit)');
+    if(cnt[1]===0) warn.push('ไม่มี validation — แล้วจะใช้ชุดไหนเลือกโมเดล/จูนค่า? (กับดักจากตัวอย่างที่ 4)');
+    const overallB=NB/N*100;
+    for(const k of [1,2]){
+      if(cnt[k]>0){
+        const pB=mixB[k]/cnt[k]*100;
+        if(Math.abs(pB-overallB)>=25)
+          warn.push('สัดส่วนคลาสใน '+SEC[k][0]+' เพี้ยน (B '+Math.round(pB)+'% ทั้งชุดมีแค่ '+Math.round(overallB)+'%) — เพราะข้อมูลเรียงตามคลาสแล้วโดนหั่นตามลำดับ ต้อง<b>สุ่มสับก่อนแบ่ง</b>!');
+      }
+    }
+    $('spWarn').innerHTML = warn.length
+      ? warn.map(w=>'<div class="sp-warn">⚠️ '+w+'</div>').join('')
+      : '<div class="sp-good">✅ การแบ่งนี้ดูดี — สัดส่วนสมเหตุสมผล และคลาสกระจายใกล้เคียงกันทุกกอง</div>';
+  }
+  function setSorted(){ cls=Array.from({length:N},(_,i)=> i<N-NB?0:1); render(); }
+  function setShuffle(){
+    cls=Array.from({length:N},(_,i)=> i<N-NB?0:1);
+    for(let i=N-1;i>0;i--){ const j=(Math.random()*(i+1))|0; const t=cls[i]; cls[i]=cls[j]; cls[j]=t; }
+    render();
+  }
+  spA.addEventListener('input',()=>{ if(+spB.value<+spA.value) spB.value=spA.value; render(); });
+  spB.addEventListener('input',()=>{ if(+spB.value<+spA.value) spA.value=spB.value; render(); });
+  $('spShuffle').addEventListener('click',setShuffle);
+  $('spSort').addEventListener('click',setSorted);
+  setSorted();   // เริ่มด้วย "กับดัก" ให้เห็นคำเตือนก่อน
+})();
+
+/* ======================================================================
+   🎲 Dropout — ติวกลุ่มที่สมาชิกโดดเรียน (MLP 4-6-6-2)
+====================================================================== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const svg=$('dpSvg'); if(!svg) return;
+  const NS='http://www.w3.org/2000/svg';
+  function el(t,at){ const e=document.createElementNS(NS,t); for(const k in at) e.setAttribute(k,at[k]); return e; }
+  const LAY=[4,6,6,2], LXS=[70,243,416,580];
+  const STYLE=[['#eef2ff','#2456e6'],['#f5f3ff','#7c3aed'],['#f5f3ff','#7c3aed'],['#ecfdf5','#12a150']];
+  const SUBS='₁₂₃₄₅₆';
+  const NAME=[i=>'x'+SUBS[i], i=>'h'+SUBS[i], i=>'g'+SUBS[i], i=>'y'+SUBS[i]];
+  const pos=LAY.map((n,l)=> Array.from({length:n},(_,i)=>[LXS[l], 172+(i-(n-1)/2)*46]));
+  /* หัวคอลัมน์ */
+  ['input','hidden 1','hidden 2','output'].forEach((c,l)=>{
+    const t=el('text',{x:LXS[l], y:18, 'text-anchor':'middle','font-size':12,'font-weight':700, fill:'#5b6475'});
+    t.textContent=c; svg.appendChild(t);
+  });
+  /* เส้นก่อน (อยู่ใต้โหนด) */
+  const edges=[];
+  for(let l=0;l<3;l++) for(let i=0;i<LAY[l];i++) for(let j=0;j<LAY[l+1];j++){
+    const e=el('line',{x1:pos[l][i][0], y1:pos[l][i][1], x2:pos[l+1][j][0], y2:pos[l+1][j][1],
+      stroke:'#7c3aed','stroke-width':1.1, opacity:.3});
+    svg.appendChild(e); edges.push({e,l,j,i});
+  }
+  /* โหนด */
+  const nodeRef=[];
+  LAY.forEach((n,l)=>{
+    nodeRef.push([]);
+    for(let i=0;i<n;i++){
+      const [cx,cy]=pos[l][i];
+      const c=el('circle',{cx,cy,r:17, fill:STYLE[l][0], stroke:STYLE[l][1], 'stroke-width':2.4});
+      const t=el('text',{x:cx, y:cy+4, 'text-anchor':'middle','font-size':11.5,'font-weight':700, fill:'#1f2533'});
+      t.textContent=NAME[l](i);
+      svg.appendChild(c); svg.appendChild(t);
+      nodeRef[l].push([c,t]);
+    }
+  });
+
+  let timer=null, rounds=0;
+  const drop=[null, new Array(6).fill(false), new Array(6).fill(false), null];
+  function apply(){
+    const off=[];
+    [1,2].forEach(l=> drop[l].forEach((d,i)=>{
+      const [c,t]=nodeRef[l][i];
+      c.setAttribute('fill', d? '#e5e8f0' : STYLE[l][0]);
+      c.setAttribute('stroke', d? '#aab2c5' : STYLE[l][1]);
+      c.setAttribute('stroke-dasharray', d? '4 3' : 'none');
+      t.setAttribute('fill', d? '#aab2c5' : '#1f2533');
+      if(d) off.push(NAME[l](i));
+    }));
+    edges.forEach(({e,l,i,j})=>{
+      const dead = (l>=1 && drop[l][i]) || (l+1<=2 && drop[l+1][j]);
+      e.setAttribute('opacity', dead? 0.05 : 0.3);
+    });
+    $('dpMsg').innerHTML='รอบที่ <b>'+rounds+'</b> — โดดเรียน: '
+      +(off.length? '<b style="color:#e5484d">'+off.join(', ')+'</b>' : '<b>ไม่มีใครโดด</b> (อัตรา 0% = ไม่ใช้ dropout)')
+      +' · ที่เหลือต้องส่งสัญญาณให้ครบโดยไม่พึ่งเพื่อนที่หายไป — รอบหน้าสุ่มหน้าใหม่';
+  }
+  function tick(){
+    rounds++;
+    const rate=+$('dpRate').value/100;
+    for(const l of [1,2]){
+      drop[l]=Array.from({length:6},()=>Math.random()<rate);
+      if(drop[l].every(Boolean)) drop[l][(Math.random()*6)|0]=false;  // อย่างน้อยเหลือ 1 คน
+    }
+    apply();
+  }
+  $('dpRate').addEventListener('input',()=>{ $('dpRateV').textContent=$('dpRate').value+'%'; });
+  $('dpPlay').addEventListener('click',function(){
+    if(timer){
+      clearInterval(timer); timer=null;
+      this.textContent='▶ เทรนด้วย dropout ต่อ';
+      $('dpMsg').innerHTML+=' — <b>⏸ พักไว้</b> สังเกตว่าเครือข่ายที่เหลือยังต่อจาก input ถึง output ได้เสมอ';
+      return;
+    }
+    this.textContent='⏸ หยุด';
+    tick();
+    timer=setInterval(tick,700);
+  });
+})();
+
+/* ======================================================================
+   🏔️ ภูมิประเทศ loss แบบ 3D — หุบแคบจำ หุบกว้างเข้าใจ
+   โปรเจกต์เองด้วยเมทริกซ์หมุน (แบบ 3D lift ของ week03) · ฟิสิกส์/หมุน = setInterval
+====================================================================== */
+(function(){
+  const $=id=>document.getElementById(id);
+  const cv=$('lsCv'); if(!cv) return;
+  const ctx=cv.getContext('2d'), W=760, H=430;
+  const N=36, R=2.3, SC=105, ZS=72, CX=W/2, CY=300;
+  let yaw=0.7, s=0, sTarget=0;
+  let shiftTimer=null, autoTimer=null, phTimer=null, drag=null;
+  let balls=[];   // {kind,x,y,vx,vy,col,name,rolling}
+
+  /* พื้นผิว loss: ชาม + หุบแคบลึก (จำ) + หุบกว้าง (เข้าใจ)
+     "ข้อมูลใหม่" = เลื่อนภูมิประเทศทั้งผืนด้วย s */
+  function f(x,y,ss){
+    if(ss===undefined) ss=s;
+    const X=x-ss, Y=y+0.35*ss;
+    return 1.6 + 0.05*(X*X+Y*Y)
+      - 1.35*Math.exp(-((X-1.15)*(X-1.15)+(Y+0.2)*(Y+0.2))/0.06)
+      - 0.95*Math.exp(-((X+1.05)*(X+1.05)+(Y-0.15)*(Y-0.15))/2.0);
+  }
+  let FV=[];
+  function bake(){
+    FV=[];
+    for(let i=0;i<N;i++){ const row=[];
+      for(let j=0;j<N;j++) row.push(f(-R+2*R*i/(N-1), -R+2*R*j/(N-1)));
+      FV.push(row); }
+  }
+  function heat(v){
+    let t=Math.max(0,Math.min(1,(v-0.2)/2));
+    const st=[[46,139,110],[224,214,158],[199,109,74]];
+    const k=t<0.5? 0 : 1, u=t<0.5? t*2 : t*2-1;
+    const a=st[k], b=st[k+1];
+    return 'rgb('+Math.round(a[0]+(b[0]-a[0])*u)+','+Math.round(a[1]+(b[1]-a[1])*u)+','+Math.round(a[2]+(b[2]-a[2])*u)+')';
+  }
+  function proj(x,y,z){
+    const ca=Math.cos(yaw), sa=Math.sin(yaw);
+    const u=x*ca-y*sa, v=x*sa+y*ca;
+    return [CX+u*SC, CY+v*SC*0.42-z*ZS, v];
+  }
+  function chipLabel(x,y,txt,col){
+    const [sx,sy]=proj(x,y,f(x,y)+0.02);
+    ctx.font='700 11.5px Poppins, Kanit, sans-serif';
+    const w=ctx.measureText(txt).width+12;
+    ctx.strokeStyle=col; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(sx,sy-18); ctx.lineTo(sx,sy-6); ctx.stroke();
+    ctx.fillStyle='rgba(255,255,255,.92)';
+    ctx.beginPath(); ctx.roundRect(sx-w/2, sy-38, w, 20, 7); ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle=col; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(txt, sx, sy-28);
+    ctx.textBaseline='alphabetic';
+  }
+  function readout(){
+    const el=$('lsRead');
+    if(!balls.length){ el.innerHTML='ยังไม่มีลูกบอล — กดปล่อยบอลสักลูก (หรือทั้งสองลูก จะได้เทียบกันชัดๆ)'; return; }
+    const mode = Math.abs(s)>0.02? '<b style="color:#0e9aa7">ข้อมูลใหม่ (test)</b>' : '<b>ข้อมูลเทรน</b>';
+    let html='ภูมิประเทศตอนนี้ = '+mode+'<br>';
+    for(const b of balls){
+      const now=f(b.x,b.y), tr0=f(b.x,b.y,0), d=now-tr0;
+      html+='<span style="color:'+b.col+';font-weight:700">●</span> '+b.name+': loss = <b>'+now.toFixed(2)+'</b>';
+      if(Math.abs(s)>0.02)
+        html+=' (ตอนเทรน '+tr0.toFixed(2)+' → '+(d>=0?'+':'−')+Math.abs(d).toFixed(2)
+          +(d>0.5? ' 😱 พุ่ง! จำมาแต่ข้อสอบเก่า' : ' 😌 แทบไม่สะเทือน — เข้าใจหลักการ')+')';
+      if(b.rolling) html+=' — กำลังกลิ้งลงหุบ...';
+      html+='<br>';
+    }
+    el.innerHTML=html;
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    /* โปรเจกต์ vertex ทั้งหมด */
+    const P=[];
+    for(let i=0;i<N;i++){ const row=[];
+      for(let j=0;j<N;j++) row.push(proj(-R+2*R*i/(N-1), -R+2*R*j/(N-1), FV[i][j]));
+      P.push(row); }
+    /* เรียง quad ไกล→ใกล้ (painter's algorithm) */
+    const quads=[];
+    for(let i=0;i<N-1;i++) for(let j=0;j<N-1;j++)
+      quads.push([P[i][j][2]+P[i+1][j][2]+P[i][j+1][2]+P[i+1][j+1][2], i, j]);
+    quads.sort((a,b)=>a[0]-b[0]);
+    ctx.lineWidth=.6;
+    for(const q of quads){
+      const i=q[1], j=q[2];
+      ctx.fillStyle=heat((FV[i][j]+FV[i+1][j]+FV[i][j+1]+FV[i+1][j+1])/4);
+      ctx.beginPath();
+      ctx.moveTo(P[i][j][0],P[i][j][1]); ctx.lineTo(P[i+1][j][0],P[i+1][j][1]);
+      ctx.lineTo(P[i+1][j+1][0],P[i+1][j+1][1]); ctx.lineTo(P[i][j+1][0],P[i][j+1][1]);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.stroke();
+    }
+    /* ป้ายชี้หุบทั้งสอง (ขยับตาม s) */
+    chipLabel(1.15+s, -0.2-0.35*s, 'หุบแคบ (จำ)', '#b91c1c');
+    chipLabel(-1.05+s, 0.15-0.35*s, 'หุบกว้าง (เข้าใจ)', '#1d4ed8');
+    /* ลูกบอล */
+    for(const b of balls.slice().sort((a,c)=>proj(a.x,a.y,0)[2]-proj(c.x,c.y,0)[2])){
+      const [sx,sy]=proj(b.x, b.y, f(b.x,b.y));
+      ctx.beginPath(); ctx.ellipse(sx, sy+3, 9, 3.4, 0, 0, Math.PI*2);
+      ctx.fillStyle='rgba(20,25,40,.25)'; ctx.fill();
+      const g=ctx.createRadialGradient(sx-3, sy-11, 1, sx, sy-8, 10);
+      g.addColorStop(0,'#fff'); g.addColorStop(0.25,b.col); g.addColorStop(1,b.col);
+      ctx.beginPath(); ctx.arc(sx, sy-8, 8, 0, Math.PI*2);
+      ctx.fillStyle=g; ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,.8)'; ctx.lineWidth=1.2; ctx.stroke();
+    }
+    readout();
+  }
+  /* ---- ฟิสิกส์ลูกบอล: gradient descent + โมเมนตัม (setInterval) ---- */
+  function grad(x,y){
+    const h=0.012;
+    return [(f(x+h,y)-f(x-h,y))/(2*h), (f(x,y+h)-f(x,y-h))/(2*h)];
+  }
+  function startPhysics(){
+    if(phTimer) return;
+    phTimer=setInterval(()=>{
+      let any=false;
+      for(const b of balls){
+        if(!b.rolling) continue;
+        const g=grad(b.x,b.y);
+        b.vx=Math.max(-0.12,Math.min(0.12, b.vx*0.86-g[0]*0.045));
+        b.vy=Math.max(-0.12,Math.min(0.12, b.vy*0.86-g[1]*0.045));
+        b.x=Math.max(-R,Math.min(R, b.x+b.vx));
+        b.y=Math.max(-R,Math.min(R, b.y+b.vy));
+        if(Math.hypot(b.vx,b.vy)<0.0022 && Math.hypot(g[0],g[1])<0.05) b.rolling=false;
+        else any=true;
+      }
+      draw();
+      if(!any){ clearInterval(phTimer); phTimer=null; }
+    },28);
+  }
+  function shiftBtnLabel(){
+    $('lsShift').textContent = sTarget===0? '🌊 สลับเป็นข้อมูลใหม่ (test)' : '↩ กลับเป็นข้อมูลเทรน';
+  }
+  function drop(kind){
+    /* ปล่อยบอล = เทรน → กลับไปภูมิประเทศข้อมูลเทรนก่อนเสมอ */
+    if(Math.abs(s)>0.001 || sTarget!==0){
+      sTarget=0; s=0;
+      if(shiftTimer){ clearInterval(shiftTimer); shiftTimer=null; }
+      bake(); shiftBtnLabel();
+    }
+    balls=balls.filter(b=>b.kind!==kind);
+    if(kind==='n') balls.push({kind:'n', x:1.36+Math.random()*0.08, y:0.06+Math.random()*0.08,
+      vx:0, vy:0, col:'#e5484d', name:'บอลแดง (หุบแคบ)', rolling:true});
+    else balls.push({kind:'w', x:-0.35+Math.random()*0.1, y:0.85,
+      vx:0, vy:0, col:'#2456e6', name:'บอลน้ำเงิน (หุบกว้าง)', rolling:true});
+    startPhysics(); draw();
+  }
+  $('lsBallN').addEventListener('click',()=>drop('n'));
+  $('lsBallW').addEventListener('click',()=>drop('w'));
+  $('lsShift').addEventListener('click',()=>{
+    sTarget = sTarget===0? 0.55 : 0;
+    balls.forEach(b=>b.rolling=false);                 // weight ตายตัวแล้ว — บอลไม่กลิ้งตามข้อมูลใหม่
+    if(phTimer){ clearInterval(phTimer); phTimer=null; }
+    if(shiftTimer) clearInterval(shiftTimer);
+    shiftTimer=setInterval(()=>{
+      s += (sTarget-s)*0.14;
+      if(Math.abs(sTarget-s)<0.006){ s=sTarget; clearInterval(shiftTimer); shiftTimer=null; }
+      bake(); draw();
+    },30);
+    shiftBtnLabel();
+  });
+  function setAuto(on){
+    if(on && !autoTimer) autoTimer=setInterval(()=>{ yaw+=0.011; draw(); },40);
+    if(!on && autoTimer){ clearInterval(autoTimer); autoTimer=null; }
+    $('lsAuto').textContent='🔄 หมุนออโต้: '+(autoTimer? 'เปิด':'ปิด');
+  }
+  $('lsAuto').addEventListener('click',()=>setAuto(!autoTimer));
+  $('lsReset').addEventListener('click',()=>{
+    balls=[]; s=0; sTarget=0; yaw=0.7;
+    if(shiftTimer){ clearInterval(shiftTimer); shiftTimer=null; }
+    if(phTimer){ clearInterval(phTimer); phTimer=null; }
+    bake(); shiftBtnLabel(); draw(); setAuto(true);
+  });
+  /* ลากหมุน (การหมุนตอบสนองทันทีแบบ synchronous) */
+  cv.addEventListener('pointerdown',e=>{
+    drag=e.clientX; setAuto(false);
+    cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing';
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(drag===null) return;
+    yaw+=(e.clientX-drag)*0.008; drag=e.clientX; draw();
+  });
+  cv.addEventListener('pointerup',()=>{ drag=null; cv.style.cursor='grab'; });
+  bake(); draw(); setAuto(true);
+})();
+
+/* ======================================================================
+   💻 กล่องโค้ด Colab — ไฮไลต์อย่างง่าย + ปุ่มคัดลอก (มี fallback)
+====================================================================== */
+(function(){
+  const code=document.getElementById('pyCode'), btn=document.getElementById('copyBtn');
+  if(!code || !btn) return;
+  const raw=code.textContent;
+  /* ไฮไลต์อย่างง่าย: คอมเมนต์ก่อน แล้วจับสตริง+คีย์เวิร์ดในรอบเดียว
+     (รอบเดียวเพื่อไม่ไปแตะ attribute ของ span ที่เพิ่งแทรก) */
+  code.innerHTML=raw.split('\n').map(L=>{
+    let cm='', r=L;
+    const h=L.indexOf('#');
+    if(h>=0){ cm='<span class="c-com">'+L.slice(h)+'</span>'; r=L.slice(0,h); }
+    r=r.replace(/("[^"]*")|\b(import|from|def|if|return|print|for|in|as|True|False|None)\b/g,
+      function(m,st,kw){ return st? '<span class="c-str">'+st+'</span>' : '<span class="c-kw">'+kw+'</span>'; });
+    return r+cm;
+  }).join('\n');
+  btn.addEventListener('click',()=>{
+    const done=()=>{ btn.textContent='✅ คัดลอกแล้ว!'; setTimeout(()=>{ btn.textContent='📋 คัดลอกโค้ด'; },1600); };
+    const fb=()=>{
+      const ta=document.createElement('textarea');
+      ta.value=raw; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); }catch(e){}
+      ta.remove(); done();
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(raw).then(done).catch(fb);
+    else fb();
+  });
+})();
+</script>
+
+</body>
+</html>

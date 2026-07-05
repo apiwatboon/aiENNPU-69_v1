@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neural Network จาก Perceptron สู่ MLP | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ===== ไอคอน SVG แทน emoji ===== */
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+
+  .wsec { margin-bottom: 8px; }
+  .eq-final { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin:12px 0; text-align:center; }
+  [data-theme="dark"] .eq-final { background: var(--card); }
+  .cdot { display:inline-block; width:.72em; height:.72em; border-radius:50%; vertical-align:middle; margin:0 1px; }
+
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button {
+    font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s;
+  }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#8b5cf6); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+
+  /* ═══════ 1) ไทม์ไลน์ประวัติ ═══════ */
+  .tl-wrap { margin-top:6px; }
+  .tl-bar { position:relative; display:flex; justify-content:space-between; align-items:flex-start;
+    margin:26px 6px 10px; }
+  .tl-bar::before { content:""; position:absolute; left:2%; right:2%; top:13px; height:4px; border-radius:2px;
+    background:linear-gradient(90deg,#64748b,#7c3aed,#2456e6,#12a150); opacity:.45; }
+  .tl-dot { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:5px;
+    background:transparent; border:none; cursor:pointer; padding:0; margin:0; box-shadow:none; font-family:inherit; }
+  .tl-dot i { width:26px; height:26px; border-radius:50%; background:var(--card); border:3px solid #8b93ad;
+    transition:all .25s; display:block; }
+  .tl-dot span { font-weight:700; font-size:.82rem; color:var(--muted); transition:color .25s; }
+  .tl-dot.on i { border-color:var(--accent); background:var(--accent); transform:scale(1.25);
+    box-shadow:0 0 0 6px var(--accent-soft); }
+  .tl-dot.on span { color:var(--accent); }
+  .tl-dot:hover i { transform:scale(1.15); }
+  .tl-card { border:1.5px solid var(--accent); border-radius:14px; background:var(--card);
+    padding:14px 18px; display:flex; gap:16px; align-items:flex-start; min-height:118px;
+    box-shadow:0 6px 22px -14px rgba(124,58,237,.5); }
+  .tl-card .tl-ico { flex:0 0 auto; width:62px; height:62px; color:var(--accent); }
+  .tl-card h4 { margin:0 0 4px; font-size:1.05rem; }
+  .tl-card h4 small { color:var(--accent); font-weight:700; margin-right:8px; }
+  .tl-card p { margin:0; font-size:.92rem; line-height:1.7; }
+  .tl-ctl { display:flex; gap:8px; margin-top:10px; align-items:center; }
+  #tlPlay { background:linear-gradient(135deg,var(--accent),#8b5cf6); }
+
+  /* ═══════ 2) นิวรอนเดี่ยว ═══════ */
+  .nr-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:780px){ .nr-grid { grid-template-columns:1fr 330px; align-items:center; } }
+  .nr-svgwrap { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:6px; }
+  .nr-svgwrap svg { display:block; width:100%; height:auto; }
+  .nr-ctl { display:flex; flex-direction:column; gap:8px; }
+  .nr-row { display:flex; align-items:center; gap:9px; font-size:.9rem; }
+  .nr-row label { min-width:64px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .nr-row input[type=range] { flex:1; accent-color:var(--accent); }
+  .nr-row .v { min-width:52px; text-align:right; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .nr-eq { background:var(--accent-soft); border-radius:10px; padding:9px 14px; margin-top:10px;
+    font-size:.95rem; line-height:2; overflow-x:auto; }
+  .nr-eq b { color:var(--accent); }
+  .nr-out { font-size:1.05rem; font-weight:700; }
+
+  /* ═══════ 3) แกลเลอรี activation ═══════ */
+  .act-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  @media(min-width:760px){ .act-grid { grid-template-columns:repeat(4,1fr); } }
+  .act-cell { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 10px 8px; }
+  .act-cell h4 { margin:0 0 6px; font-size:.92rem; text-align:center; }
+  .act-cell canvas { display:block; width:100%; height:auto; border-radius:8px; background:#f7f8fb; cursor:crosshair; }
+  .act-read { text-align:center; font-size:.84rem; font-weight:700; color:var(--accent); margin:6px 0 2px;
+    font-variant-numeric:tabular-nums; min-height:1.2em; }
+  .act-note { font-size:.76rem; color:var(--muted); line-height:1.55; margin:0; }
+
+  /* ═══════ 4) MLP Playground ═══════ */
+  .mlp-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:#f7f8fb; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5); }
+  .mlp-stage canvas { display:block; width:100%; height:auto; }
+  .mlp-phase { position:absolute; top:10px; left:10px; z-index:3;
+    background:rgba(255,255,255,.93); border:1px solid #d5dae6; border-radius:999px;
+    padding:5px 14px; font-size:.88rem; font-weight:700; color:#1f2533;
+    box-shadow:0 4px 14px -8px rgba(15,23,42,.5); display:flex; align-items:center; gap:7px; }
+  .mlp-phase .dot { width:11px; height:11px; border-radius:50%; background:#9aa3b8; }
+  .mlp-ctl { display:flex; flex-direction:column; gap:11px; margin-top:13px; }
+  .mlp-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .mlp-row .cap { font-weight:700; min-width:76px; }
+  .mlp-row input[type=number] { width:66px; font-family:inherit; font-size:.9rem; padding:4px 6px;
+    border:1.5px solid var(--border); border-radius:8px; background:var(--card); color:var(--ink); }
+  .mlp-row input[type=number]:focus { border-color:var(--accent); outline:none; }
+  #mlpFwd { background:linear-gradient(135deg,var(--accent),#8b5cf6); min-width:150px; }
+  .mlp-wtbl { display:grid; grid-template-columns:1fr; gap:10px; margin-top:4px; }
+  @media(min-width:760px){ .mlp-wtbl { grid-template-columns:1fr 1fr; } }
+  .mlp-wcard { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:10px 12px; overflow-x:auto; }
+  .mlp-wcard h4 { margin:0 0 6px; font-size:.88rem; }
+  .mlp-wcard table { border-collapse:collapse; width:100%; }
+  .mlp-wcard th, .mlp-wcard td { border:1px solid var(--border); padding:3px 6px; text-align:center; font-size:.82rem; }
+  .mlp-wcard th { background:var(--accent-soft); color:var(--accent); font-weight:700; }
+  .mlp-wcard input { width:58px; font-family:inherit; font-size:.84rem; padding:2px 4px; text-align:center;
+    border:1px solid var(--border); border-radius:6px; background:var(--card); color:var(--ink); }
+  .mlp-wcard input:focus { border-color:var(--accent); outline:none; }
+  details.mlp-res { border:1px solid var(--border); border-radius:12px; background:var(--card); margin-top:10px; }
+  details.mlp-res summary { cursor:pointer; font-weight:600; font-size:.9rem; padding:9px 14px; list-style:none; }
+  details.mlp-res summary::-webkit-details-marker { display:none; }
+  details.mlp-res summary::before { content:"▸ "; color:var(--accent); }
+  details.mlp-res[open] summary::before { content:"▾ "; }
+  .mlp-restbl { padding:0 14px 12px; overflow-x:auto; }
+  .mlp-restbl table { border-collapse:collapse; }
+  .mlp-restbl th, .mlp-restbl td { border:1px solid var(--border); padding:4px 12px; text-align:center;
+    font-variant-numeric:tabular-nums; font-size:.88rem; }
+  .mlp-restbl th { background:var(--accent-soft); color:var(--accent); }
+  .mlp-hint { font-size:.85rem; color:var(--muted); margin:2px 0 0; }
+  .mlp-hint b { color:var(--accent); }
+
+  /* ═══════ 5) XOR ชั้นเดียวไม่พอ ═══════ */
+  .xor-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:820px){ .xor-grid { grid-template-columns:460px 1fr; align-items:start; } }
+  .xor-stage { border-radius:12px; overflow:hidden; border:1px solid var(--border); background:#f7f8fb; }
+  .xor-stage canvas { display:block; width:100%; height:auto; }
+  .xor-score { font-size:1.15rem; font-weight:800; text-align:center; border-radius:12px; padding:10px 12px;
+    border:1.5px solid var(--border); background:var(--card); margin-top:2px; transition:all .3s; }
+  .xor-score.fail { color:#b45309; border-color:#f59e0b; }
+  .xor-score.win { color:#0e7f43; border-color:#12a150; background:rgba(18,161,80,.08); }
+  #xorMlp.on { background:linear-gradient(135deg,#12a150,#0ea371); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>Neural Network: สมองจำลอง จาก Perceptron สู่ MLP</h1>
+    <p class="subtitle">70 ปีที่แล้วมนุษย์ลองเลียนแบบเซลล์ประสาทด้วยคณิตศาสตร์ง่ายๆ "คูณ บวก แล้วตัดสินใจ" — วันนี้สิ่งเดียวกันนั้นซ้อนกันพันชั้นอยู่ข้างใน ChatGPT · สัปดาห์นี้เราจะสร้างมันด้วยมือ เห็นตัวเลขวิ่งผ่านทุกโหนด</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle class="f" cx="12" cy="12" r="1.6"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>เล่าประวัติย่อของ Neural Network ได้: จากนิวรอนตรรกะ 1943 → Perceptron → AI Winter → Backprop → Deep Learning → LLM</li>
+      <li>คำนวณ <strong>นิวรอนหนึ่งตัว</strong> ด้วยมือได้: z = w₁x₁ + w₂x₂ + b แล้วผ่าน <strong>activation function</strong> (step / sigmoid / ReLU)</li>
+      <li>ไล่ <strong>forward pass</strong> ของเครือข่ายหลายชั้น (MLP) ได้ทีละชั้น และแปลงคะแนนชั้นสุดท้ายเป็นความน่าจะเป็นด้วย <strong>softmax</strong></li>
+      <li>อธิบายได้ว่าทำไม <strong>ชั้นเดียวแก้ XOR ไม่ได้</strong> แต่เพิ่ม hidden layer แล้วแก้ได้ — เหตุผลที่ต้อง "ลึก"</li>
+      <li>เชื่อมโยงได้ว่า MLP + softmax คือส่วนประกอบจริงข้างใน Transformer และวิธีที่ LLM "เลือกคำถัดไป"</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 — แนวคิด + ประวัติ ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: เลียนแบบสมองด้วย "คูณ บวก ตัดสินใจ" <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">เซลล์ประสาทจริงในสมองรับสัญญาณไฟฟ้าจากเพื่อนหลายพันเซลล์ — สัญญาณบางเส้น "ดัง" บางเส้น "เบา" — ถ้ารวมกันแรงพอ เซลล์จะ "ยิง" สัญญาณต่อ
+    นักคณิตศาสตร์มองแล้วสรุปว่า: นี่มันแค่ <strong>การบวกแบบถ่วงน้ำหนัก แล้วเทียบเกณฑ์</strong> นี่นา!</p>
+    <div class="eq-final" style="font-size:1.15rem">
+      z = <span style="color:#2456e6">w₁</span>x₁ + <span style="color:#2456e6">w₂</span>x₂ + … + <span style="color:#12a150">b</span>
+      &nbsp;&nbsp;→&nbsp;&nbsp; a = <span style="color:#8b5cf6">f</span>(z)
+    </div>
+    <p><strong>w (weight)</strong> = ความดังของแต่ละสาย · <strong>b (bias)</strong> = ความง่ายในการยิง · <strong>f (activation)</strong> = กติกาตัดสินใจว่ายิงหรือไม่/แรงแค่ไหน —
+    นิวรอนเทียม 1 ตัวคือแค่นี้จริงๆ ความมหัศจรรย์ทั้งหมดเกิดตอนเอามัน<strong>ต่อกันเป็นชั้นๆ</strong> (เรื่อง Linear Regression เราหา w ให้เส้นตรง — วันนี้ w แบบเดียวกันเป๊ะ แค่มีเยอะกว่า)</p>
+    <p style="margin-bottom:0">แต่กว่าจะมาถึงวันนี้ เส้นทางของไอเดียนี้ล้มลุกคลุกคลานถึงขั้น "โดนแช่แข็ง" มาแล้ว — คลิกไล่ดูทีละเหตุการณ์:</p>
+
+    <!-- ── ไทม์ไลน์ ── -->
+    <div class="tl-wrap" id="tl">
+      <div class="tl-bar" id="tlBar"></div>
+      <div class="tl-card" id="tlCard"></div>
+      <div class="tl-ctl">
+        <button id="tlPlay"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>เล่นไทม์ไลน์อัตโนมัติ</button>
+        <span style="font-size:.84rem;color:var(--muted)">หรือคลิกจุดบนเส้นเวลาเองได้เลย</span>
+      </div>
+    </div>
+  </div>
+
+  </section>
+
+  <!-- ===================== ส่วนที่ 2 — เวทีเล่น ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: จากนิวรอน 1 ตัว สู่เครือข่ายที่แก้ XOR <span class="badge">ทดลองเล่น</span></h2>
+
+  <!-- ── 2.1 นิวรอนเดี่ยว ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">🔬 นิวรอน 1 ตัว — หมุนค่าเองแล้วดูเลขไหลผ่าน</h3>
+    <p style="margin-top:0">เลื่อน x (ข้อมูลเข้า), w (ความดังของสาย), b (ความง่ายในการยิง) — สมการด้านล่างคำนวณสด<strong>แทนค่าจริงทุกตัว</strong> ·
+    เส้นในรูป <b style="color:#2456e6">น้ำเงิน = w บวก (เร้า)</b>, <b style="color:#e5484d">แดง = w ลบ (ยับยั้ง)</b>, ความหนา = ขนาด</p>
+    <div class="nr-grid">
+      <div class="nr-svgwrap">
+        <svg id="nrSvg" viewBox="0 0 460 240">
+          <line id="nrE1" x1="88" y1="70" x2="240" y2="120" stroke="#2456e6" stroke-width="4" stroke-linecap="round"/>
+          <line id="nrE2" x1="88" y1="180" x2="240" y2="130" stroke="#2456e6" stroke-width="4" stroke-linecap="round"/>
+          <line x1="292" y1="125" x2="374" y2="125" stroke="#8b93ad" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="66" cy="70" r="24" fill="#eef2ff" stroke="#2456e6" stroke-width="2.5"/>
+          <circle cx="66" cy="180" r="24" fill="#eef2ff" stroke="#2456e6" stroke-width="2.5"/>
+          <text id="nrX1" x="66" y="75" text-anchor="middle" font-size="15" font-weight="700" fill="#1f2533">1.0</text>
+          <text id="nrX2" x="66" y="185" text-anchor="middle" font-size="15" font-weight="700" fill="#1f2533">0.5</text>
+          <text x="66" y="34" text-anchor="middle" font-size="12" font-weight="600" fill="#5b6475">x₁</text>
+          <text x="66" y="224" text-anchor="middle" font-size="12" font-weight="600" fill="#5b6475">x₂</text>
+          <text id="nrW1" x="160" y="76" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2456e6">w₁ = 0.8</text>
+          <text id="nrW2" x="160" y="182" text-anchor="middle" font-size="12.5" font-weight="700" fill="#2456e6">w₂ = −0.4</text>
+          <circle cx="262" cy="125" r="32" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+          <text x="262" y="120" text-anchor="middle" font-size="14" font-weight="800" fill="#7c3aed">Σ + b</text>
+          <text id="nrZ" x="262" y="137" text-anchor="middle" font-size="12.5" font-weight="700" fill="#1f2533">z = 1.10</text>
+          <text id="nrB" x="262" y="80" text-anchor="middle" font-size="12" font-weight="700" fill="#12a150">b = 0.3</text>
+          <circle cx="404" cy="125" r="27" fill="#ecfdf5" stroke="#12a150" stroke-width="3"/>
+          <text id="nrFn" x="404" y="112" text-anchor="middle" font-size="11" font-weight="700" fill="#12a150">σ</text>
+          <text id="nrA" x="404" y="132" text-anchor="middle" font-size="14" font-weight="800" fill="#0e7f43">0.75</text>
+          <text x="404" y="168" text-anchor="middle" font-size="11.5" font-weight="600" fill="#5b6475">a = f(z)</text>
+          <!-- วงแหวนพัลส์ + หางไฟ + ชิปค่าที่วิ่งตามเส้น (อนิเมชัน) -->
+          <circle id="nrPulse" cx="262" cy="125" r="32" fill="none" stroke="#7c3aed" stroke-width="3" opacity="0"/>
+          <circle id="nrSrcP" cx="66" cy="70" r="27" fill="none" stroke="#2456e6" stroke-width="3" opacity="0"/>
+          <circle class="nrTr" id="nrTr1" r="7" fill="#fbbf24" opacity="0"/>
+          <circle class="nrTr" id="nrTr2" r="5.5" fill="#fbbf24" opacity="0"/>
+          <circle class="nrTr" id="nrTr3" r="4" fill="#fbbf24" opacity="0"/>
+          <g id="nrChip" opacity="0">
+            <rect id="nrChipR" x="-40" y="-11" width="80" height="22" rx="8" fill="#7c3aed" stroke="#fff" stroke-width="1.5"/>
+            <text id="nrChipT" y="4" text-anchor="middle" font-size="11.5" font-weight="700" fill="#fff">1.00</text>
+          </g>
+        </svg>
+      </div>
+      <div class="nr-ctl">
+        <div class="nr-row"><label>x₁</label><input type="range" id="inX1" min="-2" max="2" step="0.5" value="1"><span class="v" id="vX1">1.0</span></div>
+        <div class="nr-row"><label>x₂</label><input type="range" id="inX2" min="-2" max="2" step="0.5" value="0.5"><span class="v" id="vX2">0.5</span></div>
+        <div class="nr-row"><label>w₁</label><input type="range" id="inW1" min="-2" max="2" step="0.1" value="0.8"><span class="v" id="vW1">0.8</span></div>
+        <div class="nr-row"><label>w₂</label><input type="range" id="inW2" min="-2" max="2" step="0.1" value="-0.4"><span class="v" id="vW2">−0.4</span></div>
+        <div class="nr-row"><label>b</label><input type="range" id="inB" min="-2" max="2" step="0.1" value="0.3"><span class="v" id="vB">0.3</span></div>
+        <div class="nr-row"><label>f</label>
+          <div class="seg" id="nrActSeg">
+            <button data-f="step">step</button><button data-f="sigmoid" class="on">sigmoid</button><button data-f="relu">ReLU</button>
+          </div>
+        </div>
+        <div class="nr-row" style="margin-top:6px">
+          <button id="nrFlow" style="background:linear-gradient(135deg,#f59e0b,#f97316)">🎬 ดูค่าวิ่งทีละเส้น</button>
+        </div>
+        <p id="nrFlowMsg" style="margin:6px 0 0;font-size:.85rem;color:#7c3aed;font-weight:600;min-height:1.4em"></p>
+      </div>
+    </div>
+    <div class="nr-eq" id="nrEq"></div>
+  </div>
+
+  <!-- ── 2.2 แกลเลอรี activation ── -->
+  <div class="demo">
+    <h3 style="margin-top:0">📈 กติกาตัดสินใจ 4 แบบ — ลากนิ้ว/เมาส์บนกราฟเพื่ออ่านค่า</h3>
+    <div class="act-grid" id="actGrid"></div>
+    <p class="mlp-hint" style="margin-top:10px"><b>ประเด็นสำคัญ:</b> sigmoid/tanh "แบน" ที่ปลายสองข้าง — ความชันเกือบศูนย์ = สัญญาณการเรียนรู้จางหาย (<em>vanishing gradient</em> จะเจอเต็มๆ เรื่อง Backpropagation) · ReLU ง่ายสุดแต่กลายเป็นมาตรฐานของ deep learning เพราะความชันไม่จางฝั่งขวา</p>
+  </div>
+
+  <!-- ── 2.3 ชิ้นเอก: MLP Playground ── -->
+  <div class="demo" id="mlp">
+    <h3 style="margin-top:0">⚡ MLP Playground 2-3-2 — ใส่ค่าเอง แก้ weight เอง แล้วดูตัวเลขวิ่งทีละชั้น</h3>
+    <p style="margin-top:0">เครือข่ายจริงย่อส่วน: input 2 → hidden 3 → output 2 → <strong>softmax</strong> ·
+    โหนดแต่ละตัว<strong>ผ่าครึ่งด้วยขีดเส้นแนวตั้ง</strong>ตามตำรา: ซีกซ้าย = <b style="color:#6d28d9">net</b> (ผลรวมถ่วงน้ำหนัก เช่น h1_net) · ซีกขวา = <b style="color:#1f2533">out</b> (หลังผ่าน activation เช่น h1_out) ·
+    <strong>เลือก activation ได้</strong> — สลับ ReLU ↔ sigmoid แล้วดูว่า h1_out เปลี่ยนเป็นค่าอะไรจาก net เดิม ·
+    กด <b style="color:var(--accent)">▶ Forward ทีละชั้น</b> เห็นค่าปรากฏจากซ้ายไปขวา · เส้นหนา = weight ใหญ่ · <b style="color:#2456e6">น้ำเงิน = บวก</b> / <b style="color:#e5484d">แดง = ลบ</b> ·
+    weight ทุกตัว<strong>แก้ได้ในตารางข้างล่าง</strong> — ค่าเริ่มต้นคือชุดที่แก้โจทย์ XOR ได้จริง!</p>
+
+    <div class="mlp-stage">
+      <div class="mlp-phase" id="mlpPhase"><span class="dot"></span> พร้อม — กด ▶ Forward</div>
+      <canvas id="mlpCv" width="780" height="440"></canvas>
+    </div>
+
+    <!-- แผงสมการสด: เติมทีละพจน์ตามจังหวะอนิเมชัน -->
+    <style>
+      .mlp-eqpanel { display:none; margin-top:10px; border-radius:12px; padding:12px 16px;
+        background:linear-gradient(135deg,#171c30,#101425); border:1px solid rgba(139,148,255,.3);
+        color:#dbe2ff; font-size:1.04rem; line-height:2.1; font-variant-numeric:tabular-nums;
+        box-shadow:0 10px 26px -14px rgba(0,0,0,.7); overflow-x:auto; white-space:nowrap; }
+      .mlp-eqpanel b { color:#c4b5fd; }
+      .eq-t { display:inline-block; padding:1px 9px; border-radius:8px; margin:0 2px; transition:all .3s; }
+      .eq-t.todo { color:#5d6787; border:1px dashed rgba(120,130,170,.45); }
+      .eq-t.done { color:#e6ebff; background:rgba(120,130,255,.14); }
+      .eq-t.cur  { color:#fff; background:linear-gradient(135deg,#f59e0b,#f97316); font-weight:700;
+        box-shadow:0 0 16px rgba(245,158,11,.6); animation:eqPop .45s; }
+      @keyframes eqPop { 0%{transform:scale(.5)} 70%{transform:scale(1.15)} 100%{transform:scale(1)} }
+      .eq-sum { color:#93c5fd; font-weight:700; }
+      .eq-res { color:#34d399; font-weight:800; font-size:1.12em; }
+    </style>
+    <div class="mlp-eqpanel" id="mlpEqPanel"></div>
+
+    <div class="mlp-ctl">
+      <div class="mlp-row">
+        <span class="cap">input</span>
+        x₁ <input type="number" id="mlpX1" step="0.5" value="1">
+        x₂ <input type="number" id="mlpX2" step="0.5" value="0">
+        <span class="seg" id="mlpQuick">
+          <button data-x="0,0">(0,0)</button><button data-x="0,1">(0,1)</button>
+          <button data-x="1,0" class="on">(1,0)</button><button data-x="1,1">(1,1)</button>
+        </span>
+      </div>
+      <div class="mlp-row">
+        <span class="cap">activation ชั้นซ่อน</span>
+        <span class="seg" id="mlpAct">
+          <button data-a="relu" class="on">ReLU</button><button data-a="sigmoid">sigmoid</button><button data-a="tanh">tanh</button>
+        </span>
+        <span style="font-size:.83rem;color:var(--muted)">out = <b id="mlpActEq" style="color:var(--accent)">max(0, net)</b> — สลับแล้วครึ่งล่างของโหนดคำนวณใหม่ทันที (ชุด XOR ออกแบบกับ ReLU — ลอง sigmoid แล้วดูคำตอบเพี้ยน!)</span>
+      </div>
+      <div class="mlp-row">
+        <button id="mlpFlow" style="background:linear-gradient(135deg,#f59e0b,#f97316)">🎬 Forward ทีละเส้น (โชว์การคูณ)</button>
+        <button id="mlpSpeed" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🐢 ความเร็ว ×1</button>
+        <button id="mlpFwd"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>Forward ทีละชั้น</button>
+        <button id="mlpInstant">⚡ คำนวณทันที</button>
+        <button id="mlpAll4">🧪 ลองทั้ง 4 input (พิสูจน์ XOR)</button>
+        <button id="mlpXor" style="background:linear-gradient(135deg,#12a150,#0ea371)">↺ โหลดชุด XOR</button>
+        <button id="mlpRand" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🎲 สุ่ม weight</button>
+      </div>
+      <p class="mlp-hint"><b>ลอง:</b> กด "สุ่ม weight" แล้วลองทั้ง 4 input — คำตอบจะมั่ว! เพราะ weight ดีๆ ไม่ได้มาฟรี ต้อง<b>เรียนรู้</b> (นั่นคือเรื่องของสัปดาห์หน้า: Backpropagation)</p>
+
+      <details class="mlp-res" id="mlpResWrap">
+        <summary>ผลการลองทั้ง 4 input</summary>
+        <div class="mlp-restbl" id="mlpResTbl"><p style="color:var(--muted);font-size:.86rem">กดปุ่ม 🧪 ก่อน</p></div>
+      </details>
+
+      <div class="mlp-wtbl">
+        <div class="mlp-wcard">
+          <h4>ชั้นซ่อน (hidden) — h_net = W⁽¹⁾x + b⁽¹⁾ · h_out = <span id="mlpActName">ReLU</span>(h_net)</h4>
+          <table id="mlpW1"></table>
+        </div>
+        <div class="mlp-wcard">
+          <h4>ชั้นออก (output) — z = W⁽²⁾h + b⁽²⁾ → softmax</h4>
+          <table id="mlpW2"></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2.4 XOR ชั้นเดียวไม่พอ ── -->
+  <div class="demo" id="xor">
+    <h3 style="margin-top:0">🧱 กำแพงปี 1969: ลองแบ่ง XOR ด้วยเส้นตรง 1 เส้น (สปอยล์: ทำไม่ได้)</h3>
+    <p style="margin-top:0">โจทย์ XOR: <span class="cdot" style="background:#2456e6"></span> (0,0), (1,1) อยู่กลุ่มหนึ่ง — <span class="cdot" style="background:#e5484d"></span> (0,1), (1,0) อีกกลุ่ม ·
+    Perceptron ชั้นเดียวลากได้แค่<strong>เส้นตรงเส้นเดียว</strong> — เลื่อน 2 สไลเดอร์พยายามแบ่งให้ถูกครบ 4 จุดดูสิ ·
+    แล้วค่อยกดปุ่มเขียวเพื่อ "เพิ่ม hidden layer" ดูว่าเครือข่ายหลายชั้นทำอะไรกับปริภูมิ</p>
+    <div class="xor-grid">
+      <div>
+        <div class="xor-stage"><canvas id="xorCv" width="460" height="330"></canvas></div>
+        <div class="xor-score" id="xorScore">แบ่งถูก 2 / 4</div>
+      </div>
+      <div class="mlp-ctl" style="margin-top:0">
+        <div class="mlp-row"><span class="cap" style="min-width:96px">มุมเส้น θ</span>
+          <input type="range" id="xorTh" min="0" max="180" step="1" value="45" style="flex:1;accent-color:var(--accent)">
+          <span class="v" id="xorThV" style="font-weight:700;color:var(--accent);min-width:44px;text-align:right">45°</span></div>
+        <div class="mlp-row"><span class="cap" style="min-width:96px">เลื่อนเส้น c</span>
+          <input type="range" id="xorC" min="-40" max="140" step="1" value="50" style="flex:1;accent-color:var(--accent)">
+          <span class="v" id="xorCV" style="font-weight:700;color:var(--accent);min-width:44px;text-align:right">0.50</span></div>
+        <div class="mlp-row">
+          <button id="xorMlp" style="background:linear-gradient(135deg,#64748b,#94a3b8)">✨ เพิ่ม hidden layer (MLP)</button>
+        </div>
+        <p class="mlp-hint" id="xorHint"><b>เฉลยของปี 1969:</b> เส้นตรงเส้นเดียวได้มากสุด 3/4 — Minsky & Papert พิสูจน์เรื่องนี้ทางคณิตศาสตร์ ทำให้วงการหมดหวังกับ perceptron ไปเกือบ 20 ปี ทั้งที่คำตอบ (ซ้อนหลายชั้น) อยู่ใกล้แค่เอื้อม</p>
+      </div>
+    </div>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — ทีละขั้น ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — Forward pass ทำงานทีละขั้น <span class="badge">ทีละขั้น</span></h2>
+  <p>นี่คือสิ่งที่เกิดใน playground ข้างบน (และใน ChatGPT ทุกครั้งที่มันตอบ) — ไล่ตามใน playground ได้ทีละปุ่มกด:</p>
+  <ol class="steps">
+    <li><strong>รับ input:</strong> ข้อมูลถูกแปลงเป็นตัวเลขเวกเตอร์ x = (x₁, x₂) — ในโลกจริงอาจเป็นพิกเซลภาพ 784 ช่อง หรือ embedding ของคำ</li>
+    <li><strong>ชั้นซ่อนคำนวณ z:</strong> โหนดซ่อนแต่ละตัวคูณ-บวก: zⱼ = wⱼ₁x₁ + wⱼ₂x₂ + bⱼ — สามโหนดก็สามสมการ (นี่คือการคูณเมทริกซ์ W⁽¹⁾x + b⁽¹⁾ นั่นเอง)</li>
+    <li><strong>ผ่าน activation:</strong> aⱼ = ReLU(zⱼ) = max(0, zⱼ) — ตัดค่าลบทิ้ง เกิดความไม่เชิงเส้นที่ทำให้เครือข่าย "ดัดรูป" ปริภูมิได้</li>
+    <li><strong>ชั้นออกคำนวณคะแนนดิบ (logits):</strong> z_out = W⁽²⁾a + b⁽²⁾ — คลาสละหนึ่งคะแนน ยังเป็นเลขอะไรก็ได้ บวกลบได้หมด</li>
+    <li><strong>softmax แปลงเป็นความน่าจะเป็น:</strong> p_i = e^{z_i} / Σe^{z_j} — บวกทุกตัว รวมได้ 1 อ่านเป็น "ความมั่นใจ" ได้ทันที</li>
+    <li><strong>ตัดสินใจ:</strong> เลือกคลาสที่ p สูงสุด (หรือสุ่มตาม p — แบบที่ LLM เลือกคำถัดไป) — จบหนึ่ง forward pass เต็มๆ</li>
+  </ol>
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — ตัวอย่างคำนวณมือ ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ตัวอย่างคำนวณด้วยมือ (เลขเดียวกับ playground) <span class="badge green">ลงมือ</span></h2>
+
+  <details class="example">
+    <summary>ตัวอย่าง A — forward pass เครือข่าย 2-2-1: input (1, 0)</summary>
+    <div class="ans">
+      <strong>เครือข่าย:</strong> hidden 2 โหนด (ReLU): h₁: w=(1,1), b=−0.5 · h₂: w=(1,1), b=−1.5 · output: w=(2,−8), b=0 → sigmoid
+      <strong>ขั้น 1 — ชั้นซ่อน:</strong>
+      z₁ = 1·1 + 1·0 − 0.5 = 0.5 → h₁ = ReLU(0.5) = <b>0.5</b>
+      z₂ = 1·1 + 1·0 − 1.5 = −0.5 → h₂ = ReLU(−0.5) = <b>0</b>
+      <strong>ขั้น 2 — ชั้นออก:</strong> z = 2·(0.5) + (−8)·0 + 0 = <b>1.0</b>
+      <strong>ขั้น 3 — sigmoid:</strong> σ(1.0) = 1/(1+e⁻¹) = <b>0.73</b>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>ความน่าจะเป็น 0.73 → ทำนาย <strong>คลาส 1</strong> — ตรงกับ XOR(1,0) = 1 พอดี
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง B — input (1, 1): ทำไมโหนด h₂ ถึงมีไว้ "หักล้าง"</summary>
+    <div class="ans">
+      <strong>ขั้น 1 — ชั้นซ่อน:</strong>
+      z₁ = 1·1 + 1·1 − 0.5 = 1.5 → h₁ = <b>1.5</b>
+      z₂ = 1·1 + 1·1 − 1.5 = 0.5 → h₂ = <b>0.5</b> &nbsp;(คราวนี้ h₂ ตื่นแล้ว!)
+      <strong>ขั้น 2 — ชั้นออก:</strong> z = 2·(1.5) + (−8)·(0.5) = 3 − 4 = <b>−1.0</b>
+      <strong>ขั้น 3 — sigmoid:</strong> σ(−1.0) = <b>0.27</b>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>ความน่าจะเป็นต่ำ → ทำนาย <strong>คลาส 0</strong> = XOR(1,1) ✓ — h₂ คือ "ยามเฝ้ากรณี (1,1)" ที่โผล่มาหักคะแนนด้วย weight −8 — <em>การแบ่งงานกันของโหนดแบบนี้แหละคือสิ่งที่เครือข่ายเรียนรู้</em>
+    </div>
+  </details>
+
+  <details class="example">
+    <summary>ตัวอย่าง C — softmax: จากคะแนนดิบ (2, 0) เป็นความน่าจะเป็น</summary>
+    <div class="ans">
+      <strong>สูตร:</strong> p_i = e^{z_i} / (e^{z_1} + e^{z_2})
+      <strong>แทนค่า:</strong> e² = 7.39, e⁰ = 1.00 → ผลรวม = 8.39
+      p₁ = 7.39/8.39 = <b>0.88</b> · p₂ = 1.00/8.39 = <b>0.12</b>
+      <span class="ans-ok"><svg class="ico ico-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg></span>รวมกันได้ 1 พอดี — LLM ทำแบบเดียวกันนี้กับคำศัพท์ ~50,000 คำ แล้ว "สุ่มเลือก" คำถัดไปตามความน่าจะเป็นเหล่านี้
+    </div>
+  </details>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — forward pass ด้วยมือ</div>
+    <p>ใช้เครือข่ายจากตัวอย่าง A (h₁: w=(1,1), b=−0.5 · h₂: w=(1,1), b=−1.5 · output: w=(2,−8), b=0, sigmoid)
+    จงคำนวณผลของ input <strong>(0, 1)</strong> และ <strong>(0, 0)</strong> ทีละขั้น แล้วสรุปว่าตรงกับตาราง XOR หรือไม่</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      <b>(0,1):</b> z₁ = 0+1−0.5 = 0.5 → h₁=0.5 · z₂ = 0+1−1.5 = −0.5 → h₂=0<br>
+      z = 2(0.5) − 8(0) = 1.0 → σ(1.0) = 0.73 → <b>คลาส 1</b> = XOR(0,1) ✓<br>
+      <b>(0,0):</b> z₁ = −0.5 → h₁=0 · z₂ = −1.5 → h₂=0 → z = 0 → σ(0) = 0.50 → ก้ำกึ่งพอดี (ธรรมเนียมใช้ &gt; 0.5 จึงได้คลาส 0) = XOR(0,0) ✓ — สังเกตว่าเคสนี้ "มั่นใจน้อยสุด" เพราะทุกโหนดหลับหมด
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — softmax</div>
+    <p>ชั้นออกให้คะแนนดิบ 3 คลาส: z = (1, 3, 0) จงคำนวณ softmax ทั้งสามค่า (ใช้ e¹=2.72, e³=20.09, e⁰=1) แล้วตอบว่าโมเดล "มั่นใจ" คลาสไหนกี่เปอร์เซ็นต์</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ผลรวม = 2.72 + 20.09 + 1.00 = 23.81<br>
+      p₁ = 2.72/23.81 = <b>0.11</b> · p₂ = 20.09/23.81 = <b>0.84</b> · p₃ = 1.00/23.81 = <b>0.04</b> (รวม ≈ 1 ✓)<br>
+      โมเดลมั่นใจ<b>คลาส 2 ประมาณ 84%</b> — สังเกตว่าคะแนนดิบห่างกันแค่ 2 แต้ม แต่ความน่าจะเป็นห่างกัน ~8 เท่า เพราะ e^x ขยายความต่างแบบทวีคูณ
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 3 (การบ้าน) — ออกแบบนิวรอนเป็นประตูตรรกะ</div>
+    <p>จงหาค่า w₁, w₂, b ของ perceptron 1 ตัว (ใช้ step function: ยิงเมื่อ z ≥ 0) ที่ทำหน้าที่เป็นประตู <strong>AND</strong> และอีกชุดที่เป็นประตู <strong>OR</strong> (ตรวจคำตอบกับ input ทั้ง 4 แบบ) แล้วอธิบายว่าทำไมวิธีเดียวกันนี้ใช้กับ XOR ไม่ได้ (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — นับพารามิเตอร์</div>
+    <p>เครือข่ายอ่านลายมือ MNIST: input 784 → hidden 128 (ReLU) → output 10 (softmax)
+    (ก) มี weight และ bias รวมกี่ตัว (แสดงวิธีนับ) (ข) ถ้าเพิ่ม hidden อีกชั้นขนาด 64 ระหว่าง 128 กับ 10 จะเพิ่มอีกกี่ตัว
+    (ค) จากเวที playground: ทำไมเครือข่ายที่ weight "สุ่ม" จึงตอบมั่ว และเราต้องทำอะไรกับมัน (เขียนเชื่อมไปเรื่อง Backpropagation) (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 6 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    เราเพิ่งสร้าง "หน่วยก่อสร้าง" ตัวจริงของ AI ยุคปัจจุบันด้วยมือ — <strong>ข้างใน Transformer ของ GPT/Claude คือ MLP แบบที่เราคำนวณวันนี้ ซ้อนกันหลายสิบชั้น</strong> สลับกับกลไก attention (เรื่อง Attention &amp; Transformer) ไม่มีอะไรลึกลับกว่านี้<br>
+    และ <strong>softmax</strong> ที่เราคำนวณมือ ก็คือจังหวะสุดท้ายของ LLM ทุกครั้งที่มันพิมพ์: ให้คะแนนคำศัพท์ ~50,000 คำ → softmax → สุ่มเลือก "คำถัดไป" — เกมเดียวกับ bigram เรื่อง AI คืออะไร แต่เครื่องให้คะแนนฉลาดกว่ามหาศาล<br>
+    <strong>ปมที่ค้างไว้:</strong> weight ชุด XOR วันนี้เราตั้งให้เอง แต่ GPT มี weight เป็น<em>ล้านล้านตัว</em> ใครจะไปตั้งมือไหว? —
+    <strong>สัปดาห์หน้า:</strong> อัลกอริทึมที่ปลุกวงการจากความตาย: <strong>Backpropagation</strong> — วิธีให้เครือข่าย "เรียนรู้ weight เอง" ที่เราจะไล่เลขทุกตัวด้วยมือ
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=aircAruvnKk" target="_blank">But what is a neural network?</a> — ภาพเคลื่อนไหวอธิบายโครงข่าย/ชั้น/weight สวยที่สุดเท่าที่เคยมี (ตอนที่ 1 ของซีรีส์ที่เราจะดูต่อสัปดาห์หน้า)</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=CqOfi41LfDw" target="_blank">Neural Networks Pt. 1: Inside the Black Box</a> — ไล่เลขทีละตัวแบบเดียวกับที่เราทำในคาบ</li>
+      <li><span class="src">TensorFlow</span> <a href="https://playground.tensorflow.org" target="_blank">TensorFlow Playground</a> — เวทีเล่นเครือข่ายจริงในเบราว์เซอร์ ลองเพิ่มชั้น/โหนด/activation แล้วดู decision boundary สด (ต่อยอดจาก playground ของเราวันนี้)</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week07.html">← SVM (Support Vector Machine)</a>
+    <a href="week09.html">Backpropagation →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ======================================================================
+   1) ไทม์ไลน์ประวัติ NN
+   ====================================================================== */
+(function(){
+  const bar=document.getElementById('tlBar'); if(!bar) return;
+  const card=document.getElementById('tlCard');
+  const ERAS=[
+    { y:'1943', t:'McCulloch & Pitts — นิวรอนตรรกะ',
+      d:'นักประสาทวิทยา + นักตรรกศาสตร์ จำลองเซลล์ประสาทเป็นคณิตศาสตร์: รับ 0/1 หลายเส้น รวมกันแล้วเทียบเกณฑ์ — พิสูจน์ว่าวงจรนิวรอนแบบนี้คำนวณตรรกะ AND/OR/NOT ได้ครบ เมล็ดพันธุ์แรกของทุกสิ่ง',
+      ico:'<circle cx="32" cy="32" r="13"/><path d="M8 20l11 8M8 44l11-8M45 32h12"/><circle cx="8" cy="20" r="4"/><circle cx="8" cy="44" r="4"/>' },
+    { y:'1958', t:'Rosenblatt — Perceptron เครื่องแรก',
+      d:'Frank Rosenblatt สร้าง Mark I Perceptron เป็นฮาร์ดแวร์จริงที่ "เรียนรู้ weight เอง" จากตัวอย่าง จำแนกรูปทรงง่ายๆ ได้ — New York Times พาดหัวว่ามันจะ "เดินได้ พูดได้ เห็นได้ และมีจิตสำนึก" (คุ้นๆ ไหม?)',
+      ico:'<rect x="12" y="14" width="40" height="30" rx="4"/><circle cx="24" cy="29" r="6"/><circle cx="40" cy="29" r="6"/><path d="M20 52h24M32 44v8"/>' },
+    { y:'1969', t:'Minsky & Papert — กำแพง XOR → AI Winter',
+      d:'หนังสือ "Perceptrons" พิสูจน์ทางคณิตศาสตร์ว่า perceptron ชั้นเดียวแก้ปัญหาง่ายๆ อย่าง XOR ไม่ได้ — ทุนวิจัยแห้งเหือด วงการเข้าสู่ AI Winter ทั้งที่คำตอบ (หลายชั้น) อยู่ตรงหน้า แค่ยังไม่มีวิธีเทรน',
+      ico:'<path d="M14 50L32 14l18 36z"/><path d="M32 28v10"/><circle class="f" cx="32" cy="44" r="2"/>' },
+    { y:'1986', t:'Backpropagation — ปลุกวงการคืนชีพ',
+      d:'Rumelhart, Hinton และ Williams เผยแพร่วิธีเทรนเครือข่าย "หลายชั้น" ด้วยการส่งความผิดพลาดย้อนกลับ — ทลายกำแพงปี 1969 อย่างเป็นทางการ (สัปดาห์หน้าเราจะคำนวณมันด้วยมือ)',
+      ico:'<path d="M50 20H18a8 8 0 0 0 0 16h28a8 8 0 0 1 0 16H14"/><path d="M20 46l-6 6 6 6" transform="translate(0,-6)"/>' },
+    { y:'2012', t:'AlexNet — จุดพลุ Deep Learning',
+      d:'เครือข่ายลึกของทีม Hinton ชนะแข่งจำแนกภาพ ImageNet แบบทิ้งห่างคู่แข่งเป็นประวัติการณ์ ด้วยพลัง GPU + ข้อมูลมหาศาล — โลกทั้งใบหันมาที่ deep learning ภายในข้ามคืน (เจาะลึกCNN)',
+      ico:'<rect x="10" y="10" width="12" height="12" rx="2"/><rect x="26" y="10" width="12" height="12" rx="2"/><rect x="10" y="26" width="12" height="12" rx="2"/><rect x="26" y="26" width="12" height="12" rx="2"/><path d="M42 16h12M42 32h12M48 44v10M32 42v12"/>' },
+    { y:'2017', t:'Transformer — ประตูสู่ยุค LLM',
+      d:'เปเปอร์ "Attention Is All You Need" เสนอสถาปัตยกรรมที่กลายมาเป็น GPT, Claude, Gemini — และข้างในมันคือ MLP แบบที่เราเรียนวันนี้ ซ้อนสลับกับ attention หลายสิบชั้น (พบกันเรื่อง Attention &amp; Transformer)',
+      ico:'<rect x="12" y="8" width="40" height="14" rx="4"/><rect x="12" y="42" width="40" height="14" rx="4"/><path d="M20 22v20M32 22v20M44 22v20M20 32h24"/>' }
+  ];
+  let cur=0, timer=null;
+  ERAS.forEach((e,i)=>{
+    const b=document.createElement('button'); b.className='tl-dot'+(i===0?' on':'');
+    b.innerHTML='<i></i><span>'+e.y+'</span>';
+    b.addEventListener('click',()=>{ stop(); show(i); });
+    bar.appendChild(b);
+  });
+  function show(i){
+    cur=i;
+    [...bar.children].forEach((b,j)=>b.classList.toggle('on',j===i));
+    const e=ERAS[i];
+    card.innerHTML='<svg class="tl-ico" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">'+e.ico+'</svg>'
+      +'<div><h4><small>'+e.y+'</small>'+e.t+'</h4><p>'+e.d+'</p></div>';
+  }
+  const playBtn=document.getElementById('tlPlay');
+  function stop(){ if(timer){ clearInterval(timer); timer=null;
+    playBtn.innerHTML='<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M7 5l13 7-13 7z"/></svg>เล่นไทม์ไลน์อัตโนมัติ'; } }
+  playBtn.addEventListener('click',()=>{
+    if(timer){ stop(); return; }
+    playBtn.textContent='⏸ หยุด';
+    show(0);
+    timer=setInterval(()=>{ if(cur>=ERAS.length-1){ stop(); return; } show(cur+1); }, 3000);
+  });
+  show(0);
+})();
+
+/* ======================================================================
+   2) นิวรอนเดี่ยว — เลขไหลสด
+   ====================================================================== */
+(function(){
+  const eq=document.getElementById('nrEq'); if(!eq) return;
+  const F={
+    step:{ name:'step', f:z=> z>=0?1:0, disp:'step' },
+    sigmoid:{ name:'σ', f:z=> 1/(1+Math.exp(-z)), disp:'σ' },
+    relu:{ name:'ReLU', f:z=> Math.max(0,z), disp:'ReLU' }
+  };
+  let act='sigmoid';
+  const $=id=>document.getElementById(id);
+  const nf=v=>{ const r=Math.round(v*100)/100; return (r<0?'−':'')+Math.abs(r).toFixed(2).replace(/\.?0+$/,'')||'0'; };
+  const nf2=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  function upd(){
+    const x1=+$('inX1').value, x2=+$('inX2').value, w1=+$('inW1').value, w2=+$('inW2').value, b=+$('inB').value;
+    $('vX1').textContent=nf2(x1); $('vX2').textContent=nf2(x2);
+    $('vW1').textContent=nf2(w1); $('vW2').textContent=nf2(w2); $('vB').textContent=nf2(b);
+    const z=w1*x1+w2*x2+b, a=F[act].f(z);
+    /* SVG */
+    $('nrX1').textContent=nf2(x1); $('nrX2').textContent=nf2(x2);
+    $('nrW1').textContent='w₁ = '+nf2(w1); $('nrW2').textContent='w₂ = '+nf2(w2);
+    $('nrB').textContent='b = '+nf2(b);
+    $('nrZ').textContent='z = '+nf2(z);
+    $('nrA').textContent=nf2(a);
+    $('nrFn').textContent=F[act].disp;
+    const e1=$('nrE1'), e2=$('nrE2');
+    e1.setAttribute('stroke', w1>=0?'#2456e6':'#e5484d');
+    e2.setAttribute('stroke', w2>=0?'#2456e6':'#e5484d');
+    e1.setAttribute('stroke-width', Math.max(1.2, Math.min(9, Math.abs(w1)*3.6)));
+    e2.setAttribute('stroke-width', Math.max(1.2, Math.min(9, Math.abs(w2)*3.6)));
+    $('nrW1').setAttribute('fill', w1>=0?'#2456e6':'#e5484d');
+    $('nrW2').setAttribute('fill', w2>=0?'#2456e6':'#e5484d');
+    /* สมการแทนค่า */
+    eq.innerHTML=
+      'z = w₁·x₁ + w₂·x₂ + b = ('+nf2(w1)+')·('+nf2(x1)+') + ('+nf2(w2)+')·('+nf2(x2)+') + ('+nf2(b)+')'
+      +' = '+nf2(w1*x1)+' '+(w2*x2<0?'−':'+')+' '+Math.abs(w2*x2).toFixed(2)+' '+(b<0?'−':'+')+' '+Math.abs(b).toFixed(2)
+      +' = <b>'+nf2(z)+'</b><br>'
+      +'<span class="nr-out">a = '+F[act].disp+'('+nf2(z)+') = <b style="color:#0e7f43">'+nf2(a)+'</b></span>'
+      +(act==='sigmoid'? ' <span style="color:var(--muted);font-size:.85rem">(= 1/(1+e^{−z}) — บีบทุกอย่างลงช่วง 0–1)</span>':'')
+      +(act==='relu'? ' <span style="color:var(--muted);font-size:.85rem">(= max(0, z) — ค่าลบถูกตัดเป็น 0)</span>':'')
+      +(act==='step'? ' <span style="color:var(--muted);font-size:.85rem">(ยิง = 1 เมื่อ z ≥ 0 ไม่งั้น 0 — แบบ Perceptron ดั้งเดิม)</span>':'');
+  }
+  ['inX1','inX2','inW1','inW2','inB'].forEach(id=>$(id).addEventListener('input',()=>{ stopFlow(); upd(); }));
+  document.getElementById('nrActSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    act=b.dataset.f; stopFlow(); upd();
+  });
+  upd();
+
+  /* ---- 🎬 อนิเมชัน: ค่าวิ่งคูณ weight เข้าโหนดทีละเส้น ---- */
+  const chip=$('nrChip'), chipT=$('nrChipT'), chipR=$('nrChipR'), pulse=$('nrPulse');
+  const flowBtn=$('nrFlow'), flowMsg=$('nrFlowMsg');
+  const FL={ on:false, idx:-1, t0:0, timer:null, ph:[] };
+  function chipText(t){ chipT.textContent=t; const w=Math.max(46, t.length*6.6+16);
+    chipR.setAttribute('x',-w/2); chipR.setAttribute('width',w); }
+  function stopFlow(){
+    if(FL.timer){ clearInterval(FL.timer); FL.timer=null; }
+    FL.on=false; chip.setAttribute('opacity',0); pulse.setAttribute('opacity',0);
+    flowMsg.textContent=''; flowBtn.textContent='🎬 ดูค่าวิ่งทีละเส้น';
+  }
+  flowBtn.addEventListener('click',()=>{
+    if(FL.on){ stopFlow(); return; }
+    const x1=+$('inX1').value, x2=+$('inX2').value, w1=+$('inW1').value, w2=+$('inW2').value, b=+$('inB').value;
+    const z=w1*x1+w2*x2+b, a=F[act].f(z);
+    /* 5 ฉาก: เส้น1 → เส้น2 → bias หล่น → รวม z → วิ่งเข้า activation */
+    FL.ph=[
+      { from:[66,70],  to:[262,125], mk:p=> p<0.45? nf2(x1) : (p<0.8? nf2(x1)+' × '+nf2(w1) : '= '+nf2(w1*x1)),
+        msg:'เส้นที่ 1 — x₁ ('+nf2(x1)+') วิ่งไปคูณ w₁ ('+nf2(w1)+') ได้ '+nf2(w1*x1)+' ส่งเข้าโหนดรวม', col:'#2456e6' },
+      { from:[66,180], to:[262,125], mk:p=> p<0.45? nf2(x2) : (p<0.8? nf2(x2)+' × '+nf2(w2) : '= '+nf2(w2*x2)),
+        msg:'เส้นที่ 2 — x₂ ('+nf2(x2)+') วิ่งไปคูณ w₂ ('+nf2(w2)+') ได้ '+nf2(w2*x2), col:'#2456e6' },
+      { from:[262,42], to:[262,100], mk:()=>'+ b = '+nf2(b),
+        msg:'บวก bias — ความง่ายในการยิงของนิวรอน ('+nf2(b)+')', col:'#12a150' },
+      { from:null, to:[262,125], mk:null,
+        msg:'รวมทั้งหมด: z = '+nf2(w1*x1)+' + ('+nf2(w2*x2)+') + ('+nf2(b)+') = '+nf2(z), col:'#7c3aed' },
+      { from:[262,125], to:[404,125], mk:p=> p<0.6? 'z = '+nf2(z) : F[act].disp+'('+nf2(z)+')',
+        msg:'ผ่าน activation: a = '+F[act].disp+'('+nf2(z)+') = '+nf2(a)+' — สัญญาณส่งต่อไปนิวรอนถัดไป!', col:'#12a150' }
+    ];
+    FL.on=true; FL.idx=-1;
+    flowBtn.textContent='⏹ หยุด';
+    const advance=()=>{
+      FL.idx++;
+      if(FL.idx>=FL.ph.length){ stopFlow(); flowMsg.textContent='✓ ครบวงจร forward ของนิวรอน 1 ตัว — MLP ข้างล่างคือสิ่งนี้ซ้อนกันหลายตัว!'; return; }
+      const P=FL.ph[FL.idx];
+      FL.t0=performance.now();
+      flowMsg.textContent=P.msg;
+      chipR.setAttribute('fill',P.col);
+      if(P.from){ chip.setAttribute('opacity',1); chipText(P.mk?P.mk(0):''); }
+      else { chip.setAttribute('opacity',0); pulse.setAttribute('opacity',0.9); }  /* ฉากรวม z: พัลส์ที่โหนด */
+    };
+    advance();
+    FL.timer=setInterval(advance, 2100);
+    /* rAF เลื่อนชิปตามเส้น (ตกแต่ง — ลำดับจริงคุมด้วย setInterval) */
+    const srcP=$('nrSrcP'), trails=[$('nrTr1'),$('nrTr2'),$('nrTr3')];
+    const easeIO=t=>{ t=Math.max(0,Math.min(1,t)); return t<0.5? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; };
+    (function animChip(){
+      if(!FL.on){ srcP.setAttribute('opacity',0); trails.forEach(t=>t.setAttribute('opacity',0));
+        $('nrW1').setAttribute('font-size',12.5); $('nrW2').setAttribute('font-size',12.5); return; }
+      const P=FL.ph[FL.idx];
+      const raw=Math.min(1,(performance.now()-FL.t0)/1800);
+      if(P && P.from){
+        const p=easeIO(raw);
+        const x=P.from[0]+(P.to[0]-P.from[0])*p, y=P.from[1]+(P.to[1]-P.from[1])*p;
+        chip.setAttribute('transform','translate('+x+','+y+')');
+        if(P.mk) chipText(P.mk(raw));
+        chip.setAttribute('opacity', raw>0.96? 0 : 1);
+        /* สีชิป: ก่อนคูณ = น้ำเงิน · หลังคูณ = ส้ม */
+        if(FL.idx===0||FL.idx===1) chipR.setAttribute('fill', raw<0.45? '#2456e6' : (raw<0.8? '#8b5cf6' : '#f59e0b'));
+        /* พัลส์โหนดต้นทาง (ครึ่งแรก) */
+        if(FL.idx<=1){ srcP.setAttribute('cx',P.from[0]); srcP.setAttribute('cy',P.from[1]);
+          srcP.setAttribute('opacity', raw<0.5? 0.35+0.3*Math.sin(performance.now()/130) : 0); }
+        /* ป้าย w ขยายตอนกำลังโดนคูณ */
+        const wEl = FL.idx===0? $('nrW1') : (FL.idx===1? $('nrW2') : null);
+        if(wEl) wEl.setAttribute('font-size', (raw>0.3&&raw<0.85)? 17 : 12.5);
+        /* หางไฟ (ครึ่งหลัง) */
+        trails.forEach((t,q)=>{
+          const pq=easeIO(Math.max(0,raw-(q+1)*0.05));
+          if(raw>0.45&&raw<0.96){ t.setAttribute('opacity',0.4-q*0.11);
+            t.setAttribute('cx',P.from[0]+(P.to[0]-P.from[0])*pq);
+            t.setAttribute('cy',P.from[1]+(P.to[1]-P.from[1])*pq); }
+          else t.setAttribute('opacity',0);
+        });
+        if(raw>0.9){ pulse.setAttribute('cx',P.to[0]); pulse.setAttribute('cy',P.to[1]);
+          pulse.setAttribute('opacity',(1-raw)*6); }
+      } else if(P && !P.from){
+        pulse.setAttribute('cx',262); pulse.setAttribute('cy',125);
+        pulse.setAttribute('opacity', 0.9-raw*0.7);
+        pulse.setAttribute('r', 32+raw*10);
+        if(raw>=1) pulse.setAttribute('r',32);
+        srcP.setAttribute('opacity',0); trails.forEach(t=>t.setAttribute('opacity',0));
+        $('nrW1').setAttribute('font-size',12.5); $('nrW2').setAttribute('font-size',12.5);
+      }
+      requestAnimationFrame(animChip);
+    })();
+  });
+})();
+
+/* ======================================================================
+   3) แกลเลอรี activation — ลากอ่านค่า
+   ====================================================================== */
+(function(){
+  const grid=document.getElementById('actGrid'); if(!grid) return;
+  const ACTS=[
+    { n:'Step', f:x=>x>=0?1:0, lo:-0.15, hi:1.15,
+      note:'ยิง/ไม่ยิง แบบ Perceptron 1958 — เด็ดขาดแต่ความชันเป็น 0 ทุกที่ เทรนด้วย gradient ไม่ได้' },
+    { n:'Sigmoid σ', f:x=>1/(1+Math.exp(-x)), lo:-0.15, hi:1.15,
+      note:'บีบเป็น 0–1 อ่านเป็นความน่าจะเป็นได้ — แต่ปลายแบนสองข้าง = gradient จาง (ปมเรื่อง Backpropagation)' },
+    { n:'tanh', f:x=>Math.tanh(x), lo:-1.25, hi:1.25,
+      note:'พี่น้อง sigmoid แต่ช่วง −1..1 ศูนย์กลางที่ 0 — นิยมใน RNN ยุคก่อน' },
+    { n:'ReLU', f:x=>Math.max(0,x), lo:-0.4, hi:4.2,
+      note:'max(0, z) เรียบง่ายสุด — มาตรฐาน deep learning เพราะฝั่งขวาความชันคงที่ ไม่จาง' }
+  ];
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  ACTS.forEach(A=>{
+    const cell=document.createElement('div'); cell.className='act-cell';
+    cell.innerHTML='<h4>'+A.n+'</h4>';
+    const cv=document.createElement('canvas');
+    const W=180,H=120; cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H;
+    cell.appendChild(cv);
+    const read=document.createElement('div'); read.className='act-read'; read.textContent='ลากบนกราฟ';
+    cell.appendChild(read);
+    const note=document.createElement('p'); note.className='act-note'; note.textContent=A.note;
+    cell.appendChild(note);
+    grid.appendChild(cell);
+    const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    const XR=4.2, px=x=>W/2+x/XR*(W/2-8), py=y=>{ const span=A.hi-A.lo; return H-10-(y-A.lo)/span*(H-20); };
+    let probe=null;
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      ctx.strokeStyle='rgba(90,100,120,.25)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(px(-XR),py(0)); ctx.lineTo(px(XR),py(0)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px(0),4); ctx.lineTo(px(0),H-4); ctx.stroke();
+      ctx.beginPath();
+      let started=false;
+      for(let i=0;i<=120;i++){ const x=-XR+2*XR*i/120, y=A.f(x);
+        const X=px(x), Y=py(y);
+        if(A.n==='Step' && i>0 && Math.abs(y-A.f(-XR+2*XR*(i-1)/120))>0.5){ ctx.moveTo(X,Y); }
+        else if(started) ctx.lineTo(X,Y); else { ctx.moveTo(X,Y); started=true; }
+      }
+      ctx.strokeStyle='#7c3aed'; ctx.lineWidth=2.4; ctx.lineCap='round'; ctx.stroke();
+      if(probe!=null){
+        const y=A.f(probe);
+        ctx.setLineDash([3,3]); ctx.strokeStyle='rgba(124,58,237,.5)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(px(probe),py(A.lo)); ctx.lineTo(px(probe),py(y)); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(px(probe),py(y),5,0,Math.PI*2);
+        ctx.fillStyle='#7c3aed'; ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+      }
+    }
+    function onMove(e){
+      const r=cv.getBoundingClientRect();
+      probe=Math.max(-XR,Math.min(XR,((e.clientX-r.left)/r.width*W-W/2)/(W/2-8)*XR));
+      const y=A.f(probe);
+      read.textContent='f('+probe.toFixed(1)+') = '+y.toFixed(2);
+      draw();
+    }
+    cv.addEventListener('pointermove',onMove);
+    cv.addEventListener('pointerdown',onMove);
+    draw();
+  });
+})();
+
+/* ======================================================================
+   4) MLP Playground 2-3-2 + softmax
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('mlpCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=780,H=440, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  /* ชุด weight XOR (ตรวจแล้ว: (0,0)→C0, (0,1)→C1, (1,0)→C1, (1,1)→C0) */
+  const XOR={ W1:[[1,1],[1,1],[0,0]], b1:[-0.5,-1.5,0], W2:[[-4,16,0],[4,-16,0]], b2:[1,-1] };
+  const NET={ W1:XOR.W1.map(r=>r.slice()), b1:XOR.b1.slice(),
+              W2:XOR.W2.map(r=>r.slice()), b2:XOR.b2.slice(),
+              x:[1,0], vals:null, phase:0, timer:null, phaseT:0 };
+  /* สถานะโหมด "Forward ทีละเส้น" */
+  const AN={ on:false, timer:null, idx:-1, t0:0, steps:[], cur:null, speed:1,
+             acc:{ hnet:[0,0,0], htouch:[0,0,0], ha:[null,null,null], onet:[0,0], otouch:[0,0], p:null },
+             disp:{ hnet:[0,0,0], onet:[0,0] } };
+
+  const nf2=v=>(v<0?'−':'')+Math.abs(v).toFixed(2);
+  /* activation ชั้นซ่อน — เลือกได้ */
+  const ACTS={
+    relu:   { name:'ReLU',    eq:'max(0, net)',        f:z=>Math.max(0,z) },
+    sigmoid:{ name:'sigmoid', eq:'1/(1+e^−net)',       f:z=>1/(1+Math.exp(-z)) },
+    tanh:   { name:'tanh',    eq:'tanh(net)',          f:z=>Math.tanh(z) }
+  };
+  NET.act='relu';
+  function forward(x){
+    const hz=[0,1,2].map(j=> NET.W1[j][0]*x[0]+NET.W1[j][1]*x[1]+NET.b1[j]);
+    const ha=hz.map(ACTS[NET.act].f);
+    const oz=[0,1].map(k=> NET.W2[k][0]*ha[0]+NET.W2[k][1]*ha[1]+NET.W2[k][2]*ha[2]+NET.b2[k]);
+    const m=Math.max(oz[0],oz[1]);
+    const ex=oz.map(z=>Math.exp(z-m)), s=ex[0]+ex[1];
+    return { hz, ha, oz, p:[ex[0]/s, ex[1]/s] };
+  }
+
+  /* ---- ตำแหน่งโหนด ---- */
+  const IN=[{x:110,y:150},{x:110,y:290}];
+  const HD=[{x:390,y:95},{x:390,y:220},{x:390,y:345}];
+  const OUT=[{x:625,y:160},{x:625,y:280}];
+
+  const phaseEl=document.getElementById('mlpPhase');
+  const PH_TXT=[
+    ['#9aa3b8','พร้อม — กด ▶ Forward'],
+    ['#2456e6','ชั้น input — รับค่า x'],
+    ['#8b5cf6','ชั้นซ่อน — net = W⁽¹⁾x + b⁽¹⁾ → out = activation(net)'],
+    ['#12a150','ชั้นออก + softmax — ได้ความน่าจะเป็น!']
+  ];
+  function setPhase(p){
+    NET.phase=p; NET.phaseT=performance.now();
+    const [c,t]=PH_TXT[p];
+    phaseEl.innerHTML='<span class="dot" style="background:'+c+'"></span> '+t;
+  }
+
+  const LT1=i=>0.30+i*0.17, LT2=j=>0.34+j*0.11;   /* ตำแหน่งป้าย weight ตามเส้น */
+  function draw(now){
+    ctx.clearRect(0,0,W,H);
+    const v=NET.vals, ph=NET.phase;
+    const cur=AN.on? AN.cur : null;
+    const isE1=(i,j)=> cur&&cur.t==='e1'&&cur.i===i&&cur.j===j;
+    const isE2=(j,k)=> cur&&cur.t==='e2'&&cur.j===j&&cur.k===k;
+    /* สปอตไลต์: โหมดทีละเส้นหรี่ทุกอย่างที่ไม่เกี่ยว */
+    const spot=new Set();
+    if(cur){
+      if(cur.t==='e1'){ spot.add('I'+cur.i); spot.add('H'+cur.j); }
+      else if(cur.t==='b1'||cur.t==='a1'){ spot.add('H'+cur.j); }
+      else if(cur.t==='e2'){ spot.add('H'+cur.j); spot.add('O'+cur.k); }
+      else if(cur.t==='b2'){ spot.add('O'+cur.k); }
+      else { spot.add('O0'); spot.add('O1'); }
+    }
+    const nA=key=> !AN.on? 1 : (spot.has(key)? 1 : 0.32);
+    /* ตัวเลขสะสมนับขึ้น (count-up ตกแต่ง) */
+    if(AN.on){
+      for(let j=0;j<3;j++) AN.disp.hnet[j]+=(AN.acc.hnet[j]-AN.disp.hnet[j])*0.16;
+      for(let k=0;k<2;k++) AN.disp.onet[k]+=(AN.acc.onet[k]-AN.disp.onet[k])*0.16;
+    }
+    /* เส้นเชื่อม */
+    function edge(a,b,w,al){
+      ctx.strokeStyle=(w>=0?'rgba(36,86,230,':'rgba(229,72,77,')+(Math.min(0.85,0.18+Math.abs(w)*0.09)*al).toFixed(3)+')';
+      ctx.lineWidth=Math.max(1,Math.min(9,Math.abs(w)*1.5));
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+    }
+    const dimE=AN.on?0.15:1;
+    for(let j=0;j<3;j++) for(let i=0;i<2;i++) edge(IN[i],HD[j],NET.W1[j][i], isE1(i,j)?1:dimE);
+    for(let k=0;k<2;k++) for(let j=0;j<3;j++) edge(HD[j],OUT[k],NET.W2[k][j], isE2(j,k)?1:dimE);
+    /* ป้ายค่า weight เขียนกำกับตามเส้น (เหมือนตำรา) — เส้น active วาดแยกแบบขยายในเลเยอร์อนิเมชัน */
+    function edgeLabel(a,b,w,t,al){
+      const x=a.x+(b.x-a.x)*t, y=a.y+(b.y-a.y)*t, txt=nf2(w);
+      ctx.save(); ctx.globalAlpha=al;
+      ctx.font='700 10px Poppins, Kanit, sans-serif';
+      const tw=ctx.measureText(txt).width+9;
+      ctx.fillStyle='rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.roundRect(x-tw/2,y-8.5,tw,17,5); ctx.fill();
+      ctx.strokeStyle='rgba(127,127,127,.3)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.fillStyle=w>=0?'#2456e6':'#e5484d';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,x,y);
+      ctx.restore();
+    }
+    for(let j=0;j<3;j++) for(let i=0;i<2;i++){ if(!isE1(i,j)) edgeLabel(IN[i],HD[j],NET.W1[j][i], LT1(i), AN.on?0.25:1); }
+    for(let k=0;k<2;k++) for(let j=0;j<3;j++){ if(!isE2(j,k)) edgeLabel(HD[j],OUT[k],NET.W2[k][j], LT2(j), AN.on?0.25:1); }
+
+    /* พัลส์วิ่ง (ตกแต่ง — state จริงมาจาก phase) */
+    if(v && now){
+      const t=(now-NET.phaseT)/650;
+      if(t<1){
+        function pulse(a,b){
+          const x=a.x+(b.x-a.x)*t, y=a.y+(b.y-a.y)*t;
+          ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2);
+          ctx.fillStyle='rgba(124,58,237,.85)'; ctx.fill();
+        }
+        if(ph===2) for(let j=0;j<3;j++) for(let i=0;i<2;i++) pulse(IN[i],HD[j]);
+        if(ph===3) for(let k=0;k<2;k++) for(let j=0;j<3;j++) pulse(HD[j],OUT[k]);
+      }
+    }
+
+    /* โหนด */
+    function node(pt,r,fill,stroke){
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,r,0,Math.PI*2);
+      ctx.fillStyle=fill; ctx.fill(); ctx.lineWidth=2.6; ctx.strokeStyle=stroke; ctx.stroke();
+    }
+    /* โหนดผ่าครึ่งแบบตำรา: ขีดเส้นแนวตั้งกลางโหนด · ซ้าย = net · ขวา = out */
+    function splitNode(pt,r,fill,stroke,lCap,lVal,lCol,rCap,rVal,rCol){
+      node(pt,r,fill,stroke);
+      const half=Math.sqrt(r*r-1);
+      ctx.beginPath(); ctx.moveTo(pt.x,pt.y-half); ctx.lineTo(pt.x,pt.y+half);
+      ctx.strokeStyle=stroke; ctx.lineWidth=1.3; ctx.globalAlpha=.55; ctx.stroke(); ctx.globalAlpha=1;
+      const dx=r*0.48;
+      label(pt.x-dx,pt.y-9,lCap,8.5,lCol);
+      label(pt.x-dx,pt.y+8,lVal,10.5,lCol,true);
+      label(pt.x+dx,pt.y-9,rCap,8.5,rCol);
+      label(pt.x+dx,pt.y+8,rVal,10.5,rCol,true);
+    }
+    function label(x,y,txt,size,col,bold){
+      ctx.fillStyle=col||'#1f2533'; ctx.font=(bold?'700 ':'600 ')+(size||12)+'px Poppins, Kanit, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,x,y);
+    }
+    /* input */
+    IN.forEach((pt,i)=>{
+      ctx.save(); ctx.globalAlpha=nA('I'+i);
+      node(pt,30,'#eef2ff','#2456e6');
+      label(pt.x,pt.y-44,'x'+(i+1),13,'#5b6475');
+      if(ph>=1 && v) label(pt.x,pt.y,nf2(NET.x[i]),15,'#1f2533',true);
+      else label(pt.x,pt.y,'?',15,'#9aa3b8',true);
+      ctx.restore();
+    });
+    /* hidden — ผ่าแนวตั้ง: ซ้าย h_net | ขวา h_out (โหมดทีละเส้น = ค่าสะสมนับขึ้น) */
+    HD.forEach((pt,j)=>{
+      let has=false, hasO=false, netV='?', outV='?';
+      if(AN.on){ has=!!AN.acc.htouch[j]; hasO=AN.acc.ha[j]!=null;
+        if(has) netV=nf2(AN.disp.hnet[j]); if(hasO) outV=nf2(AN.acc.ha[j]); }
+      else if(ph>=2 && v){ has=hasO=true; netV=nf2(v.hz[j]); outV=nf2(v.ha[j]); }
+      ctx.save(); ctx.globalAlpha=nA('H'+j);
+      label(pt.x,pt.y-53,'h'+(j+1)+' ('+ACTS[NET.act].name+')',12,'#5b6475');
+      splitNode(pt,39,'#f5f3ff','#7c3aed',
+        'h'+(j+1)+'_net', netV, has?'#6d28d9':'#9aa3b8',
+        'h'+(j+1)+'_out', outV, hasO?'#1f2533':'#9aa3b8');
+      ctx.restore();
+    });
+    /* output — ผ่าแนวตั้ง: ซ้าย o_net | ขวา p (หลัง softmax) */
+    const pv = AN.on? AN.acc.p : (ph>=3 && v? v.p : null);
+    OUT.forEach((pt,k)=>{
+      let has=false, netV='?';
+      if(AN.on){ has=!!AN.acc.otouch[k]; if(has) netV=nf2(AN.disp.onet[k]); }
+      else if(ph>=3 && v){ has=true; netV=nf2(v.oz[k]); }
+      ctx.save(); ctx.globalAlpha=nA('O'+k);
+      label(pt.x,pt.y-50,'คลาส '+k,12,'#5b6475');
+      const pct=pv? (pv[k]>=0.9995? '100%' : (pv[k]*100).toFixed(1)+'%') : '?';
+      splitNode(pt,36,'#ecfdf5','#12a150',
+        'o'+(k+1)+'_net', netV, has?'#0e7f43':'#9aa3b8',
+        'p', pct, pv?'#1f2533':'#9aa3b8');
+      /* แถบ softmax */
+      const bx=678,bw=86,bh=20,by=pt.y-10;
+      ctx.strokeStyle='rgba(90,100,120,.35)'; ctx.lineWidth=1;
+      ctx.strokeRect(bx,by,bw,bh);
+      if(pv){
+        ctx.fillStyle=k===0?'rgba(36,86,230,.75)':'rgba(18,161,80,.75)';
+        ctx.fillRect(bx,by,bw*pv[k],bh);
+        label(bx+bw/2,by+bh+13,'p='+(pv[k]*100).toFixed(1)+'%',12, pv[k]>=0.5?'#0e7f43':'#5b6475', pv[k]>=0.5);
+      }
+      ctx.restore();
+    });
+    label(721,64,'softmax',12.5,'#12a150',true);
+    /* คำตัดสิน */
+    if(pv){
+      const win=pv[0]>=pv[1]?0:1;
+      ctx.fillStyle='#0e7f43'; ctx.font='700 15px Kanit, Poppins, sans-serif'; ctx.textAlign='center';
+      ctx.fillText('ทำนาย: คลาส '+win+' ('+(pv[win]*100).toFixed(1)+'%)', 390, 420);
+    }
+    /* 🎬 เลเยอร์อนิเมชันทีละเส้น — 3 จังหวะ: ①ดึงค่าออกจากโหนด ②จับคูณ weight (แฟลช) ③ผลลัพธ์พุ่งเข้าโหนดมีหาง */
+    if(AN.on && cur && now){
+      const p=Math.min(1,(now-AN.t0)/cur.ed);
+      const ease=t=>{ t=Math.max(0,Math.min(1,t)); return t<0.5? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2; };
+      const ring=(n,rr,rgb,a)=>{ if(a<=0)return; ctx.beginPath(); ctx.arc(n.x,n.y,rr,0,Math.PI*2);
+        ctx.strokeStyle='rgba('+rgb+','+Math.min(1,a).toFixed(2)+')'; ctx.lineWidth=3; ctx.stroke(); };
+      const orb=(x,y,txt,col,glow)=>{
+        const g=ctx.createRadialGradient(x,y,2,x,y,30);
+        g.addColorStop(0,'rgba(255,255,255,.9)'); g.addColorStop(0.4,glow); g.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,30,0,Math.PI*2); ctx.fill();
+        ctx.font='800 12.5px Poppins, Kanit, sans-serif';
+        const tw=ctx.measureText(txt).width+18;
+        ctx.fillStyle=col; ctx.beginPath(); ctx.roundRect(x-tw/2,y-13,tw,26,11); ctx.fill();
+        ctx.lineWidth=1.8; ctx.strokeStyle='rgba(255,255,255,.95)'; ctx.stroke();
+        ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,x,y);
+      };
+      if(cur.t==='e1'||cur.t==='e2'){
+        const a=cur.from, b=cur.to;
+        const L={x:a.x+(b.x-a.x)*cur.lt, y:a.y+(b.y-a.y)*cur.lt};
+        /* เส้น active เรืองแสง */
+        ctx.save(); ctx.shadowColor='rgba(245,158,11,.8)'; ctx.shadowBlur=10;
+        ctx.strokeStyle='rgba(245,158,11,.95)'; ctx.lineWidth=5; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); ctx.restore();
+        /* ① ต้นทางเต้น + ลูกแก้ว "ค่า" ลอยออกจากโหนด ไปหาป้าย weight */
+        if(p<0.52) ring(a, 36+Math.sin(now/130)*3.5, '36,86,230', 0.55);
+        /* ป้าย weight ขยายเรืองแสง รอโดนคูณ */
+        if(p<0.46){
+          const sc=1+0.85*ease(p/0.18);
+          ctx.save(); ctx.translate(L.x,L.y); ctx.scale(sc,sc);
+          ctx.shadowColor='rgba(139,92,246,.9)'; ctx.shadowBlur=14;
+          ctx.font='800 11px Poppins, Kanit, sans-serif';
+          const wt='w = '+nf2(cur.w), tw=ctx.measureText(wt).width+16;
+          ctx.fillStyle='#7c3aed'; ctx.beginPath(); ctx.roundRect(-tw/2,-12,tw,24,9); ctx.fill();
+          ctx.lineWidth=1.6; ctx.strokeStyle='#fff'; ctx.stroke();
+          ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(wt,0,0);
+          ctx.restore();
+        }
+        let ox,oy,txt,col,glow;
+        if(p<0.34){            /* ① ดึงค่าจากโหนดต้นทาง */
+          const e=ease(p/0.34);
+          ox=a.x+(L.x-a.x)*e; oy=a.y-34*Math.sin(Math.PI*e)+(L.y-a.y)*e;   /* โค้งลอยขึ้นเล็กน้อย */
+          txt=cur.valTxt; col='#2456e6'; glow='rgba(96,165,250,.75)';
+        } else if(p<0.52){     /* ② จับคูณ — แฟลชขาว */
+          ox=L.x; oy=L.y; txt=cur.valTxt+' × '+nf2(cur.w); col='#8b5cf6'; glow='rgba(167,139,250,.85)';
+          const fa=Math.max(0,1-Math.abs((p-0.40)/0.09));
+          if(fa>0){ ctx.fillStyle='rgba(255,255,255,'+(0.65*fa).toFixed(2)+')';
+            ctx.beginPath(); ctx.arc(L.x,L.y,40*(1+fa*0.4),0,Math.PI*2); ctx.fill(); }
+        } else {               /* ③ ผลคูณพุ่งเข้าโหนดปลายทาง มีหางไฟ */
+          const e=ease((p-0.52)/0.41);
+          ox=L.x+(b.x-L.x)*e; oy=L.y+(b.y-L.y)*e;
+          txt='= '+nf2(cur.res); col='#f59e0b'; glow='rgba(251,191,36,.85)';
+          for(let q=1;q<=6;q++){
+            const pe=ease(Math.max(0,(p-0.52-q*0.022))/0.41);
+            const tx2=L.x+(b.x-L.x)*pe, ty2=L.y+(b.y-L.y)*pe;
+            ctx.fillStyle='rgba(251,191,36,'+(0.38-q*0.055).toFixed(2)+')';
+            ctx.beginPath(); ctx.arc(tx2,ty2,11-q*1.3,0,Math.PI*2); ctx.fill();
+          }
+        }
+        if(p<0.94) orb(ox,oy,txt,col,glow);
+        if(p>0.82) ring(b, 46+(p-0.82)*90, '245,158,11', (1-p)*4.5);
+      }
+      else if(cur.t==='b1'||cur.t==='b2'){
+        /* bias หล่นจากบนแบบเด้ง */
+        const eb=t=>{ t=Math.max(0,Math.min(1,t)); const c1=1.7, c3=c1+1;
+          return 1+c3*Math.pow(t-1,3)+c1*Math.pow(t-1,2); };
+        const n=cur.to, sy=n.y-96, yy=sy+(n.y-sy)*eb(Math.min(1,p/0.7));
+        if(p<0.92) orb(n.x, yy, '+ b = '+nf2(cur.res), '#12a150', 'rgba(52,211,153,.8)');
+        if(p>0.6) ring(n, 44+(p-0.6)*60, '18,161,80', (1-p)*2.2);
+      }
+      else if(cur.t==='a1'){
+        /* ประกายวิ่งข้ามเส้นแบ่ง net → out ในโหนด */
+        const n=cur.node;
+        ring(n, 44+p*16, '18,161,80', 0.9-p*0.8);
+        const sx=n.x-17+34*ease(p);
+        ctx.save(); ctx.shadowColor='rgba(52,211,153,.9)'; ctx.shadowBlur=12;
+        ctx.fillStyle='#10b981'; ctx.beginPath(); ctx.arc(sx,n.y,5,0,Math.PI*2); ctx.fill(); ctx.restore();
+        if(p>0.5){ const sc2=1+0.5*Math.max(0,1-((p-0.5)/0.3));
+          ctx.save(); ctx.translate(n.x+19,n.y+8); ctx.scale(sc2,sc2);
+          ctx.fillStyle='#0e7f43'; ctx.font='800 11px Poppins, sans-serif';
+          ctx.textAlign='center'; ctx.fillText(nf2(AN.acc.ha[cur.j]),0,0); ctx.restore(); }
+      }
+      else { /* softmax: คลื่นสองโหนด + สายเชื่อมเต้น */
+        OUT.forEach(n=> ring(n, 42+((now/8)%26), '18,161,80', 0.7-(((now/8)%26)/26)*0.6));
+        ctx.setLineDash([5,5]); ctx.lineDashOffset=-now/40;
+        ctx.strokeStyle='rgba(18,161,80,.6)'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(OUT[0].x,OUT[0].y+36); ctx.lineTo(OUT[1].x,OUT[1].y-36); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  /* ---- ตาราง weight แก้ได้ ---- */
+  const t1=document.getElementById('mlpW1'), t2=document.getElementById('mlpW2');
+  function buildTables(){
+    t1.innerHTML='<tr><th></th><th>w ← x₁</th><th>w ← x₂</th><th>b</th></tr>'+
+      [0,1,2].map(j=>'<tr><th>h'+(j+1)+'</th>'
+        +'<td><input type="number" step="0.5" data-m="W1" data-r="'+j+'" data-c="0" value="'+NET.W1[j][0]+'"></td>'
+        +'<td><input type="number" step="0.5" data-m="W1" data-r="'+j+'" data-c="1" value="'+NET.W1[j][1]+'"></td>'
+        +'<td><input type="number" step="0.5" data-m="b1" data-r="'+j+'" value="'+NET.b1[j]+'"></td></tr>').join('');
+    t2.innerHTML='<tr><th></th><th>w ← h₁</th><th>w ← h₂</th><th>w ← h₃</th><th>b</th></tr>'+
+      [0,1].map(k=>'<tr><th>คลาส '+k+'</th>'
+        +[0,1,2].map(j=>'<td><input type="number" step="0.5" data-m="W2" data-r="'+k+'" data-c="'+j+'" value="'+NET.W2[k][j]+'"></td>').join('')
+        +'<td><input type="number" step="0.5" data-m="b2" data-r="'+k+'" value="'+NET.b2[k]+'"></td></tr>').join('');
+  }
+  buildTables();
+  document.querySelector('.mlp-wtbl').addEventListener('input',e=>{
+    const inp=e.target; if(inp.tagName!=='INPUT') return;
+    const v=parseFloat(inp.value); if(!isFinite(v)) return;
+    const m=inp.dataset.m, r=+inp.dataset.r, c=inp.dataset.c;
+    if(m==='W1') NET.W1[r][+c]=v; else if(m==='b1') NET.b1[r]=v;
+    else if(m==='W2') NET.W2[r][+c]=v; else NET.b2[r]=v;
+    if(NET.phase===3){ NET.vals=forward(NET.x); }   /* อัปเดตผลสดถ้าคำนวณครบแล้ว */
+  });
+
+  /* ---- ปุ่ม ---- */
+  const $=id=>document.getElementById(id);
+  function readX(){ NET.x=[parseFloat($('mlpX1').value)||0, parseFloat($('mlpX2').value)||0]; }
+  function stopTimer(){ if(NET.timer){ clearInterval(NET.timer); NET.timer=null; } }
+
+  /* ---- 🎬 โหมด Forward ทีละเส้น: ดึงค่า → จับคูณ weight → ส่งเข้าโหนด (แผงสมการเติมทีละพจน์) ---- */
+  const eqP=$('mlpEqPanel');
+  function stopFlow(){
+    if(AN.timer){ clearTimeout(AN.timer); AN.timer=null; }
+    AN.on=false; AN.cur=null;
+    eqP.style.display='none';
+    $('mlpFlow').textContent='🎬 Forward ทีละเส้น (โชว์การคูณ)';
+  }
+  const eqTerm=(txt,st)=>'<span class="eq-t '+st+'">'+txt+'</span>';
+  function eqShow(){
+    const s=AN.cur; if(!s) return;
+    eqP.style.display='block';
+    const act=ACTS[NET.act]; let h='';
+    if(s.t==='e1'||s.t==='b1'||s.t==='a1'){
+      const j=s.j, parts=[];
+      for(let i=0;i<2;i++){
+        const st = s.t==='e1'? (i<s.i?'done': i===s.i?'cur':'todo') : 'done';
+        parts.push(eqTerm(st==='todo'? 'x'+(i+1)+'·w' : nf2(NET.x[i])+' × '+nf2(NET.W1[j][i]), st));
+      }
+      const bst = s.t==='b1'?'cur' : (s.t==='a1'?'done':'todo');
+      parts.push(eqTerm(bst==='todo'?'b':'b = '+nf2(NET.b1[j]), bst));
+      h='<b>h'+(j+1)+'_net</b> = '+parts.join(' + ')
+        +' &nbsp;<span class="eq-sum">⟶ สะสม = '+nf2(AN.acc.hnet[j])+'</span>';
+      if(s.t==='a1') h+='<br><b>h'+(j+1)+'_out</b> = '+act.name+'('+nf2(AN.acc.hnet[j])+') = <span class="eq-res">'+nf2(AN.acc.ha[j])+'</span>';
+    } else if(s.t==='e2'||s.t==='b2'){
+      const k=s.k, parts=[];
+      for(let j=0;j<3;j++){
+        const st = s.t==='e2'? (j<s.j?'done': j===s.j?'cur':'todo') : 'done';
+        parts.push(eqTerm(st==='todo'? 'h'+(j+1)+'_out·w' : nf2(AN.acc.ha[j])+' × '+nf2(NET.W2[k][j]), st));
+      }
+      parts.push(eqTerm(s.t==='b2'? 'b = '+nf2(NET.b2[k]) : 'b', s.t==='b2'?'cur':'todo'));
+      h='<b>o'+(k+1)+'_net</b> (คลาส '+k+') = '+parts.join(' + ')
+        +' &nbsp;<span class="eq-sum">⟶ สะสม = '+nf2(AN.acc.onet[k])+'</span>';
+    } else {
+      h='<b>softmax</b> — แปลงคะแนนดิบสองตัวเป็นความน่าจะเป็น:<br>'
+        +'p(คลาส 0) = e^'+nf2(AN.acc.onet[0])+' / (e^'+nf2(AN.acc.onet[0])+' + e^'+nf2(AN.acc.onet[1])+') = <span class="eq-res">'+(AN.acc.p[0]*100).toFixed(1)+'%</span>'
+        +' &nbsp;·&nbsp; p(คลาส 1) = <span class="eq-res">'+(AN.acc.p[1]*100).toFixed(1)+'%</span> — รวมกันได้ 1 พอดี';
+    }
+    eqP.innerHTML=h;
+  }
+  function advanceFlow(){
+    AN.idx++;
+    if(AN.idx>=AN.steps.length){
+      const fv=forward(NET.x);
+      stopFlow(); NET.vals=fv; setPhase(3);
+      eqP.style.display='block';
+      eqP.innerHTML='✓ <b>Forward ครบทุกเส้น!</b> คำตอบ: <span class="eq-res">คลาส '+(fv.p[0]>=fv.p[1]?0:1)+' ('+(Math.max(fv.p[0],fv.p[1])*100).toFixed(1)+'%)</span> — นี่คือสิ่งที่เกิดขึ้นทุกครั้งที่เครือข่าย "คิด" (LLM ทำแบบนี้กับ weight แสนล้านตัว)';
+      return;
+    }
+    const s=AN.steps[AN.idx]; AN.cur=s; AN.t0=performance.now();
+    const dot='<span class="dot" style="background:#f59e0b"></span> ';
+    if(s.t==='e1'){
+      s.res=NET.W1[s.j][s.i]*NET.x[s.i];
+      s.from=IN[s.i]; s.to=HD[s.j]; s.lt=LT1(s.i);
+      s.valTxt=nf2(NET.x[s.i]); s.w=NET.W1[s.j][s.i]; s.dur=3400;
+      AN.acc.hnet[s.j]+=s.res; AN.acc.htouch[s.j]=1;
+      phaseEl.innerHTML=dot+'① ดึง x'+(s.i+1)+' = '+s.valTxt+' → ② คูณ w = '+nf2(s.w)+' → ③ ส่งเข้า h'+(s.j+1);
+    } else if(s.t==='b1'){
+      s.res=NET.b1[s.j]; s.to=HD[s.j]; s.from=null; s.dur=2100;
+      AN.acc.hnet[s.j]+=s.res;
+      phaseEl.innerHTML=dot+'เติม bias ของ h'+(s.j+1)+' → net ครบทุกพจน์แล้ว';
+    } else if(s.t==='a1'){
+      AN.acc.ha[s.j]=ACTS[NET.act].f(AN.acc.hnet[s.j]);
+      s.from=null; s.node=HD[s.j]; s.dur=2100;
+      phaseEl.innerHTML='<span class="dot" style="background:#12a150"></span> ผ่าน activation: h'+(s.j+1)+'_out = '+ACTS[NET.act].name+'('+nf2(AN.acc.hnet[s.j])+')';
+    } else if(s.t==='e2'){
+      s.res=NET.W2[s.k][s.j]*AN.acc.ha[s.j];
+      s.from=HD[s.j]; s.to=OUT[s.k]; s.lt=LT2(s.j);
+      s.valTxt=nf2(AN.acc.ha[s.j]); s.w=NET.W2[s.k][s.j]; s.dur=3400;
+      AN.acc.onet[s.k]+=s.res; AN.acc.otouch[s.k]=1;
+      phaseEl.innerHTML=dot+'① ดึง h'+(s.j+1)+'_out = '+s.valTxt+' → ② คูณ w = '+nf2(s.w)+' → ③ ส่งเข้าคลาส '+s.k;
+    } else if(s.t==='b2'){
+      s.res=NET.b2[s.k]; s.to=OUT[s.k]; s.from=null; s.dur=2100;
+      AN.acc.onet[s.k]+=s.res;
+      phaseEl.innerHTML=dot+'เติม bias ของคลาส '+s.k;
+    } else {
+      const m=Math.max(AN.acc.onet[0],AN.acc.onet[1]);
+      const ex=AN.acc.onet.map(z=>Math.exp(z-m)), sum=ex[0]+ex[1];
+      AN.acc.p=[ex[0]/sum, ex[1]/sum];
+      s.from=null; s.node=OUT[0]; s.dur=3200;
+      phaseEl.innerHTML='<span class="dot" style="background:#12a150"></span> ขั้นสุดท้าย: softmax แปลงคะแนนเป็นความน่าจะเป็น';
+    }
+    s.ed=s.dur/AN.speed;
+    eqShow();
+    AN.timer=setTimeout(advanceFlow, s.ed);
+  }
+  $('mlpFlow').addEventListener('click',()=>{
+    if(AN.on){ stopFlow(); return; }
+    stopTimer(); readX();
+    NET.vals=forward(NET.x);
+    AN.acc={ hnet:[0,0,0], htouch:[0,0,0], ha:[null,null,null], onet:[0,0], otouch:[0,0], p:null };
+    AN.disp={ hnet:[0,0,0], onet:[0,0] };
+    AN.steps=[];
+    for(let j=0;j<3;j++){ for(let i=0;i<2;i++) AN.steps.push({t:'e1',i,j}); AN.steps.push({t:'b1',j}); AN.steps.push({t:'a1',j}); }
+    for(let k=0;k<2;k++){ for(let j=0;j<3;j++) AN.steps.push({t:'e2',j,k}); AN.steps.push({t:'b2',k}); }
+    AN.steps.push({t:'soft'});
+    AN.on=true; AN.idx=-1;
+    setPhase(1);
+    $('mlpFlow').textContent='⏹ หยุดอนิเมชัน';
+    advanceFlow();
+  });
+  $('mlpSpeed').addEventListener('click',function(){
+    AN.speed = AN.speed===1? 2 : 1;
+    this.textContent = AN.speed===1? '🐢 ความเร็ว ×1' : '🐇 ความเร็ว ×2';
+  });
+
+  $('mlpFwd').addEventListener('click',()=>{
+    stopFlow(); stopTimer(); readX();
+    NET.vals=forward(NET.x);        /* คำนวณ synchronous ครบทันที */
+    setPhase(1);
+    let p=1;
+    NET.timer=setInterval(()=>{ p++; setPhase(p); if(p>=3) stopTimer(); }, 750);
+  });
+  $('mlpInstant').addEventListener('click',()=>{ stopFlow(); stopTimer(); readX(); NET.vals=forward(NET.x); setPhase(3); });
+  $('mlpQuick').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    const [a,c]=b.dataset.x.split(',');
+    $('mlpX1').value=a; $('mlpX2').value=c;
+    stopFlow(); stopTimer(); readX(); NET.vals=forward(NET.x); setPhase(3);
+  });
+  $('mlpXor').addEventListener('click',()=>{
+    stopFlow();
+    NET.W1=XOR.W1.map(r=>r.slice()); NET.b1=XOR.b1.slice();
+    NET.W2=XOR.W2.map(r=>r.slice()); NET.b2=XOR.b2.slice();
+    buildTables();
+    if(NET.phase===3) NET.vals=forward(NET.x);
+  });
+  let seed=42; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+  $('mlpRand').addEventListener('click',()=>{
+    stopFlow();
+    const r=()=>Math.round((rnd()*4-2)*2)/2;
+    NET.W1=[[r(),r()],[r(),r()],[r(),r()]]; NET.b1=[r(),r(),r()];
+    NET.W2=[[r(),r(),r()],[r(),r(),r()]]; NET.b2=[r(),r()];
+    buildTables();
+    if(NET.phase===3) NET.vals=forward(NET.x);
+  });
+  /* เลือก activation ชั้นซ่อน — h_out คำนวณใหม่ทันที */
+  $('mlpAct').addEventListener('click',e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    stopFlow();
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    NET.act=b.dataset.a;
+    $('mlpActName').textContent=ACTS[NET.act].name;
+    $('mlpActEq').textContent=ACTS[NET.act].eq;
+    if(NET.phase>=2 && NET.vals) NET.vals=forward(NET.x);
+  });
+  $('mlpAll4').addEventListener('click',()=>{
+    const cases=[[0,0],[0,1],[1,0],[1,1]], xorAns=[0,1,1,0];
+    let html='<table><tr><th>x₁, x₂</th><th>p(คลาส 0)</th><th>p(คลาส 1)</th><th>ทำนาย</th><th>XOR จริง</th><th>ผล</th></tr>';
+    let ok=0;
+    cases.forEach((x,i)=>{
+      const v=forward(x), win=v.p[0]>=v.p[1]?0:1, good=win===xorAns[i];
+      if(good) ok++;
+      html+='<tr><td>('+x[0]+', '+x[1]+')</td><td>'+(v.p[0]*100).toFixed(1)+'%</td><td>'+(v.p[1]*100).toFixed(1)+'%</td>'
+        +'<td><b>'+win+'</b></td><td>'+xorAns[i]+'</td><td>'+(good?'✅':'❌')+'</td></tr>';
+    });
+    html+='</table><p style="font-size:.88rem;margin:8px 0 0"><b>'+(ok===4?'ถูกครบ 4/4 — เครือข่ายนี้แก้ XOR ได้จริง! (สิ่งที่ชั้นเดียวทำไม่ได้)':'ถูก '+ok+'/4 — weight ชุดนี้ยังแก้ XOR ไม่ได้ ลองกด "โหลดชุด XOR"')+'</b></p>';
+    document.getElementById('mlpResTbl').innerHTML=html;
+    document.getElementById('mlpResWrap').open=true;
+  });
+
+  /* เริ่มต้น: โชว์ผล (1,0) เลย */
+  NET.vals=forward(NET.x); setPhase(3);
+})();
+
+/* ======================================================================
+   5) XOR — เส้นตรง 1 เส้น vs MLP
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('xorCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=460,H=330, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  /* world: x,y ∈ [-0.35, 1.35] */
+  const LO=-0.35, HI=1.35, SPAN=HI-LO;
+  const px=x=>(x-LO)/SPAN*(W-52)+42, py=y=>H-30-(y-LO)/SPAN*(H-46);
+  const PTS=[ {x:0,y:0,c:0},{x:1,y:1,c:0},{x:0,y:1,c:1},{x:1,y:0,c:1} ];
+  const COLS=['#2456e6','#e5484d'];
+  const S={ th:45, c:0.5, mlp:false };
+
+  /* MLP XOR เดียวกับ playground */
+  const relu=z=>Math.max(0,z);
+  function mlpClass(x,y){
+    const h1=relu(x+y-0.5), h2=relu(x+y-1.5);
+    const z0=-4*h1+16*h2+1, z1=4*h1-16*h2-1;
+    return z1>z0?1:0;
+  }
+
+  const scoreEl=document.getElementById('xorScore');
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    /* พื้น MLP */
+    if(S.mlp){
+      const step=7;
+      for(let gx=42;gx<W-10;gx+=step) for(let gy=16;gy<H-30;gy+=step){
+        const wx=(gx-42)/(W-52)*SPAN+LO, wy=(H-30-gy)/(H-46)*SPAN+LO;
+        const c=mlpClass(wx,wy);
+        ctx.fillStyle=c===0?'rgba(36,86,230,.10)':'rgba(229,72,77,.10)';
+        ctx.fillRect(gx,gy,step,step);
+      }
+    }
+    /* แกน */
+    ctx.strokeStyle='rgba(90,100,120,.3)'; ctx.lineWidth=1.2;
+    ctx.strokeRect(42,16,W-52,H-46);
+    ctx.fillStyle='#5b6475'; ctx.font='600 11px Poppins, Kanit, sans-serif';
+    [0,1].forEach(v=>{
+      ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(v, px(v), H-24);
+      ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(v, 34, py(v));
+    });
+    /* เส้นตรง (โหมดชั้นเดียว) */
+    let correct=0;
+    const rad=S.th*Math.PI/180, cs=Math.cos(rad), sn=Math.sin(rad);
+    if(!S.mlp){
+      /* วาดเส้น cos·x + sin·y = c */
+      const pts=[];
+      [[LO,HI],[HI,LO]].forEach(()=>{});
+      /* หา 2 จุดตัดกับกรอบ world */
+      const cand=[];
+      if(Math.abs(sn)>1e-6){ [LO,HI].forEach(x=>{ const y=(S.c-cs*x)/sn; if(y>=LO-0.01&&y<=HI+0.01) cand.push([x,y]); }); }
+      if(Math.abs(cs)>1e-6){ [LO,HI].forEach(y=>{ const x=(S.c-sn*y)/cs; if(x>=LO-0.01&&x<=HI+0.01) cand.push([x,y]); }); }
+      if(cand.length>=2){
+        ctx.strokeStyle='#7c3aed'; ctx.lineWidth=3; ctx.lineCap='round';
+        ctx.beginPath(); ctx.moveTo(px(cand[0][0]),py(cand[0][1])); ctx.lineTo(px(cand[1][0]),py(cand[1][1])); ctx.stroke();
+        /* แรเงาฝั่งบวกจางๆ */
+      }
+      /* นับถูก: ฝั่งไหนสีไหนเอาแบบดีสุด */
+      let a=0;
+      PTS.forEach(p=>{ const side=cs*p.x+sn*p.y-S.c>=0?1:0; if(side===p.c) a++; });
+      correct=Math.max(a,4-a);
+    } else {
+      PTS.forEach(p=>{ if(mlpClass(p.x,p.y)===p.c) correct++; });
+    }
+    /* จุด */
+    PTS.forEach(p=>{
+      ctx.beginPath(); ctx.arc(px(p.x),py(p.y),11,0,Math.PI*2);
+      ctx.fillStyle=COLS[p.c]; ctx.fill();
+      ctx.lineWidth=2.5; ctx.strokeStyle='#fff'; ctx.stroke();
+      ctx.fillStyle='#1f2533'; ctx.font='700 11px Poppins, Kanit, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='bottom';
+      ctx.fillText('('+p.x+','+p.y+')', px(p.x), py(p.y)-14);
+    });
+    /* ป้ายคะแนน */
+    scoreEl.textContent=(S.mlp?'MLP แบ่งถูก ':'แบ่งถูก ')+correct+' / 4'+(S.mlp&&correct===4?' 🎉':'');
+    scoreEl.className='xor-score '+(correct===4?'win':(correct<=3?'fail':''));
+  }
+  const $=id=>document.getElementById(id);
+  $('xorTh').addEventListener('input',e=>{ S.th=+e.target.value; $('xorThV').textContent=S.th+'°'; draw(); });
+  $('xorC').addEventListener('input',e=>{ S.c=+e.target.value/100; $('xorCV').textContent=S.c.toFixed(2); draw(); });
+  $('xorMlp').addEventListener('click',function(){
+    S.mlp=!S.mlp;
+    this.classList.toggle('on',S.mlp);
+    this.textContent=S.mlp?'← กลับไปลองเส้นตรงชั้นเดียว':'✨ เพิ่ม hidden layer (MLP)';
+    document.getElementById('xorHint').innerHTML=S.mlp?
+      '<b>นี่คือพลังของ hidden layer:</b> โหนดซ่อนสร้าง "เส้นช่วย" หลายเส้น แล้วชั้นถัดไปเอามาประกอบ — พื้นที่ถูกหั่นเป็นแถบทแยง แบ่งถูกครบ 4/4 · เครือข่ายใน playground ข้างบนคือตัวเดียวกันนี้เป๊ะ':
+      '<b>เฉลยของปี 1969:</b> เส้นตรงเส้นเดียวได้มากสุด 3/4 — Minsky &amp; Papert พิสูจน์เรื่องนี้ทางคณิตศาสตร์ ทำให้วงการหมดหวังกับ perceptron ไปเกือบ 20 ปี ทั้งที่คำตอบ (ซ้อนหลายชั้น) อยู่ใกล้แค่เอื้อม';
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

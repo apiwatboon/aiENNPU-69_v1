@@ -1,0 +1,1746 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backpropagation เครื่องเรียนรู้ได้อย่างไร | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  .wsec { margin-bottom: 8px; }
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+
+  /* ===== เวทีเล่น Gradient Descent (ลูกบอลกลิ้ง) ===== */
+  .gd-stage { position:relative; border-radius:14px; overflow:hidden; border:1px solid var(--border);
+    background:#f7f8fb; box-shadow:inset 0 0 0 1px rgba(255,255,255,.5); touch-action:none; }
+  .gd-stage canvas { display:block; width:100%; height:auto; cursor:grab; }
+  .gd-stage canvas:active { cursor:grabbing; }
+  .gd-badge { position:absolute; top:10px; left:10px; z-index:3; pointer-events:none;
+    background:rgba(255,255,255,.93); border:1px solid #d5dae6; border-radius:10px; padding:6px 13px;
+    font-size:.9rem; color:#1f2533; font-weight:600; box-shadow:0 4px 14px -8px rgba(15,23,42,.5); }
+  .gd-badge b { color:#7c3aed; font-variant-numeric:tabular-nums; }
+  .gd-boom { position:absolute; top:10px; right:10px; z-index:3; pointer-events:none;
+    background:linear-gradient(135deg,#ef4444,#b91c1c); color:#fff; border-radius:999px; padding:6px 14px;
+    font-weight:700; font-size:.9rem; display:none; animation:gdShake .5s; }
+  @keyframes gdShake { 25%{transform:translateX(-3px)} 50%{transform:translateX(3px)} 75%{transform:translateX(-2px)} }
+  .gd-ctl { margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+  .gd-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .gd-row > label.cap { font-weight:600; min-width:110px; }
+  .gd-row input[type=range] { flex:1 1 150px; accent-color:#7c3aed; min-width:120px; }
+  .gd-eta { font-weight:800; font-size:1.05rem; color:#7c3aed; background:rgba(124,58,237,.12);
+    border-radius:9px; padding:1px 13px; min-width:56px; text-align:center; font-variant-numeric:tabular-nums; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button { font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:background .2s,color .2s; }
+  .seg button.on { background:linear-gradient(135deg,#7c3aed,#4f46e5); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+  #gdStep { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+  .gd-log { border:1px solid var(--border); border-radius:12px; background:var(--card);
+    max-height:190px; overflow-y:auto; padding:8px 12px; font-size:.85rem; line-height:1.9;
+    font-variant-numeric:tabular-nums; }
+  .gd-log .stp { border-bottom:1px dashed var(--border); padding:2px 0; }
+  .gd-log .stp:last-child { border-bottom:none; }
+  .gd-log b { color:#7c3aed; }
+  .gd-log .neg { color:#e5484d; }
+  .gd-hint { font-size:.85rem; color:var(--muted); margin:2px 0 0; }
+  .gd-hint b { color:#7c3aed; }
+
+  /* ===== Chain rule computational graph ===== */
+  .cr-wrap { border:1px solid var(--border); border-radius:14px; background:var(--card); padding:14px; overflow-x:auto; }
+  .cr-svg { display:block; margin:0 auto; max-width:760px; width:100%; height:auto; }
+  .cr-svg .box { fill:var(--card); stroke:#7c3aed; stroke-width:2; }
+  .cr-svg .opbox { fill:rgba(124,58,237,.1); stroke:#a78bfa; stroke-width:1.5; }
+  .cr-svg text { font-family:'Poppins','Kanit',sans-serif; }
+  .cr-svg .dim { opacity:.18; transition:opacity .4s; }
+  .cr-svg .lit { opacity:1; transition:opacity .4s; }
+  .cr-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; align-items:center; }
+  #crNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+  .cr-msg { margin-top:10px; background:rgba(124,58,237,.08); border-radius:10px; padding:8px 14px;
+    font-size:.92rem; min-height:44px; }
+  .cr-msg b { color:#7c3aed; }
+
+  /* ===== ห้องแล็บ Backprop 2-2-1 ===== */
+  .bp-grid { display:grid; grid-template-columns:1fr; gap:14px; }
+  @media(min-width:900px){ .bp-grid{ grid-template-columns: 500px 1fr; align-items:start; } }
+  .bp-stage { position:relative; border-radius:12px; overflow:hidden; border:1px solid var(--border);
+    background:#f7f8fb; }
+  .bp-stage canvas { display:block; width:100%; height:auto; }
+  .bp-flow { position:absolute; top:8px; left:8px; z-index:3; pointer-events:none;
+    border-radius:999px; padding:4px 12px; font-size:.8rem; font-weight:700; color:#fff;
+    background:#64748b; transition:background .3s; }
+  .bp-flow.fwd { background:linear-gradient(135deg,#2456e6,#3b82f6); }
+  .bp-flow.bwd { background:linear-gradient(135deg,#e5484d,#b91c1c); }
+  .bp-io { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; font-size:.9rem; }
+  .bp-io label { font-weight:600; display:inline-flex; align-items:center; gap:5px; }
+  .bp-io input[type=number] { width:74px; font-family:inherit; font-size:.9rem; padding:4px 6px;
+    border:1px solid var(--border); border-radius:8px; background:var(--card); color:var(--ink); }
+  .bp-btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+  #bpNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+  #bpRound { background:linear-gradient(135deg,#12a150,#0ea371); }
+  .bp-meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; font-size:.88rem; }
+  .bp-pill { border:1px solid var(--border); border-radius:999px; padding:4px 13px; background:var(--card);
+    font-weight:600; font-variant-numeric:tabular-nums; }
+  .bp-pill b { color:#7c3aed; }
+  .bp-chartwrap { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:8px 10px 4px; margin-top:10px; }
+  .bp-chartwrap h4 { margin:0 0 2px; font-size:.85rem; }
+  .bp-chartwrap canvas { display:block; width:100%; height:auto; }
+  /* กล่องขั้นตอน (สไตล์เดียวกับห้องแล็บ OLS) */
+  .bp-steps { display:flex; flex-direction:column; gap:10px; max-height:720px; overflow-y:auto; padding-right:4px; }
+  .bp-st { border:1.5px solid var(--border); border-radius:12px; padding:11px 14px; background:var(--card);
+    opacity:.34; transition:opacity .35s, border-color .35s, box-shadow .35s; }
+  .bp-st.show { opacity:1; }
+  .bp-st.cur { border-color:#7c3aed; box-shadow:0 0 0 3px rgba(124,58,237,.15); }
+  .bp-st h5 { margin:0 0 7px; font-size:.93rem; color:var(--ink); display:flex; align-items:center; gap:8px; }
+  .bp-st h5 .no { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px;
+    border-radius:50%; background:rgba(124,58,237,.13); color:#7c3aed; font-weight:700; font-size:.82rem; }
+  .bp-st.cur h5 .no { background:#7c3aed; color:#fff; }
+  .bp-st h5 .dir { font-size:.72rem; font-weight:700; border-radius:999px; padding:1px 9px; color:#fff; }
+  .bp-body { font-size:.87rem; line-height:1.95; overflow-x:auto; font-variant-numeric:tabular-nums; }
+  .bp-body .frm { color:var(--muted); font-size:.82rem; }
+  .bp-eq { background:rgba(124,58,237,.07); border-radius:9px; padding:5px 12px; margin:3px 0;
+    overflow-x:auto; white-space:nowrap; }
+  .bp-eq b { color:#7c3aed; }
+  .bp-body table { border-collapse:collapse; margin:4px 0; }
+  .bp-body th, .bp-body td { border:1px solid var(--border); padding:3px 10px; text-align:center;
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .bp-body th { background:rgba(124,58,237,.09); color:#7c3aed; }
+  .bp-body td.up { color:#12a150; font-weight:700; }
+  .bp-final { background:linear-gradient(135deg,rgba(18,161,80,.12),rgba(14,163,113,.08));
+    border-radius:10px; padding:7px 13px; font-weight:700; text-align:center; }
+
+  .eq-final { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin:12px 0; text-align:center; }
+  [data-theme="dark"] .eq-final { background: var(--card); }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>Backpropagation: เครื่องจักรเรียนรู้ได้อย่างไร (คำนวณตามได้ทุกตัวเลข)</h1>
+    <p class="subtitle">สัปดาห์ที่แล้วเราส่งตัวเลข "ไปข้างหน้า" ผ่านเครือข่ายจนได้คำตอบ — สัปดาห์นี้เรียนกลไกที่ทำให้มัน "ฉลาดขึ้น": ส่งความผิดพลาด "ย้อนกลับ" ไปบอกทุก weight ว่าต้องขยับทางไหน — และนี่คืออัลกอริทึมเดียวกันเป๊ะที่เทรน GPT</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle class="f" cx="12" cy="12" r="1.6"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายหลัก <strong>Gradient Descent</strong>: w ← w − η·(ความชัน) และผลของ <strong>learning rate η</strong> (เล็กไป = ช้า, ใหญ่ไป = ส่าย/ระเบิด)</li>
+      <li>ใช้ <strong>chain rule</strong> คำนวณอนุพันธ์ของฟังก์ชันซ้อนด้วยตัวเลขจริงได้</li>
+      <li>ไล่ <strong>Backpropagation ครบวงจร</strong> ด้วยมือ: forward → loss → backward (หา δ ทุกโหนด) → update ทุก weight</li>
+      <li>อธิบายบทบาทของ σ′(z) = a(1−a) และเหตุที่เครือข่ายลึกเจอปัญหา <strong>vanishing gradient</strong></li>
+      <li>เชื่อมโยงได้ว่า GPT ก็เทรนด้วยลูปเดียวกันนี้ — ต่างแค่ขนาด</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 — แนวคิด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: คนตาบอดหาก้นหุบเขา <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">สัปดาห์ที่แล้วเราเห็นว่าเครือข่ายเป็นแค่ "เครื่องคำนวณ" ที่มีปุ่มหมุนชื่อ <strong>weight</strong> เต็มไปหมด — คำถามล้านดอลลาร์คือ <em>ใครเป็นคนหมุนปุ่มพวกนั้นให้ถูก?</em></p>
+    <p>นิยามปัญหาให้ชัด: เรามี <strong>loss</strong> = ตัวเลขบอกว่า "ตอนนี้เครือข่ายตอบพลาดแค่ไหน" — งานของเราคือหาค่า weight ที่ทำให้ loss <strong>ต่ำที่สุด</strong> แต่ weight มีเป็นล้านตัว จะลองสุ่มทีละค่าก็ตายก่อน</p>
+    <p style="margin-bottom:0">ทางออกเปรียบเหมือน <strong>คนตาบอดยืนอยู่บนภูเขาแล้วอยากลงไปก้นหุบเขา</strong> — มองไม่เห็นทั้งแผนที่ แต่รู้สิ่งเดียว: <em>"พื้นใต้เท้าตอนนี้เอียงไปทางไหน"</em> (ความชัน = gradient) → ก้าวสวนทางความชันทีละก้าวเล็กๆ ซ้ำไปเรื่อยๆ เดี๋ยวก็ถึงก้นแอ่ง:</p>
+    <div class="eq-final" style="font-size:1.15rem">w<sub>ใหม่</sub> &nbsp;=&nbsp; w<sub>เดิม</sub> − <span style="color:#e8590c">η</span> × <span style="color:#7c3aed">ความชันของ loss ที่จุดนั้น</span></div>
+    <p style="margin-bottom:0">ตัว <strong style="color:#e8590c">η (เอตา = learning rate)</strong> คือ "ขนาดก้าว" — และ <strong style="color:#7c3aed">Backpropagation</strong> คือวิธีคำนวณความชันของ weight ทุกตัวพร้อมกันอย่างเร็วมหัศจรรย์ (เดี๋ยวเจอในส่วนที่ 3–4)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 2 — เวทีเล่น Gradient Descent ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 2 — เวทีเล่น: ปล่อยลูกบอลกลิ้งลงหุบ loss <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo" id="gd">
+    <h3 style="margin-top:0">⛰️ Gradient Descent Playground — เห็นทุกก้าวเป็นตัวเลข</h3>
+    <p style="margin-top:0"><b style="color:#7c3aed">ลากลูกบอล</b>ไปวางตรงไหนก็ได้บนโค้ง loss แล้วกด <b>ก้าวถัดไป</b> —
+    ใต้กราฟจะพิมพ์เลขเต็มทุกก้าว: ความชันเท่าไหร่ คูณ η ได้เท่าไหร่ w ใหม่คือเท่าไหร่ ·
+    แล้วลอง <b style="color:#e8590c">ปุ่ม η ทั้ง 3</b>: 0.1 เดินนิ่มถึงก้นแอ่ง · 0.9 ส่ายซ้ายขวา · 1.5 <b>กระเด็นออกนอกหุบ!</b></p>
+
+    <div class="gd-stage" id="gdStage">
+      <div class="gd-badge" id="gdBadge">w = <b>0.00</b> · loss = <b>10.00</b></div>
+      <div class="gd-boom" id="gdBoom">💥 ระเบิด! ก้าวใหญ่เกิน ลูกบอลกระเด็นออก</div>
+      <canvas id="gdCv" width="760" height="330"></canvas>
+    </div>
+
+    <div class="gd-ctl">
+      <div class="gd-row">
+        <button id="gdStep">▶ ก้าวถัดไป</button>
+        <button id="gdAuto">⏵ เดินอัตโนมัติ</button>
+        <button id="gdReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">เริ่มใหม่</button>
+        <span class="gd-hint" style="margin:0">โค้ง:</span>
+        <div class="seg" id="gdCurve">
+          <button data-c="A" class="on">แอ่งเดียว (w−3)²+1</button>
+          <button data-c="B">สองแอ่ง (มี local min!)</button>
+        </div>
+      </div>
+      <div class="gd-row">
+        <label class="cap" for="gdEta">learning rate η</label>
+        <input type="range" id="gdEta" min="0.05" max="1.5" step="0.05" value="0.3">
+        <span class="gd-eta" id="gdEtaVal">0.30</span>
+        <div class="seg" id="gdEtaSeg">
+          <button data-e="0.1">0.1 พอดี</button>
+          <button data-e="0.9">0.9 ส่าย</button>
+          <button data-e="1.5">1.5 ระเบิด</button>
+        </div>
+      </div>
+      <div class="gd-log" id="gdLog"><span style="color:var(--muted)">บันทึกการก้าวจะพิมพ์ตรงนี้ — ลากลูกบอลแล้วกด ▶</span></div>
+      <p class="gd-hint"><b>ลองสองแอ่ง:</b> วางลูกบอลฝั่งขวา (w≈3) ด้วย η=0.1 — มันจะไหลลง "แอ่งตื้น" แล้วติดอยู่ตรงนั้น (local minimum) ทั้งที่แอ่งซ้ายลึกกว่า → นี่คือเหตุผลที่การเทรนจริงต้องมีลูกเล่นเพิ่ม (สุ่มเริ่มหลายที่, momentum ฯลฯ)</p>
+    </div>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — Chain rule ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 3 — Chain Rule: หัวใจของการส่งย้อนกลับ <span class="badge">ทีละขั้น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">เครือข่ายคือ "ฟังก์ชันซ้อนฟังก์ชัน" หลายชั้น — จะรู้ว่า weight ต้นทางกระทบ loss ปลายทางแค่ไหน ต้องใช้กฎลูกโซ่:
+    <strong>อนุพันธ์ของฟังก์ชันซ้อน = ผลคูณของอนุพันธ์ทีละท่อน</strong> ลองกับตัวอย่างจิ๋วที่เห็นเลขครบ:</p>
+    <div class="eq-final">y = (2x + 1)² &nbsp;ที่&nbsp; x = 1 &nbsp;&nbsp;→&nbsp;&nbsp; แตกเป็นท่อน: u = 2x+1 แล้ว y = u²</div>
+
+    <div class="cr-wrap">
+      <svg class="cr-svg" viewBox="0 0 760 200" id="crSvg">
+        <!-- โหนด x -->
+        <g id="crx"><rect class="box" x="30" y="60" width="110" height="56" rx="12"/>
+          <text x="85" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#2456e6">x = 1</text>
+          <text x="85" y="104" text-anchor="middle" font-size="11" fill="#8a93a8">อินพุต</text></g>
+        <!-- op1 -->
+        <g id="crop1" class="dim"><rect class="opbox" x="180" y="66" width="86" height="44" rx="10"/>
+          <text x="223" y="93" text-anchor="middle" font-size="14" font-weight="700" fill="#7c3aed">×2 +1</text></g>
+        <!-- u -->
+        <g id="cru" class="dim"><rect class="box" x="306" y="60" width="110" height="56" rx="12"/>
+          <text x="361" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#7c3aed">u = 3</text>
+          <text x="361" y="104" text-anchor="middle" font-size="11" fill="#8a93a8">ค่ากลางทาง</text></g>
+        <!-- op2 -->
+        <g id="crop2" class="dim"><rect class="opbox" x="456" y="66" width="70" height="44" rx="10"/>
+          <text x="491" y="93" text-anchor="middle" font-size="14" font-weight="700" fill="#7c3aed">(·)²</text></g>
+        <!-- y -->
+        <g id="cry" class="dim"><rect class="box" x="566" y="60" width="110" height="56" rx="12"/>
+          <text x="621" y="84" text-anchor="middle" font-size="15" font-weight="700" fill="#12a150">y = 9</text>
+          <text x="621" y="104" text-anchor="middle" font-size="11" fill="#8a93a8">เอาต์พุต</text></g>
+        <!-- ลูกศร forward -->
+        <g id="crf1" class="dim"><path d="M140 88 h38" stroke="#2456e6" stroke-width="2.5" fill="none"/><path d="M172 82 l10 6 -10 6z" fill="#2456e6"/></g>
+        <g id="crf2" class="dim"><path d="M266 88 h38" stroke="#2456e6" stroke-width="2.5" fill="none"/><path d="M298 82 l10 6 -10 6z" fill="#2456e6"/></g>
+        <g id="crf3" class="dim"><path d="M416 88 h38" stroke="#2456e6" stroke-width="2.5" fill="none"/><path d="M448 82 l10 6 -10 6z" fill="#2456e6"/></g>
+        <g id="crf4" class="dim"><path d="M526 88 h38" stroke="#2456e6" stroke-width="2.5" fill="none"/><path d="M558 82 l10 6 -10 6z" fill="#2456e6"/></g>
+        <!-- ลูกศร backward (แดง โค้งล่าง) -->
+        <g id="crb1" class="dim"><path d="M600 132 q-110 46 -220 8" stroke="#e5484d" stroke-width="2.5" fill="none" stroke-dasharray="6 4"/><path d="M390 146 l-12 -2 8 -9z" fill="#e5484d"/>
+          <text x="500" y="176" text-anchor="middle" font-size="13" font-weight="700" fill="#e5484d">∂y/∂u = 2u = 2·3 = 6</text></g>
+        <g id="crb2" class="dim"><path d="M330 138 q-110 40 -220 4" stroke="#e5484d" stroke-width="2.5" fill="none" stroke-dasharray="6 4"/><path d="M120 148 l-12 -2 8 -9z" fill="#e5484d"/>
+          <text x="228" y="180" text-anchor="middle" font-size="13" font-weight="700" fill="#e5484d">∂u/∂x = 2</text></g>
+      </svg>
+    </div>
+
+    <div class="cr-btns">
+      <button id="crNext">▶ ขั้นถัดไป</button>
+      <button id="crReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">เริ่มใหม่</button>
+    </div>
+    <div class="cr-msg" id="crMsg"></div>
+  </div>
+
+  <script>
+  (function(){
+    const steps=[
+      { lit:['crx'], msg:'<b>เริ่ม:</b> มีอินพุต x = 1 — เราอยากรู้ว่า "ถ้าขยับ x นิดหนึ่ง แล้ว y ปลายทางขยับเท่าไหร่" (∂y/∂x)' },
+      { lit:['crx','crf1','crop1','crf2','cru'], msg:'<b>Forward ท่อนแรก:</b> u = 2x + 1 = 2·1 + 1 = <b>3</b>' },
+      { lit:['crx','crf1','crop1','crf2','cru','crf3','crop2','crf4','cry'], msg:'<b>Forward ท่อนสอง:</b> y = u² = 3² = <b>9</b> — จบขาไป ตอนนี้รู้ค่ากลางทาง (u=3) ครบ ซึ่งขากลับต้องใช้!' },
+      { lit:['crx','crf1','crop1','crf2','cru','crf3','crop2','crf4','cry','crb1'], msg:'<b>Backward ท่อนหลัง (แดง):</b> ∂y/∂u = 2u = 2·3 = <b>6</b> — "u ขยับ 1 หน่วย → y ขยับ 6 หน่วย"' },
+      { lit:['crx','crf1','crop1','crf2','cru','crf3','crop2','crf4','cry','crb1','crb2'], msg:'<b>Backward ท่อนหน้า:</b> ∂u/∂x = 2 → <b>กฎลูกโซ่: ∂y/∂x = ∂y/∂u × ∂u/∂x = 6 × 2 = 12</b> ✓ (ตรวจ: ขยาย y=(2x+1)²=4x²+4x+1, y′=8x+4=12 ที่ x=1 ตรงเป๊ะ) — backprop คือการทำแบบนี้ย้อนทีละชั้นทั่วทั้งเครือข่าย' }
+    ];
+    let i=0;
+    const all=['crx','crop1','cru','crop2','cry','crf1','crf2','crf3','crf4','crb1','crb2'];
+    const msg=document.getElementById('crMsg'), btn=document.getElementById('crNext');
+    function render(){
+      const s=steps[i];
+      all.forEach(id=>{ const el=document.getElementById(id);
+        el.setAttribute('class', s.lit.includes(id)?'lit':'dim'); });
+      msg.innerHTML=s.msg;
+      btn.textContent = i>=steps.length-1 ? '✓ ครบแล้ว' : '▶ ขั้นถัดไป ('+(i+1)+'/'+(steps.length-1)+')';
+    }
+    btn.addEventListener('click', ()=>{ if(i<steps.length-1){ i++; render(); } });
+    document.getElementById('crReset').addEventListener('click', ()=>{ i=0; render(); });
+    render();
+  })();
+  </script>
+
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — ห้องแล็บ Backprop ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 4 — ห้องแล็บ Backprop: เครือข่าย 2-2-1 คำนวณจริงทุกตัวเลข <span class="badge">ชิ้นเอก</span></h2>
+
+  <p>เครือข่ายจริงขนาดจิ๋ว: อินพุต 2 → ซ่อน 2 (sigmoid) → เอาต์พุต 1 (sigmoid) · loss = ½(y−ŷ)² —
+  กดไล่ดูทีละเลขในห้องแล็บด้านล่างได้เลย</p>
+
+  <div class="demo" id="bpLab">
+    <h3 style="margin-top:0">🧪 กด "ขั้นถัดไป" ไล่ดูทีละขั้น — แล้วกด "เทรนรอบถัดไป" ซ้ำๆ ดู loss ไหลลง</h3>
+    <p style="margin-top:0">ซ้าย: เครือข่ายของจริง (ตัวเลขในโหนด = ค่า a · ตัวเลขบนเส้น = weight · <b style="color:#2456e6">เส้นน้ำเงิน = w บวก</b>, <b style="color:#e5484d">แดง = w ลบ</b>, หนา = |w| ใหญ่) ·
+    ขวา: การคำนวณทุกบรรทัดพร้อมเลขแทนจริง · เปลี่ยน x₁ x₂ y η ได้เอง เลขจะคำนวณใหม่ทันที</p>
+
+    <div class="bp-grid">
+      <div>
+        <div class="bp-stage">
+          <span class="bp-flow" id="bpFlow">พร้อม</span>
+          <canvas id="bpCv" width="500" height="330"></canvas>
+        </div>
+        <div class="bp-io">
+          <label>x₁ <input type="number" id="bpX1" value="1" step="0.1"></label>
+          <label>x₂ <input type="number" id="bpX2" value="0.5" step="0.1"></label>
+          <label>เป้า y <input type="number" id="bpY" value="1" step="0.1"></label>
+          <label>η <input type="number" id="bpEta" value="0.5" step="0.1" min="0.01"></label>
+        </div>
+        <div class="bp-btns">
+          <button id="bpNext">▶ ขั้นถัดไป</button>
+          <button id="bpAll" style="background:linear-gradient(135deg,#64748b,#94a3b8)">แสดงทั้งหมด</button>
+        </div>
+        <div class="bp-btns">
+          <button id="bpRound">🔁 เทรนรอบถัดไป</button>
+          <button id="bpTen">เทรน 10 รอบรวด</button>
+        </div>
+        <div class="bp-btns">
+          <button id="bpPreA" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ชุด A (เป้า 1)</button>
+          <button id="bpPreB" style="background:linear-gradient(135deg,#64748b,#94a3b8)">ชุด B (เป้า 0)</button>
+          <button id="bpRand" style="background:linear-gradient(135deg,#64748b,#94a3b8)">🎲 สุ่ม weight</button>
+        </div>
+        <div class="bp-btns">
+          <span style="font-weight:600;font-size:.88rem">ลอง η:</span>
+          <div class="seg" id="bpEtaSeg">
+            <button data-e="0.1">0.1 ช้าชัวร์</button>
+            <button data-e="0.5" class="on">0.5 กำลังดี</button>
+            <button data-e="5">5 ส่ายไม่ลู่!</button>
+          </div>
+        </div>
+        <div class="bp-meta">
+          <span class="bp-pill">รอบที่ <b id="bpRoundNo">0</b></span>
+          <span class="bp-pill">loss ปัจจุบัน <b id="bpLossNow">—</b></span>
+          <span class="bp-pill">ŷ <b id="bpYhat">—</b> / เป้า <b id="bpYtgt">1</b></span>
+        </div>
+        <div class="bp-chartwrap">
+          <h4>📉 loss แต่ละรอบ — ควรไหลลง (ถ้า η ไม่บ้าพลัง)</h4>
+          <canvas id="bpChart" width="470" height="130"></canvas>
+        </div>
+      </div>
+      <div class="bp-steps" id="bpSteps"></div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const cv=document.getElementById('bpCv'); if(!cv) return;
+    const ctx=cv.getContext('2d');
+    const W=500,H=330, dpr=Math.min(2,window.devicePixelRatio||1);
+    cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+    const ch=document.getElementById('bpChart'), chx=ch.getContext('2d');
+    const CW=470,CH=130; ch.width=CW*dpr; ch.height=CH*dpr; ch.style.aspectRatio=CW+'/'+CH; chx.setTransform(dpr,0,0,dpr,0,0);
+
+    const sig=z=>1/(1+Math.exp(-z));
+    const f4=v=>(+v).toFixed(4), f2=v=>(+v).toFixed(2);
+
+    /* โครงเครือข่าย: z_h1 = w1·x1 + w3·x2 + b1 · z_h2 = w2·x1 + w4·x2 + b2 · z_o = w5·a_h1 + w6·a_h2 + b3 */
+    const PRE_A={ x1:1, x2:0.5, y:1, w:{w1:0.40,w2:-0.30,w3:0.60,w4:0.80,w5:0.70,w6:-0.20,b1:0.10,b2:-0.10,b3:0.05} };
+    const PRE_B={ x1:0.5, x2:1, y:0, w:{w1:-0.50,w2:0.90,w3:0.30,w4:-0.70,w5:0.80,w6:0.60,b1:0,b2:0.20,b3:-0.10} };
+
+    const S={ w:Object.assign({},PRE_A.w), reveal:0, steps:[], round:0, hist:[], calc:null, flow:'idle' };
+    const inX1=document.getElementById('bpX1'), inX2=document.getElementById('bpX2'),
+          inY=document.getElementById('bpY'), inEta=document.getElementById('bpEta');
+
+    /* ---- คำนวณครบวงจร + สร้างข้อความทุกขั้น ---- */
+    function build(){
+      const x1=+inX1.value||0, x2=+inX2.value||0, y=+inY.value||0, eta=+inEta.value||0.5;
+      const w=S.w;
+      const z1=w.w1*x1+w.w3*x2+w.b1, a1=sig(z1);
+      const z2=w.w2*x1+w.w4*x2+w.b2, a2=sig(z2);
+      const zo=w.w5*a1+w.w6*a2+w.b3, yh=sig(zo);
+      const L=0.5*(y-yh)*(y-yh);
+      const dyh=yh*(1-yh);
+      const dO=(yh-y)*dyh;
+      const d1=dO*w.w5*a1*(1-a1);
+      const d2=dO*w.w6*a2*(1-a2);
+      const g={ w5:dO*a1, w6:dO*a2, b3:dO,
+                w1:d1*x1, w3:d1*x2, b1:d1,
+                w2:d2*x1, w4:d2*x2, b2:d2 };
+      const nw={}; Object.keys(g).forEach(k=>nw[k]=w[k]-eta*g[k]);
+      S.calc={x1,x2,y,eta,z1,a1,z2,a2,zo,yh,L,dO,d1,d2,g,nw};
+
+      const st=[];
+      st.push({t:'Forward — ส่งเลขไปข้างหน้า', dir:'fwd', b:
+        '<span class="frm">โหนดซ่อน: z = (weight · อินพุต) + bias แล้วบีบด้วย σ(z) = 1/(1+e⁻ᶻ)</span>'
+        +'<div class="bp-eq">z_h1 = w1·x1 + w3·x2 + b1 = ('+f2(w.w1)+')('+f2(x1)+') + ('+f2(w.w3)+')('+f2(x2)+') + ('+f2(w.b1)+') = <b>'+f4(z1)+'</b></div>'
+        +'<div class="bp-eq">a_h1 = σ('+f4(z1)+') = <b>'+f4(a1)+'</b></div>'
+        +'<div class="bp-eq">z_h2 = w2·x1 + w4·x2 + b2 = ('+f2(w.w2)+')('+f2(x1)+') + ('+f2(w.w4)+')('+f2(x2)+') + ('+f2(w.b2)+') = <b>'+f4(z2)+'</b></div>'
+        +'<div class="bp-eq">a_h2 = σ('+f4(z2)+') = <b>'+f4(a2)+'</b></div>'
+        +'<span class="frm">โหนดเอาต์พุต:</span>'
+        +'<div class="bp-eq">z_o = w5·a_h1 + w6·a_h2 + b3 = ('+f2(w.w5)+')('+f4(a1)+') + ('+f2(w.w6)+')('+f4(a2)+') + ('+f2(w.b3)+') = <b>'+f4(zo)+'</b></div>'
+        +'<div class="bp-eq">ŷ = σ('+f4(zo)+') = <b>'+f4(yh)+'</b></div>'});
+      st.push({t:'Loss — พลาดแค่ไหน', dir:'fwd', b:
+        '<div class="bp-eq">L = ½(y − ŷ)² = ½('+f2(y)+' − '+f4(yh)+')² = ½('+f4(y-yh)+')² = <b>'+f4(L)+'</b></div>'
+        +'<span class="frm">เป้าหมายของรอบนี้: ขยับ weight ทั้ง 9 ตัวให้ L เล็กลง</span>'});
+      st.push({t:'Backward ชั้นเอาต์พุต — สัญญาณผิดพลาด δ_o', dir:'bwd', b:
+        '<span class="frm">δ_o = ∂L/∂z_o = (ŷ − y) × σ′(z_o) โดย σ′(z) = a(1−a) — ค่ากลางทางจาก forward ถูกใช้ตรงนี้!</span>'
+        +'<div class="bp-eq">σ′(z_o) = ŷ(1−ŷ) = '+f4(yh)+' × '+f4(1-yh)+' = <b>'+f4(dyh)+'</b></div>'
+        +'<div class="bp-eq">δ_o = ('+f4(yh)+' − '+f2(y)+') × '+f4(dyh)+' = <b>'+f4(dO)+'</b></div>'});
+      st.push({t:'Backward ชั้นซ่อน — δ ไหลย้อนตามเส้น', dir:'bwd', b:
+        '<span class="frm">โหนดซ่อนรับผิดชอบผ่านเส้นที่เชื่อมไปเอาต์พุต: δ_h = δ_o × w(เส้นนั้น) × a(1−a)</span>'
+        +'<div class="bp-eq">δ_h1 = δ_o · w5 · a_h1(1−a_h1) = ('+f4(dO)+')('+f2(w.w5)+')('+f4(a1)+')('+f4(1-a1)+') = <b>'+f4(d1)+'</b></div>'
+        +'<div class="bp-eq">δ_h2 = δ_o · w6 · a_h2(1−a_h2) = ('+f4(dO)+')('+f2(w.w6)+')('+f4(a2)+')('+f4(1-a2)+') = <b>'+f4(d2)+'</b></div>'});
+      st.push({t:'Gradient ครบทั้ง 9 ตัว — δ ปลายเส้น × ค่าต้นเส้น', dir:'bwd', b:
+        '<span class="frm">สูตรเดียวใช้ทุกเส้น: ∂L/∂w = δ(โหนดปลายเส้น) × a(โหนดต้นเส้น) · ส่วน bias: ∂L/∂b = δ</span>'
+        +'<div class="bp-eq">∂L/∂w5 = δ_o·a_h1 = ('+f4(dO)+')('+f4(a1)+') = <b>'+f4(g.w5)+'</b> · ∂L/∂w6 = δ_o·a_h2 = <b>'+f4(g.w6)+'</b> · ∂L/∂b3 = δ_o = <b>'+f4(g.b3)+'</b></div>'
+        +'<div class="bp-eq">∂L/∂w1 = δ_h1·x1 = ('+f4(d1)+')('+f2(x1)+') = <b>'+f4(g.w1)+'</b> · ∂L/∂w3 = δ_h1·x2 = <b>'+f4(g.w3)+'</b> · ∂L/∂b1 = δ_h1 = <b>'+f4(g.b1)+'</b></div>'
+        +'<div class="bp-eq">∂L/∂w2 = δ_h2·x1 = ('+f4(d2)+')('+f2(x1)+') = <b>'+f4(g.w2)+'</b> · ∂L/∂w4 = δ_h2·x2 = <b>'+f4(g.w4)+'</b> · ∂L/∂b2 = δ_h2 = <b>'+f4(g.b2)+'</b></div>'});
+      let tbl='<table><tr><th>weight</th><th>ค่าเดิม</th><th>−η·grad</th><th>ค่าใหม่</th></tr>';
+      ['w1','w2','w3','w4','w5','w6','b1','b2','b3'].forEach(k=>{
+        tbl+='<tr><td>'+k+'</td><td>'+f4(w[k])+'</td><td>'+f4(-eta*g[k])+'</td><td class="up">'+f4(nw[k])+'</td></tr>'; });
+      tbl+='</table>';
+      st.push({t:'Update — ขยับทุก weight สวนทางความชัน (η = '+eta+')', dir:'bwd', b:
+        '<span class="frm">w_ใหม่ = w_เดิม − η × gradient</span>'+tbl
+        +'<div class="bp-final">กด "🔁 เทรนรอบถัดไป" เพื่อใช้ weight ชุดใหม่นี้ แล้ววนใหม่ — ดู loss ที่ป้ายซ้ายว่าลดลงไหม</div>'});
+      S.steps=st;
+      /* ป้าย meta */
+      document.getElementById('bpLossNow').textContent=f4(L);
+      document.getElementById('bpYhat').textContent=f4(yh);
+      document.getElementById('bpYtgt').textContent=f2(y);
+    }
+
+    /* ---- แสดงขั้น ---- */
+    const stepsEl=document.getElementById('bpSteps'), flowEl=document.getElementById('bpFlow');
+    function renderSteps(){
+      stepsEl.innerHTML='';
+      S.steps.forEach((s,i)=>{
+        const d=document.createElement('div');
+        d.className='bp-st'+(i<S.reveal?' show':'')+(i===S.reveal-1?' cur':'');
+        d.innerHTML='<h5><span class="no">'+(i+1)+'</span>'+s.t
+          +' <span class="dir" style="background:'+(s.dir==='fwd'?'#2456e6':'#e5484d')+'">'+(s.dir==='fwd'?'→ ไปหน้า':'← ย้อนกลับ')+'</span></h5>'
+          +(i<S.reveal?'<div class="bp-body">'+s.b+'</div>':'');
+        stepsEl.appendChild(d);
+      });
+      const cur=stepsEl.querySelector('.bp-st.cur'); if(cur) cur.scrollIntoView({block:'nearest'});
+      document.getElementById('bpNext').textContent =
+        S.reveal>=S.steps.length ? '✓ ครบ 6 ขั้น' : '▶ ขั้นที่ '+(S.reveal+1)+' / 6';
+      /* ทิศพัลส์ */
+      const s=S.steps[S.reveal-1];
+      S.flow = !s ? 'idle' : s.dir;
+      flowEl.className='bp-flow'+(S.flow==='fwd'?' fwd':S.flow==='bwd'?' bwd':'');
+      flowEl.textContent = S.flow==='fwd'?'→ Forward': S.flow==='bwd'?'← Backward':'พร้อม';
+    }
+
+    /* ---- วาดเครือข่าย ---- */
+    const NODES={ x1:{x:64,y:95,c:'#2456e6',lb:'x₁'}, x2:{x:64,y:235,c:'#2456e6',lb:'x₂'},
+      h1:{x:250,y:90,c:'#7c3aed',lb:'h₁'}, h2:{x:250,y:240,c:'#7c3aed',lb:'h₂'},
+      o:{x:432,y:165,c:'#12a150',lb:'ŷ'} };
+    const EDGES=[ ['x1','h1','w1'],['x2','h1','w3'],['x1','h2','w2'],['x2','h2','w4'],['h1','o','w5'],['h2','o','w6'] ];
+    let t0=0;
+    function frame(ts){
+      if(!t0)t0=ts; const time=(ts-t0)/1000;
+      ctx.clearRect(0,0,W,H);
+      /* เส้น */
+      EDGES.forEach(([a,b,wk])=>{
+        const A=NODES[a],B=NODES[b], wv=S.w[wk];
+        ctx.strokeStyle=(wv>=0?'rgba(36,86,230,.6)':'rgba(229,72,77,.6)');
+        ctx.lineWidth=Math.min(6, 1+Math.abs(wv)*3);
+        ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+        /* ป้าย weight */
+        const mx=A.x+(B.x-A.x)*0.46, my=A.y+(B.y-A.y)*0.46;
+        ctx.fillStyle=wv>=0?'#2456e6':'#e5484d';
+        ctx.font='700 11px Poppins, Kanit, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(wk+'='+f2(wv), mx, my-4);
+      });
+      /* พัลส์ */
+      if(S.flow!=='idle'){
+        const fwd=S.flow==='fwd';
+        EDGES.forEach(([a,b],ei)=>{
+          const A=NODES[fwd?a:b], B=NODES[fwd?b:a];
+          for(let k2=0;k2<2;k2++){
+            const t=((time*0.55)+(k2*0.5)+(ei*0.13))%1;
+            const X=A.x+(B.x-A.x)*t, Y=A.y+(B.y-A.y)*t;
+            ctx.beginPath(); ctx.arc(X,Y,4,0,Math.PI*2);
+            ctx.fillStyle=fwd?'rgba(36,86,230,.85)':'rgba(229,72,77,.85)'; ctx.fill();
+          }
+        });
+      }
+      /* โหนด */
+      const c=S.calc;
+      const vals={ x1:c?f2(c.x1):'?', x2:c?f2(c.x2):'?',
+        h1:(c&&S.reveal>=1)?f4(c.a1):'?', h2:(c&&S.reveal>=1)?f4(c.a2):'?',
+        o:(c&&S.reveal>=1)?f4(c.yh):'?' };
+      const dels={ h1:(c&&S.reveal>=4)?f4(c.d1):null, h2:(c&&S.reveal>=4)?f4(c.d2):null,
+        o:(c&&S.reveal>=3)?f4(c.dO):null };
+      Object.keys(NODES).forEach(k=>{
+        const N=NODES[k];
+        ctx.beginPath(); ctx.arc(N.x,N.y,27,0,Math.PI*2);
+        ctx.fillStyle='#fff'; ctx.fill();
+        ctx.lineWidth=3; ctx.strokeStyle=N.c; ctx.stroke();
+        ctx.fillStyle='#1f2533'; ctx.font='700 11px Poppins, Kanit, sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(vals[k], N.x, N.y+4);
+        ctx.fillStyle=N.c; ctx.font='700 12px Poppins, Kanit, sans-serif';
+        ctx.fillText(N.lb, N.x, N.y-11);
+        if(dels[k]!=null){
+          ctx.fillStyle='#e5484d'; ctx.font='700 10px Poppins, Kanit, sans-serif'; ctx.textBaseline='top';
+          ctx.fillText('δ='+dels[k], N.x, N.y+31);
+        }
+      });
+      /* bias */
+      if(c){ ctx.fillStyle='#8a93a8'; ctx.font='600 10px Poppins, Kanit, sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText('b1='+f2(S.w.b1), NODES.h1.x, NODES.h1.y-58);
+        ctx.fillText('b2='+f2(S.w.b2), NODES.h2.x, NODES.h2.y+44);
+        ctx.fillText('b3='+f2(S.w.b3), NODES.o.x, NODES.o.y-58); }
+      /* เป้า */
+      if(c){ ctx.fillStyle='#12a150'; ctx.font='700 12px Kanit, sans-serif'; ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText('เป้า y = '+f2(c.y), NODES.o.x+38, NODES.o.y); }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    /* ---- กราฟ loss ---- */
+    function drawChart(){
+      chx.clearRect(0,0,CW,CH);
+      const L2=34,R2=8,T2=8,B2=20, h=S.hist;
+      chx.strokeStyle='rgba(127,127,127,.25)'; chx.lineWidth=1; chx.strokeRect(L2,T2,CW-L2-R2,CH-T2-B2);
+      if(!h.length){ chx.fillStyle='#9aa3b8'; chx.font='600 12px Kanit, sans-serif'; chx.textAlign='center';
+        chx.fillText('กราฟจะขึ้นเมื่อกด "เทรนรอบถัดไป"', CW/2, CH/2); return; }
+      const hi=Math.max(...h)*1.12+1e-6;
+      const lx=i2=> L2+(CW-L2-R2)*(h.length===1?0.5:i2/(h.length-1));
+      const ly=v=> T2+(CH-T2-B2)*(1-v/hi);
+      chx.strokeStyle='#12a150'; chx.lineWidth=2.2; chx.beginPath();
+      h.forEach((v,i2)=>{ i2?chx.lineTo(lx(i2),ly(v)):chx.moveTo(lx(i2),ly(v)); }); chx.stroke();
+      h.forEach((v,i2)=>{ chx.beginPath(); chx.arc(lx(i2),ly(v),i2===h.length-1?4:2.4,0,Math.PI*2);
+        chx.fillStyle='#12a150'; chx.fill(); });
+      chx.fillStyle='#5b6475'; chx.font='600 10px Poppins, Kanit, sans-serif';
+      chx.textAlign='right'; chx.textBaseline='middle'; chx.fillText(hi.toFixed(3), L2-4, T2+4);
+      chx.fillText('0', L2-4, CH-B2);
+      chx.textAlign='center'; chx.textBaseline='top'; chx.fillText('รอบ →', CW/2, CH-B2+4);
+    }
+
+    /* ---- ปุ่ม ---- */
+    function refresh(keepReveal){ build(); if(!keepReveal) S.reveal=Math.min(S.reveal,S.steps.length); renderSteps(); }
+    document.getElementById('bpNext').addEventListener('click', ()=>{
+      if(S.reveal<S.steps.length){ S.reveal++; renderSteps(); } });
+    document.getElementById('bpAll').addEventListener('click', ()=>{ S.reveal=S.steps.length; renderSteps(); });
+
+    function commitRound(){
+      if(!S.calc) build();
+      S.hist.push(S.calc.L); S.round++;
+      S.w=Object.assign({},S.calc.nw);
+      build(); S.reveal=S.steps.length; renderSteps();
+      document.getElementById('bpRoundNo').textContent=S.round;
+      drawChart();
+    }
+    document.getElementById('bpRound').addEventListener('click', commitRound);
+    document.getElementById('bpTen').addEventListener('click', ()=>{ for(let i2=0;i2<10;i2++) commitRound(); });
+
+    function loadPreset(P){
+      inX1.value=P.x1; inX2.value=P.x2; inY.value=P.y;
+      S.w=Object.assign({},P.w); S.round=0; S.hist=[]; S.reveal=0;
+      document.getElementById('bpRoundNo').textContent=0;
+      refresh(); drawChart();
+    }
+    document.getElementById('bpPreA').addEventListener('click', ()=>loadPreset(PRE_A));
+    document.getElementById('bpPreB').addEventListener('click', ()=>loadPreset(PRE_B));
+    document.getElementById('bpRand').addEventListener('click', ()=>{
+      const r=()=>Math.round((Math.random()*2-1)*20)/20;
+      Object.keys(S.w).forEach(k=>S.w[k]=r());
+      S.round=0; S.hist=[]; S.reveal=0;
+      document.getElementById('bpRoundNo').textContent=0;
+      refresh(); drawChart();
+    });
+    document.getElementById('bpEtaSeg').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      inEta.value=b.dataset.e; refresh(true);
+    });
+    [inX1,inX2,inY,inEta].forEach(el=>el.addEventListener('input', ()=>refresh(true)));
+
+    refresh(); drawChart();
+  })();
+  </script>
+
+  <div class="card">
+    <strong>คำถามชวนคิดหลังเล่นแล็บ:</strong>
+    <ul style="margin:6px 0 0">
+      <li>กด "เทรน 10 รอบรวด" ด้วย η=0.5 — loss ไหลลงเรียบไหม? แล้วสลับเป็น η=5 กดอีก 10 รอบ — ทำไมกราฟกระโดดขึ้นๆ ลงๆ ไม่ยอมนิ่ง?</li>
+      <li>สังเกตขั้นที่ 3: ถ้า ŷ เข้าใกล้ 0 หรือ 1 มากๆ ค่า σ′ = ŷ(1−ŷ) จะเป็นเท่าไหร่? แล้วมันทำให้การเรียนรู้เร็วขึ้นหรือช้าลง?</li>
+      <li>ดูตารางขั้นที่ 6: weight เส้นไหนถูกขยับแรงสุด? ลองอธิบายจากสูตร grad = δ × a ว่าทำไม</li>
+    </ul>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — ที่มาสมการ weight ใหม่ (2-2-2 Matt Mazur) ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 5 — ที่มาของ "สมการ weight ใหม่" ทีละขั้น: เครือข่าย 2‑2‑2 <span class="badge">เจาะลึกทีละขั้น</span></h2>
+
+  <p>ห้องแล็บด้านบนมีเอาต์พุต <em>ตัวเดียว</em> — แต่ของจริง (และ GPT) มีเอาต์พุตหลายตัว ทำให้ weight ชั้นซ่อนหนึ่งเส้น
+  ส่งผลถึง loss ผ่าน <strong>หลายทางพร้อมกัน</strong> ตรงนี้แหละที่คนงง widget นี้จะพาไล่<strong>ที่มาของสมการ w ใหม่ทีละบรรทัด</strong>
+  บนเครือข่าย <strong>2 อินพุต → 2 ซ่อน → 2 เอาต์พุต</strong> ด้วยตัวเลขชุดคลาสสิกจากบทความในตำนานของ
+  <a href="https://mattmazur.com/2015/03/17/a-step-by-step-backpropagation-example/" target="_blank">Matt Mazur — A Step by Step Backpropagation Example</a>
+  (กดไล่ทีละขั้นแล้วเทียบกับบทความได้เลข<strong>ตรงกันทุกตัว</strong>)</p>
+
+  <div class="demo" id="mm">
+    <h3 style="margin-top:0">🔬 กด ▶ ไล่ทีละขั้น — เส้นทางกฎลูกโซ่จะ "สว่างขึ้น" บนภาพ พร้อมแทนตัวเลขจริงให้เห็นครบ</h3>
+    <p style="margin-top:0">ภาพจะไฮไลต์เฉพาะเส้นที่กำลังคิด (ที่เหลือหรี่ลง) · แผงล่างโชว์สูตรสัญลักษณ์ → แทนเลข → ผลลัพธ์ ·
+    ไฮไลต์สี: <b style="color:#2456e6">อินพุต</b> · <b style="color:#7c3aed">โหนดซ่อน</b> · <b style="color:#12a150">เอาต์พุต</b> · <b style="color:#e5484d">สัญญาณผิดพลาด δ</b></p>
+
+    <style>
+      #mm .mm-wrap { border:1px solid var(--border); border-radius:14px; background:#f7f8fb; padding:10px; overflow-x:auto; }
+      #mm .mm-svg { display:block; margin:0 auto; max-width:820px; width:100%; height:auto; }
+      #mm .mm-svg text { font-family:'Poppins','Kanit',sans-serif; }
+      #mm .mm-node circle { fill:#fff; stroke-width:3; }
+      #mm .mm-edge line { stroke-linecap:round; }
+      #mm .mm-dim { opacity:.15; transition:opacity .45s; }
+      #mm .mm-lit { opacity:1; transition:opacity .45s; }
+      #mm .mm-flow { stroke-dasharray:7 7; animation:mmDash 1s linear infinite; }
+      @keyframes mmDash { to { stroke-dashoffset:-28; } }
+      @media (prefers-reduced-motion:reduce){ #mm .mm-flow{ animation:none; } }
+      #mm .mm-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+      #mm .mm-prog { margin-left:auto; font-weight:600; color:var(--muted); font-size:.85rem; }
+      #mmNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+      #mm .mm-panel { margin-top:12px; border:1px solid var(--border); border-radius:12px; background:var(--card);
+        padding:12px 15px; min-height:150px; font-size:.9rem; line-height:1.9; font-variant-numeric:tabular-nums; }
+      #mm .mm-panel h5 { margin:0 0 8px; font-size:1rem; display:flex; gap:9px; align-items:center; flex-wrap:wrap; }
+      #mm .mm-tag { font-size:.7rem; font-weight:700; border-radius:999px; padding:2px 11px; color:#fff; }
+      #mm .mm-fac { border-radius:6px; padding:0 5px; font-weight:700; white-space:nowrap; }
+      #mm .mm-fac.i { color:#2456e6; background:rgba(36,86,230,.1); }
+      #mm .mm-fac.h { color:#7c3aed; background:rgba(124,58,237,.1); }
+      #mm .mm-fac.o { color:#12a150; background:rgba(18,161,80,.1); }
+      #mm .mm-fac.d { color:#e5484d; background:rgba(229,72,77,.1); }
+      #mm .mm-eq { background:rgba(124,58,237,.07); border-radius:9px; padding:6px 12px; margin:5px 0;
+        overflow-x:auto; white-space:nowrap; }
+      #mm .mm-eq b { color:#7c3aed; }
+      #mm .mm-res { background:linear-gradient(135deg,rgba(18,161,80,.15),rgba(14,163,113,.07));
+        border-radius:9px; padding:7px 13px; margin:5px 0; font-weight:700; }
+      #mm .mm-res b { color:#0e7a4f; }
+      #mm .mm-note { font-size:.83rem; color:var(--muted); margin:5px 0 0; }
+      #mm .mm-panel table { border-collapse:collapse; margin:6px 0; font-size:.86rem; }
+      #mm .mm-panel th, #mm .mm-panel td { border:1px solid var(--border); padding:3px 11px; text-align:center; white-space:nowrap; }
+      #mm .mm-panel th { background:rgba(124,58,237,.09); color:#7c3aed; }
+      #mm .mm-panel td.up { color:#12a150; font-weight:700; }
+    </style>
+
+    <div class="mm-wrap">
+      <svg id="mmSvg" viewBox="0 0 820 400" class="mm-svg" aria-label="เครือข่าย 2-2-2"></svg>
+    </div>
+
+    <div class="mm-ctl">
+      <button id="mmPrev" style="background:linear-gradient(135deg,#64748b,#94a3b8)">◀ ก่อนหน้า</button>
+      <button id="mmNext">▶ ขั้นถัดไป</button>
+      <button id="mmAuto">⏵ เล่นอัตโนมัติ</button>
+      <div class="seg" id="mmSpeed">
+        <button data-s="1" class="on">×1</button>
+        <button data-s="2">×2</button>
+      </div>
+      <button id="mmReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+      <span class="mm-prog" id="mmProg"></span>
+    </div>
+
+    <div class="mm-panel" id="mmPanel"></div>
+  </div>
+
+  <div class="demo" id="cz">
+    <h3 style="margin-top:0">🎬 เครื่องคลี่กฎลูกโซ่ — ดู ∂E/∂w "แตกตัว" ออกมาทีละท่อน แล้วตัวกลางหักกันเอง</h3>
+    <p style="margin-top:0">ทำไม ∂E<sub>total</sub>/∂w5 ถึงกลายเป็น <b>ผลคูณ 3 ท่อน</b> ได้? กด ▶ ดูอนิเมชันการ<b>แทรกตัวกลาง</b>
+    (out_o1, net_o1) เข้าไป แล้วเห็นว่ามัน<b>หักล้างกันเอง</b>เหมือนเศษส่วน (telescoping) เหลือกลับมาเท่าเดิมเป๊ะ —
+    เลือกได้ 2 กรณี: <b>w5 (เอาต์พุต)</b> และ <b>w1 (ชั้นซ่อน — แตกสองทาง!)</b></p>
+
+    <style>
+      #cz .cz-mode { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+      #cz .cz-path { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:2px; margin:4px 0 16px; }
+      #cz .cz-chip { border:2px solid; border-radius:10px; padding:5px 11px; font-weight:700; font-size:.86rem;
+        background:#fff; color:#1f2533; transition:opacity .35s, box-shadow .35s, transform .35s; }
+      #cz .cz-chip.dim { opacity:.28; }
+      #cz .cz-chip.hot { box-shadow:0 0 0 3px rgba(124,58,237,.18); transform:translateY(-2px); }
+      #cz .cz-arw { color:#94a3b8; font-weight:700; padding:0 5px; font-size:.78rem; white-space:nowrap; }
+      #cz .cz-stage { border:1px solid var(--border); border-radius:12px; background:#fff; padding:18px 12px;
+        min-height:190px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; overflow-x:auto; }
+      [data-theme="dark"] #cz .cz-stage { background:#f7f8fb; }
+      #cz .cz-expr { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:2px;
+        font-size:clamp(.9rem,2.3vw,1.2rem); color:#1f2533; font-variant-numeric:tabular-nums; }
+      #cz .cz-fr { display:inline-flex; flex-direction:column; text-align:center; vertical-align:middle; margin:0 1px; }
+      #cz .cz-fr .nu { border-bottom:2px solid #64748b; padding:0 7px 1px; }
+      #cz .cz-fr .de { padding:1px 7px 0; }
+      #cz .cz-op { margin:0 4px; color:#94a3b8; font-weight:700; }
+      #cz .cz-lhs .nu, #cz .cz-lhs .de { border-color:#7c3aed; }
+      #cz .hl-o { background:rgba(18,161,80,.16); color:#0e7a4f; border-radius:5px; }
+      #cz .hl-n { background:rgba(217,119,6,.18); color:#b45309; border-radius:5px; }
+      #cz .hl-h { background:rgba(124,58,237,.16); color:#6d28d9; border-radius:5px; }
+      #cz .cz-pop { animation:czPop .5s ease-out; }
+      @keyframes czPop { 0%{transform:scale(.3);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+      #cz .cz-cut { position:relative; animation:czFade .9s forwards; }
+      #cz .cz-cut::after { content:''; position:absolute; left:-2px; right:-2px; top:50%; height:2.5px;
+        background:#e5484d; transform:scaleX(0); transform-origin:left; animation:czCut .5s forwards; }
+      @keyframes czCut { to{transform:scaleX(1)} }
+      @keyframes czFade { to{opacity:.28} }
+      @media (prefers-reduced-motion:reduce){ #cz .cz-pop,#cz .cz-cut,#cz .cz-cut::after{animation:none} }
+      #cz .cz-cap { font-size:.9rem; line-height:1.75; text-align:center; max-width:640px; color:#1f2533; }
+      #cz .cz-cap b { color:#7c3aed; }
+      #cz .cz-num { font-size:clamp(.82rem,2vw,1.02rem); color:#0e7a4f; font-weight:700; text-align:center; }
+      #cz .cz-plus { font-size:1.1rem; color:#94a3b8; font-weight:700; margin:0 6px; }
+      #cz .cz-branch { border:1px dashed var(--border); border-radius:10px; padding:8px 12px; margin:3px; display:inline-block; }
+      #cz .cz-branch .bh { font-size:.75rem; font-weight:700; margin-bottom:4px; }
+      #cz .cz-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+      #cz .cz-prog { margin-left:auto; font-weight:600; color:var(--muted); font-size:.85rem; }
+      #czNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+    </style>
+
+    <div class="cz-mode" id="czMode">
+      <button data-m="w5" class="on" style="background:linear-gradient(135deg,#12a150,#0ea371)">กรณี w5 · เอาต์พุต (3 ท่อน)</button>
+      <button data-m="w1" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">กรณี w1 · ชั้นซ่อน (แตกสองทาง)</button>
+      <button data-m="w6" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w6 · สัญลักษณ์</button>
+      <button data-m="w7" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w7 · สัญลักษณ์</button>
+      <button data-m="w8" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w8 · สัญลักษณ์</button>
+    </div>
+
+    <div class="cz-path" id="czPath"></div>
+    <div class="cz-stage" id="czStage"></div>
+
+    <div class="cz-ctl">
+      <button id="czPrev" style="background:linear-gradient(135deg,#64748b,#94a3b8)">◀ ก่อนหน้า</button>
+      <button id="czNext">▶ ขั้นถัดไป</button>
+      <button id="czAuto">⏵ เล่นอัตโนมัติ</button>
+      <div class="seg" id="czSpeed"><button data-s="1" class="on">×1</button><button data-s="2">×2</button></div>
+      <button id="czReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+      <span class="cz-prog" id="czProg"></span>
+    </div>
+    <p class="mm-note" style="margin-top:8px">💡 <b>w6, w7, w8</b> (ปุ่มสีเทา) แสดงแบบ<b>สัญลักษณ์ล้วน</b> — โครงเดียวกับ w5 เป๊ะ ต่างแค่ว่าเชื่อมโหนดไหน · ส่วน <b>w2, w3, w4</b> คลี่แบบเดียวกับ w1 (แตกสองทางเสมอ เพราะเป็น weight ชั้นซ่อน)</p>
+  </div>
+
+  <script>
+  /* ======================================================================
+     เครื่องคลี่กฎลูกโซ่ — อนิเมชันการแตกอนุพันธ์ + telescoping (2-2-2)
+     ====================================================================== */
+  (function(){
+    const stage=document.getElementById('czStage'); if(!stage) return;
+    const sig=z=>1/(1+Math.exp(-z));
+    const f=(v,d=6)=>(+v).toFixed(d);
+    /* ค่าเดียวกับ widget บน */
+    const I1=0.05,I2=0.10,B1=0.35,B2=0.60,T1=0.01,T2=0.99,ETA=0.5;
+    const W={w1:0.15,w2:0.20,w3:0.25,w4:0.30,w5:0.40,w6:0.45,w7:0.50,w8:0.55};
+    const oh1=sig(W.w1*I1+W.w2*I2+B1), oh2=sig(W.w3*I1+W.w4*I2+B1);
+    const oo1=sig(W.w5*oh1+W.w6*oh2+B2), oo2=sig(W.w7*oh1+W.w8*oh2+B2);
+    const dEo1=oo1-T1, so1=oo1*(1-oo1), do1=dEo1*so1;
+    const dEo2=oo2-T2, so2=oo2*(1-oo2), do2=dEo2*so2;
+    const gw5=do1*oh1, nw5=W.w5-ETA*gw5;
+    const br1=do1*W.w5, br2=do2*W.w7, dEoh1=br1+br2;
+    const sh1=oh1*(1-oh1), gw1=dEoh1*sh1*I1, nw1=W.w1-ETA*gw1;
+
+    /* ตัวช่วยเศษส่วน */
+    const fr=(n,d,nc,dc,lhs)=>'<span class="cz-fr'+(lhs?' cz-lhs':'')+'"><span class="nu'+(nc?' '+nc:'')+'">'+n+'</span><span class="de'+(dc?' '+dc:'')+'">'+d+'</span></span>';
+    const op=s=>'<span class="cz-op">'+s+'</span>';
+
+    /* ---- โหมด w5 ---- */
+    const W5={
+      chips:[ {t:'w5',c:'#2456e6'},{a:'× (net_o1)'},{t:'net_o1',c:'#b45309'},{a:'σ'},{t:'out_o1',c:'#12a150'},{a:'loss'},{t:'E_total',c:'#e5484d'} ],
+      phases:[
+        { hot:[0,2,4,6], cap:'<b>เป้าหมาย:</b> หา '+fr('∂E_total','∂w5','','','lhs')+' — "ขยับ w5 นิดหนึ่ง แล้ว E_total ขยับเท่าไหร่" · สังเกตว่า w5 ไปถึง E ผ่านโซ่: w5 → net_o1 → out_o1 → E',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w5','','','lhs')+op('= ?')+'</span>' },
+        { hot:[0,2,4,6], cap:'<b>เทคนิค:</b> "คูณด้วย 1" อย่างชาญฉลาด — แทรกตัวกลาง <span class="hl-o">out_o1</span> เข้าไป (ทั้งบนและล่าง) ค่าไม่เปลี่ยน แต่ตอนนี้แตกเป็น 2 ท่อนแล้ว',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w5','','','lhs')+op('=')
+            +'<span class="cz-pop">'+fr('∂E_total','∂out_o1','','hl-o')+op('·')+fr('∂out_o1','∂w5','hl-o','')+'</span></span>' },
+        { hot:[0,2,4,6], cap:'<b>แทรกอีกตัว:</b> คราวนี้ยัด <span class="hl-n">net_o1</span> เข้าไประหว่าง out_o1 กับ w5 — ได้ครบ <b>3 ท่อน</b> พอดี แต่ละท่อนคือ "sensitivity ของ 1 hop"',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w5','','','lhs')+op('=')
+            +fr('∂E_total','∂out_o1','','hl-o')+op('·')
+            +'<span class="cz-pop">'+fr('∂out_o1','∂net_o1','hl-o','hl-n')+op('·')+fr('∂net_o1','∂w5','hl-n','')+'</span></span>' },
+        { hot:[0,2,4,6], cap:'<b>ทำไมยังเท่าเดิม?</b> เพราะ <span class="hl-o">∂out_o1</span> อยู่ทั้งล่างท่อน 1 และบนท่อน 2 · <span class="hl-n">∂net_o1</span> อยู่ทั้งล่างท่อน 2 และบนท่อน 3 → <b>หักกันหมดเหมือนเศษส่วน (telescoping)</b> เหลือ ∂E_total/∂w5 เป๊ะ',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w5','','','lhs')+op('=')
+            +fr('∂E_total','<span class="cz-cut">∂out_o1</span>','','hl-o')+op('·')
+            +fr('<span class="cz-cut">∂out_o1</span>','<span class="cz-cut">∂net_o1</span>','hl-o','hl-n')+op('·')
+            +fr('<span class="cz-cut">∂net_o1</span>','∂w5','hl-n','')+op('✓')+'</span>' },
+        { hot:[6,4], cap:'<b>ท่อนที่ 1 — "loss ไวต่อ out_o1 แค่ไหน":</b> จาก L=½(o₁−out_o1)² → ∂E_total/∂out_o1 = out_o1 − o₁',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂out_o1','','hl-o')+op('=')+'out_o1 − o₁ = '+f(oo1,4)+' − 0.01</span>'
+            +'<div class="cz-num">= '+f(dEo1,8)+'</div>' },
+        { hot:[4,2], cap:'<b>ท่อนที่ 2 — "out ไวต่อ net แค่ไหน":</b> นี่คือ σ′ พอดี = out_o1(1−out_o1)',
+          expr:'<span class="cz-expr">'+fr('∂out_o1','∂net_o1','hl-o','hl-n')+op('= σ′(net_o1) =')+'out_o1(1−out_o1)</span>'
+            +'<div class="cz-num">= '+f(oo1,4)+' × '+f(1-oo1,4)+' = '+f(so1,8)+'</div>' },
+        { hot:[2,0], cap:'<b>ท่อนที่ 3 — "net ไวต่อ w5 แค่ไหน":</b> เพราะ net_o1 = w5·out_h1 + ... → อนุพันธ์เทียบ w5 คือค่าที่คูณอยู่ = out_h1',
+          expr:'<span class="cz-expr">'+fr('∂net_o1','∂w5','hl-n','')+op('=')+'out_h1</span>'
+            +'<div class="cz-num">= '+f(oh1,8)+'</div>' },
+        { hot:[0,2,4,6], cap:'<b>คูณ 3 ท่อนเข้าด้วยกัน</b> → ได้ความชันของ w5:',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w5','','','lhs')+op('=')+f(dEo1,4)+op('×')+f(so1,4)+op('×')+f(oh1,4)+'</span>'
+            +'<div class="cz-num" style="font-size:1.1rem">= '+f(gw5,8)+'</div>' },
+        { hot:[0], cap:'<b>อัปเดต!</b> ก้าวสวนความชัน — w5 ลดลงนิดเดียว (เพราะมันดัน out_o1 ให้เกินเป้า)',
+          expr:'<div class="cz-num" style="font-size:1.15rem">w5_ใหม่ = 0.40 − 0.5 × '+f(gw5,6)+' = '+f(nw5,8)+'</div>'
+            +'<div class="cz-cap" style="margin-top:6px">✓ ตรงกับบทความ Matt Mazur (0.35891648)</div>' }
+      ]
+    };
+
+    /* ---- โหมด w1 (ชั้นซ่อน แตกสองทาง) ---- */
+    const W1={
+      chips:[ {t:'w1',c:'#2456e6'},{a:'×'},{t:'net_h1',c:'#b45309'},{a:'σ'},{t:'out_h1',c:'#7c3aed'},{a:'⑂ แตก 2 ทาง'},{t:'o₁ , o₂',c:'#12a150'},{a:'loss'},{t:'E_total',c:'#e5484d'} ],
+      phases:[
+        { hot:[0,2,4,6,8], cap:'<b>ชั้นซ่อนยากขึ้น:</b> หา '+fr('∂E_total','∂w1','','','lhs')+' · เริ่มเหมือน w5 (แตก 3 ท่อนถึง out_h1) แต่ปัญหาอยู่ที่ท่อนแรก ∂E_total/∂out_h1',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w1','','','lhs')+op('=')
+            +fr('∂E_total','∂out_h1','','hl-h')+op('·')+fr('∂out_h1','∂net_h1','hl-h','hl-n')+op('·')+fr('∂net_h1','∂w1','hl-n','')+'</span>' },
+        { hot:[4,6,8], cap:'<b>จุดที่ต่างจากเอาต์พุต:</b> out_h1 ถูกส่งต่อไป <b>ทั้ง o₁ และ o₂</b> → การเปลี่ยน out_h1 กระทบ E ผ่าน <b>สองเส้นทางพร้อมกัน</b> ต้อง<b>บวกกัน</b>',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂out_h1','','hl-h')+op('=')
+            +'<span class="cz-branch"><div class="bh" style="color:#12a150">ทางผ่าน o₁</div>'+fr('∂E_o1','∂out_h1')+'</span>'
+            +'<span class="cz-plus">+</span>'
+            +'<span class="cz-branch"><div class="bh" style="color:#12a150">ทางผ่าน o₂</div>'+fr('∂E_o2','∂out_h1')+'</span></span>' },
+        { hot:[4,6,8], cap:'<b>แต่ละทางก็คลี่แบบ w5:</b> ∂E_ok/∂out_h1 = δ_ok × w(เส้นที่เชื่อม) — ตัวกลาง telescoping เหมือนเดิม เหลือ δ คูณ weight',
+          expr:'<span class="cz-expr" style="font-size:clamp(.8rem,1.9vw,1rem)">'
+            +'<span class="cz-branch">'+fr('∂E_o1','∂out_h1')+op('=')+'<span class="hl-o">δ_o1</span>·w5</span>'
+            +'<span class="cz-plus">+</span>'
+            +'<span class="cz-branch">'+fr('∂E_o2','∂out_h1')+op('=')+'<span class="hl-o">δ_o2</span>·w7</span></span>' },
+        { hot:[4,6,8], cap:'<b>แทนเลขทั้งสองทางแล้วบวก:</b> ทาง o₁ ดันขึ้น (บวก) · ทาง o₂ ดึงลง (ลบ) — สุทธิยังเป็นบวก',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂out_h1','','hl-h')+op('=')
+            +'('+f(do1,4)+')(0.40)'+op('+')+'('+f(do2,4)+')(0.50)</span>'
+            +'<div class="cz-num">= '+f(br1,6)+' + ('+f(br2,6)+') = '+f(dEoh1,8)+'</div>' },
+        { hot:[0,2,4], cap:'<b>เอา ∂E_total/∂out_h1 กลับไปแทน</b> ในสูตร 3 ท่อนของ w1 — ที่เหลือคูณ σ′ ของ h1 แล้วคูณอินพุต i₁',
+          expr:'<span class="cz-expr">'+fr('∂E_total','∂w1','','','lhs')+op('=')
+            +f(dEoh1,6)+op('×')+'<span class="hl-n">'+f(sh1,4)+'</span>'+op('×')+'<span class="hl-o">0.05</span></span>'
+            +'<div class="cz-cap" style="margin-top:4px"><span class="hl-n">σ′(h1)=out_h1(1−out_h1)</span> · <span class="hl-o">i₁</span></div>'
+            +'<div class="cz-num" style="font-size:1.1rem">= '+f(gw1,8)+'</div>' },
+        { hot:[0], cap:'<b>อัปเดต w1</b> — ขยับ<b>น้อยมาก</b> เพราะ σ′ สองชั้นคูณกัน + i₁ เล็ก (นี่คือต้นตอ vanishing gradient!)',
+          expr:'<div class="cz-num" style="font-size:1.15rem">w1_ใหม่ = 0.15 − 0.5 × '+f(gw1,6)+' = '+f(nw1,8)+'</div>'
+            +'<div class="cz-cap" style="margin-top:6px">✓ ตรงกับบทความ Matt Mazur (0.14978072)</div>' }
+      ]
+    };
+
+    /* ---- โหมด w6/w7/w8 : สัญลักษณ์ล้วน (โครงเหมือน w5 ต่างแค่ index) ---- */
+    function makeSym(c){
+      return {
+        chips:[ {t:c.w,c:'#2456e6'},{a:'× ('+c.netN+')'},{t:c.netN,c:'#b45309'},{a:'σ'},{t:c.outN,c:'#12a150'},{a:'loss'},{t:'E_total',c:'#e5484d'} ],
+        phases:[
+          { hot:[0,2,4,6], cap:'<b>เป้าหมาย:</b> หา '+fr('∂E_total','∂'+c.w,'','','lhs')+' — โครงเหมือน w5 ทุกประการ เพราะ '+c.w+' เชื่อม '+c.hLabel+' → '+c.oLabel+' · ไล่แบบ<b>สัญลักษณ์ (ไม่แทนเลข)</b>',
+            expr:'<span class="cz-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('= ?')+'</span>' },
+          { hot:[0,2,4,6], cap:'<b>แทรกตัวกลาง</b> <span class="hl-o">'+c.outN+'</span> (ทั้งบนและล่าง ค่าไม่เปลี่ยน) → แตกเป็น 2 ท่อน',
+            expr:'<span class="cz-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')
+              +'<span class="cz-pop">'+fr('∂E_total','∂'+c.outN,'','hl-o')+op('·')+fr('∂'+c.outN,'∂'+c.w,'hl-o','')+'</span></span>' },
+          { hot:[0,2,4,6], cap:'<b>แทรก</b> <span class="hl-n">'+c.netN+'</span> อีกตัว → ครบ <b>3 ท่อน</b> (sensitivity ของแต่ละ hop)',
+            expr:'<span class="cz-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')
+              +fr('∂E_total','∂'+c.outN,'','hl-o')+op('·')
+              +'<span class="cz-pop">'+fr('∂'+c.outN,'∂'+c.netN,'hl-o','hl-n')+op('·')+fr('∂'+c.netN,'∂'+c.w,'hl-n','')+'</span></span>' },
+          { hot:[0,2,4,6], cap:'<b>ตัวกลางหักกันเอง (telescoping):</b> <span class="hl-o">'+c.outN+'</span> และ <span class="hl-n">'+c.netN+'</span> โผล่ทั้งบนและล่าง → ตัดกันหมดเหมือนเศษส่วน เหลือ ∂E_total/∂'+c.w+' เท่าเดิม',
+            expr:'<span class="cz-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')
+              +fr('∂E_total','<span class="cz-cut">∂'+c.outN+'</span>','','hl-o')+op('·')
+              +fr('<span class="cz-cut">∂'+c.outN+'</span>','<span class="cz-cut">∂'+c.netN+'</span>','hl-o','hl-n')+op('·')
+              +fr('<span class="cz-cut">∂'+c.netN+'</span>','∂'+c.w,'hl-n','')+op('✓')+'</span>' },
+          { hot:[0,2,4], cap:'<b>เขียนย่อด้วย δ:</b> สองท่อนแรกรวมเป็น <span class="hl-o">'+c.delta+'</span> · ท่อนสุดท้าย ∂'+c.netN+'/∂'+c.w+' = ค่า out ของโหนดต้นเส้น = <span class="hl-h">'+c.hOut+'</span>',
+            expr:'<span class="cz-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')+'<span class="hl-o">'+c.delta+'</span>'+op('·')+'<span class="hl-h">'+c.hOut+'</span></span>'
+              +'<div class="cz-cap" style="margin-top:8px">อัปเดต (สัญลักษณ์): <b>'+c.w+'_ใหม่ = '+c.w+' − η · ('+c.delta+' · '+c.hOut+')</b></div>' }
+        ]
+      };
+    }
+    const MODES={ w5:W5, w1:W1,
+      w6:makeSym({w:'w6',netN:'net_o1',outN:'out_o1',hOut:'out_h2',delta:'δ_o1',hLabel:'h₂',oLabel:'o₁'}),
+      w7:makeSym({w:'w7',netN:'net_o2',outN:'out_o2',hOut:'out_h1',delta:'δ_o2',hLabel:'h₁',oLabel:'o₂'}),
+      w8:makeSym({w:'w8',netN:'net_o2',outN:'out_o2',hOut:'out_h2',delta:'δ_o2',hLabel:'h₂',oLabel:'o₂'}) };
+    let mode='w5', i=0, timer=null, spd=1;
+    const pathEl=document.getElementById('czPath'), prog=document.getElementById('czProg'),
+          btnN=document.getElementById('czNext'), btnP=document.getElementById('czPrev');
+
+    function drawPath(){
+      const M=MODES[mode], hot=M.phases[i].hot||[];
+      pathEl.innerHTML=M.chips.map((c,idx)=>{
+        if(c.a) return '<span class="cz-arw">'+c.a+' →</span>';
+        const isHot=hot.includes(idx);
+        return '<span class="cz-chip'+(isHot?' hot':' dim')+'" style="border-color:'+c.c+';color:'+c.c+'">'+c.t+'</span>';
+      }).join('');
+    }
+    function render(){
+      const M=MODES[mode], p=M.phases[i];
+      drawPath();
+      stage.innerHTML=p.expr+'<div class="cz-cap">'+p.cap+'</div>';
+      prog.textContent='ขั้น '+(i+1)+' / '+M.phases.length;
+      btnN.textContent = i>=M.phases.length-1 ? '✓ ครบแล้ว' : '▶ ขั้นถัดไป';
+      btnN.disabled=i>=M.phases.length-1; btnP.disabled=i<=0;
+      btnN.style.opacity=btnN.disabled?.5:1; btnP.style.opacity=btnP.disabled?.5:1;
+    }
+    function next(){ const M=MODES[mode]; if(i<M.phases.length-1){ i++; render(); } else stopAuto(); }
+    function prev(){ if(i>0){ i--; render(); } }
+    function stopAuto(){ if(timer){ clearInterval(timer); timer=null; document.getElementById('czAuto').textContent='⏵ เล่นอัตโนมัติ'; } }
+    btnN.addEventListener('click', ()=>{ stopAuto(); next(); });
+    btnP.addEventListener('click', ()=>{ stopAuto(); prev(); });
+    document.getElementById('czReset').addEventListener('click', ()=>{ stopAuto(); i=0; render(); });
+    document.getElementById('czAuto').addEventListener('click', function(){
+      if(timer){ stopAuto(); return; }
+      if(i>=MODES[mode].phases.length-1) i=0;
+      this.textContent='⏸ หยุด';
+      timer=setInterval(()=>{ if(i>=MODES[mode].phases.length-1){ stopAuto(); return; } next(); }, 3000/spd);
+    });
+    document.getElementById('czSpeed').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); spd=+b.dataset.s;
+      if(timer){ clearInterval(timer); timer=setInterval(()=>{ if(i>=MODES[mode].phases.length-1){ stopAuto(); return; } next(); }, 3000/spd); }
+    });
+    document.getElementById('czMode').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      mode=b.dataset.m; i=0; stopAuto(); render();
+    });
+    render();
+  })();
+  </script>
+
+  <div class="demo" id="cf">
+    <h3 style="margin-top:0">🌿 ต่อยอด: ครบทั้ง 4 เส้นชั้นซ่อน (w1–w4) — fork และ "สูตรร่วม" ของ δ</h3>
+    <p style="margin-top:0">weight ชั้นซ่อนซับซ้อนกว่าเพราะโหนดซ่อนหนึ่งตัว<b>แตกไปเลี้ยงทั้ง 2 เอาต์พุต</b> (fork) ·
+    เลือก w1–w4 แล้วดูว่าแต่ละเส้นคลี่อย่างไร (สัญลักษณ์ล้วน) · <b>ไฮไลต์ท้ายสุด:</b> ทำไม w1 กับ w2 ถึงใช้ δ ตัวเดียวกัน — ความลับที่ทำให้ backprop เร็ว</p>
+
+    <style>
+      #cf .cf-sel { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+      #cf .cf-sel button { font-family:inherit; font-weight:700; }
+      #cf .cf-svg { display:block; margin:0 auto 12px; max-width:600px; width:100%; height:auto;
+        border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:6px; }
+      #cf .cf-svg text { font-family:'Poppins','Kanit',sans-serif; }
+      #cf .cf-node circle { fill:#fff; stroke-width:2.5; }
+      #cf .cf-dim { opacity:.15; transition:opacity .4s; }
+      #cf .cf-lit { opacity:1; transition:opacity .4s; }
+      #cf .cf-flow { stroke-dasharray:6 6; animation:cfDash 1s linear infinite; }
+      @keyframes cfDash { to { stroke-dashoffset:-24; } }
+      #cf .cf-stage { border:1px solid var(--border); border-radius:12px; background:#fff; padding:16px 12px;
+        min-height:172px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; overflow-x:auto; }
+      [data-theme="dark"] #cf .cf-stage { background:#f7f8fb; }
+      #cf .cf-expr { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:2px;
+        font-size:clamp(.82rem,2.1vw,1.12rem); color:#1f2533; font-variant-numeric:tabular-nums; }
+      #cf .cf-fr { display:inline-flex; flex-direction:column; text-align:center; vertical-align:middle; margin:0 1px; }
+      #cf .cf-fr .nu { border-bottom:2px solid #64748b; padding:0 7px 1px; }
+      #cf .cf-fr .de { padding:1px 7px 0; }
+      #cf .cf-lhs .nu, #cf .cf-lhs .de { border-color:#7c3aed; }
+      #cf .cf-op { margin:0 4px; color:#94a3b8; font-weight:700; }
+      #cf .hl-o { background:rgba(18,161,80,.16); color:#0e7a4f; border-radius:5px; }
+      #cf .hl-n { background:rgba(217,119,6,.18); color:#b45309; border-radius:5px; }
+      #cf .hl-h { background:rgba(124,58,237,.16); color:#6d28d9; border-radius:5px; }
+      #cf .hl-i { background:rgba(36,86,230,.14); color:#1d4ed8; border-radius:5px; }
+      #cf .cf-pop { animation:czPop .5s ease-out; }
+      #cf .cf-cut { position:relative; animation:czFade .9s forwards; }
+      #cf .cf-cut::after { content:''; position:absolute; left:-2px; right:-2px; top:50%; height:2.5px;
+        background:#e5484d; transform:scaleX(0); transform-origin:left; animation:czCut .5s forwards; }
+      @media (prefers-reduced-motion:reduce){ #cf .cf-pop,#cf .cf-cut,#cf .cf-cut::after,#cf .cf-flow{animation:none} }
+      #cf .cf-branch { border:1px dashed var(--border); border-radius:10px; padding:8px 12px; margin:3px; display:inline-block; }
+      #cf .cf-branch .bh { font-size:.75rem; font-weight:700; margin-bottom:4px; color:#12a150; }
+      #cf .cf-plus { font-size:1.1rem; color:#94a3b8; font-weight:700; margin:0 6px; }
+      #cf .cf-cap { font-size:.9rem; line-height:1.75; text-align:center; max-width:660px; color:#1f2533; }
+      #cf .cf-cap b { color:#7c3aed; }
+      #cf .cf-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+      #cf .cf-prog { margin-left:auto; font-weight:600; color:var(--muted); font-size:.85rem; }
+      #cfNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+      #cf .cf-group { margin-top:12px; background:linear-gradient(135deg,rgba(124,58,237,.09),rgba(79,70,229,.05));
+        border-radius:10px; padding:10px 14px; font-size:.88rem; line-height:1.7; }
+      #cf .cf-group b { color:#6d28d9; }
+    </style>
+
+    <div class="cf-sel" id="cfSel">
+      <button data-w="w1" class="on" style="background:linear-gradient(135deg,#2456e6,#4f46e5)">w1 (i₁→h₁)</button>
+      <button data-w="w2" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w2 (i₂→h₁)</button>
+      <button data-w="w3" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w3 (i₁→h₂)</button>
+      <button data-w="w4" style="background:linear-gradient(135deg,#64748b,#94a3b8)">w4 (i₂→h₂)</button>
+    </div>
+
+    <svg id="cfSvg" class="cf-svg" viewBox="0 0 600 260" aria-label="เครือข่าย 2-2-2 ไฮไลต์เส้นชั้นซ่อน"></svg>
+    <div class="cf-stage" id="cfStage"></div>
+
+    <div class="cf-ctl">
+      <button id="cfPrev" style="background:linear-gradient(135deg,#64748b,#94a3b8)">◀ ก่อนหน้า</button>
+      <button id="cfNext">▶ ขั้นถัดไป</button>
+      <button id="cfAuto">⏵ เล่นอัตโนมัติ</button>
+      <div class="seg" id="cfSpeed"><button data-s="1" class="on">×1</button><button data-s="2">×2</button></div>
+      <button id="cfReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+      <span class="cf-prog" id="cfProg"></span>
+    </div>
+    <div class="cf-group" id="cfGroup"></div>
+  </div>
+
+  <script>
+  /* ======================================================================
+     ต่อยอด — ครบ 4 เส้นชั้นซ่อน w1–w4 : fork + สูตรร่วมของ δ (สัญลักษณ์)
+     ====================================================================== */
+  (function(){
+    const svg=document.getElementById('cfSvg'); if(!svg) return;
+    const NS='http://www.w3.org/2000/svg';
+    const mk=(t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
+    const fr=(n,d,nc,dc,lhs)=>'<span class="cf-fr'+(lhs?' cf-lhs':'')+'"><span class="nu'+(nc?' '+nc:'')+'">'+n+'</span><span class="de'+(dc?' '+dc:'')+'">'+d+'</span></span>';
+    const op=s=>'<span class="cf-op">'+s+'</span>';
+
+    /* ---- มินิเน็ต 2-2-2 ---- */
+    const P={ i1:{x:52,y:74,c:'#2456e6',lb:'i₁'}, i2:{x:52,y:192,c:'#2456e6',lb:'i₂'},
+      h1:{x:212,y:58,c:'#7c3aed',lb:'h₁'}, h2:{x:212,y:208,c:'#7c3aed',lb:'h₂'},
+      o1:{x:390,y:58,c:'#12a150',lb:'o₁'}, o2:{x:390,y:208,c:'#12a150',lb:'o₂'}, E:{x:540,y:133,c:'#e5484d',lb:'E'} };
+    const ED=[ ['W1','i1','h1','w1'],['W2','i2','h1','w2'],['W3','i1','h2','w3'],['W4','i2','h2','w4'],
+      ['W5','h1','o1','w5'],['W6','h2','o1','w6'],['W7','h1','o2','w7'],['W8','h2','o2','w8'],
+      ['L1','o1','E',''],['L2','o2','E',''] ];
+    const R=21;
+    ED.forEach(([id,a,b,lb])=>{
+      const A=P[a],B=P[b], g=mk('g',{class:'cf-edge',id:'e'+id});
+      g.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,stroke:'#8a93a8','stroke-width':2,'stroke-opacity':.6}));
+      if(lb){ const mx=A.x+(B.x-A.x)*0.42, my=A.y+(B.y-A.y)*0.42;
+        g.appendChild(mk('rect',{x:mx-13,y:my-14,width:26,height:14,rx:4,fill:'#f7f8fb','fill-opacity':.92}));
+        const t=mk('text',{x:mx,y:my-3,'text-anchor':'middle','font-size':10,'font-weight':700,fill:'#5b6475'}); t.textContent=lb; g.appendChild(t); }
+      svg.appendChild(g);
+    });
+    Object.keys(P).forEach(k=>{
+      const n=P[k], g=mk('g',{class:'cf-node',id:'n'+k});
+      g.appendChild(mk('circle',{cx:n.x,cy:n.y,r:R,stroke:n.c}));
+      const t=mk('text',{x:n.x,y:n.y+5,'text-anchor':'middle','font-size':14,'font-weight':700,fill:n.c}); t.textContent=n.lb;
+      g.appendChild(t); svg.appendChild(g);
+    });
+
+    /* ---- config ต่อ weight ---- */
+    const WC={
+      w1:{w:'w1',inp:'i₁',hid:'h₁',hOut:'out_h1',hNet:'net_h1',delta:'δ_h1',fA:'w5',fB:'w7',sib:'w2',own:'W1',inpN:'ni1',hidN:'nh1',fAe:'eW5',fBe:'eW7'},
+      w2:{w:'w2',inp:'i₂',hid:'h₁',hOut:'out_h1',hNet:'net_h1',delta:'δ_h1',fA:'w5',fB:'w7',sib:'w1',own:'W2',inpN:'ni2',hidN:'nh1',fAe:'eW5',fBe:'eW7'},
+      w3:{w:'w3',inp:'i₁',hid:'h₂',hOut:'out_h2',hNet:'net_h2',delta:'δ_h2',fA:'w6',fB:'w8',sib:'w4',own:'W3',inpN:'ni1',hidN:'nh2',fAe:'eW6',fBe:'eW8'},
+      w4:{w:'w4',inp:'i₂',hid:'h₂',hOut:'out_h2',hNet:'net_h2',delta:'δ_h2',fA:'w6',fB:'w8',sib:'w3',own:'W4',inpN:'ni2',hidN:'nh2',fAe:'eW6',fBe:'eW8'}
+    };
+    const litSets=c=>({
+      edges:['e'+c.own,c.fAe,c.fBe,'eL1','eL2'],
+      nodes:[c.inpN,c.hidN,'no1','no2','nE']
+    });
+    function phases(c){
+      return [
+        { flow:['e'+c.own], cap:'<b>เป้าหมาย:</b> หา '+fr('∂E_total','∂'+c.w,'','','lhs')+' · '+c.w+' วิ่งจาก '+c.inp+' เข้า '+c.hid+' แล้ว <b>'+c.hid+' แตกไปเลี้ยงทั้ง o₁ และ o₂</b> — ต้องคิดผลรวมจากทั้งสองทาง',
+          expr:'<span class="cf-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('= ?')+'</span>' },
+        { flow:['e'+c.own], cap:'<b>ชั้นนอกก่อน (เหมือน w5):</b> 3 ท่อน — ตัวกลาง '+c.hOut+', '+c.hNet+' <b>telescoping</b> ตัดกันเอง · เหลือ = <b>ท่อนแรก</b> × σ′('+c.hid+') × '+c.inp,
+          expr:'<span class="cf-expr">'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')
+            +fr('∂E_total','<span class="cf-cut">∂'+c.hOut+'</span>','','hl-h')+op('·')
+            +fr('<span class="cf-cut">∂'+c.hOut+'</span>','<span class="cf-cut">∂'+c.hNet+'</span>','hl-h','hl-n')+op('·')
+            +fr('<span class="cf-cut">∂'+c.hNet+'</span>','∂'+c.w,'hl-n','')+'</span>'
+            +'<div class="cf-cap" style="margin-top:4px">→ '+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')+'<span class="hl-h">'+fr('∂E_total','∂'+c.hOut)+'</span>'+op('·')+'σ′('+c.hid+')'+op('·')+'<span class="hl-i">'+c.inp+'</span></div>' },
+        { flow:[c.fAe,c.fBe], cap:'<b>ท่อนแรกไม่ง่าย — นี่คือ fork!</b> การขยับ '+c.hOut+' กระทบ E ผ่าน <b>ทั้ง o₁ และ o₂</b> จึงต้อง<b>บวกสองทาง</b>',
+          expr:'<span class="cf-expr">'+fr('∂E_total','∂'+c.hOut,'','hl-h')+op('=')
+            +'<span class="cf-branch"><div class="bh">ทางผ่าน o₁</div>'+fr('∂E_o1','∂'+c.hOut)+'</span>'
+            +'<span class="cf-plus">+</span>'
+            +'<span class="cf-branch"><div class="bh">ทางผ่าน o₂</div>'+fr('∂E_o2','∂'+c.hOut)+'</span></span>' },
+        { flow:[c.fAe,c.fBe], cap:'<b>แต่ละทางก็ telescoping</b> เหลือ δ ของเอาต์พุตนั้น คูณ weight ของเส้นที่เชื่อม ('+c.fA+' ไป o₁ · '+c.fB+' ไป o₂)',
+          expr:'<span class="cf-expr">'+fr('∂E_total','∂'+c.hOut,'','hl-h')+op('=')
+            +'<span class="hl-o">δ_o1</span> · '+c.fA+'<span class="cf-plus">+</span><span class="hl-o">δ_o2</span> · '+c.fB+'</span>' },
+        { flow:[], cap:'<b>รวมเป็น δ ของโหนดซ่อน:</b> เอาผลรวม fork คูณ σ′('+c.hid+') ได้ '+c.delta+' · แล้วความชันของ '+c.w+' = '+c.delta+' × '+c.inp+' (อินพุตต้นเส้น)',
+          expr:'<span class="cf-expr" style="flex-direction:column;gap:6px">'
+            +'<span><span class="hl-h">'+c.delta+'</span>'+op('=')+'( <span class="hl-o">δ_o1</span>·'+c.fA+' + <span class="hl-o">δ_o2</span>·'+c.fB+' ) · σ′('+c.hid+')</span>'
+            +'<span>'+fr('∂E_total','∂'+c.w,'','','lhs')+op('=')+'<span class="hl-h">'+c.delta+'</span>'+op('·')+'<span class="hl-i">'+c.inp+'</span></span></span>' },
+        { flow:['e'+c.own], cap:'<b>อัปเดต (สัญลักษณ์):</b> '+c.w+'_ใหม่ = '+c.w+' − η · ('+c.delta+' · '+c.inp+')',
+          expr:'<span class="cf-expr" style="font-size:1.05rem">'+c.w+'_ใหม่ = '+c.w+' − η · ( <span class="hl-h">'+c.delta+'</span> · <span class="hl-i">'+c.inp+'</span> )</span>'
+            +'<div class="cf-cap" style="margin-top:6px">✓ สูตรเดียวใช้ได้ทุกเส้นชั้นซ่อน — เปลี่ยนแค่ "'+c.delta+' ตัวไหน" กับ "อินพุตตัวไหน"</div>' }
+      ];
+    }
+
+    let mode='w1', i=0, timer=null, spd=1, ph=phases(WC.w1);
+    const stage=document.getElementById('cfStage'), prog=document.getElementById('cfProg'),
+          group=document.getElementById('cfGroup'), btnN=document.getElementById('cfNext'), btnP=document.getElementById('cfPrev');
+    const allE=ED.map(e=>'e'+e[0]), allN=Object.keys(P).map(k=>'n'+k);
+
+    function drawNet(){
+      const c=WC[mode], L=litSets(c), fl=ph[i].flow||[];
+      allE.forEach(id=>{ const g=document.getElementById(id);
+        g.setAttribute('class','cf-edge '+(L.edges.includes(id)?'cf-lit':'cf-dim'));
+        const ln=g.querySelector('line'); ln.classList.toggle('cf-flow', fl.includes(id)); });
+      allN.forEach(id=>document.getElementById(id).setAttribute('class','cf-node '+(L.nodes.includes(id)?'cf-lit':'cf-dim')));
+    }
+    function setGroup(){ const c=WC[mode];
+      group.innerHTML='🔑 <b>ความลับที่ทำให้ backprop เร็ว:</b> <b>'+c.w+'</b> กับ <b>'+c.sib+'</b> ใช้ <b>'+c.delta
+        +'</b> ตัวเดียวกัน (fork คำนวณ<b>ครั้งเดียว</b> แล้วใช้ซ้ำทุกเส้นที่ออกจาก '+c.hid+') — ต่างกันแค่คูณอินพุตคนละตัว ('+
+        (c.w==='w1'||c.w==='w3'?'i₁':'i₂')+' vs '+(c.w==='w1'||c.w==='w3'?'i₂':'i₁')+')';
+    }
+    function render(){
+      const p=ph[i]; drawNet();
+      stage.innerHTML=p.expr+'<div class="cf-cap">'+p.cap+'</div>';
+      prog.textContent='ขั้น '+(i+1)+' / '+ph.length;
+      btnN.textContent=i>=ph.length-1?'✓ ครบแล้ว':'▶ ขั้นถัดไป';
+      btnN.disabled=i>=ph.length-1; btnP.disabled=i<=0;
+      btnN.style.opacity=btnN.disabled?.5:1; btnP.style.opacity=btnP.disabled?.5:1;
+    }
+    function next(){ if(i<ph.length-1){ i++; render(); } else stopAuto(); }
+    function prev(){ if(i>0){ i--; render(); } }
+    function stopAuto(){ if(timer){ clearInterval(timer); timer=null; document.getElementById('cfAuto').textContent='⏵ เล่นอัตโนมัติ'; } }
+    btnN.addEventListener('click',()=>{ stopAuto(); next(); });
+    btnP.addEventListener('click',()=>{ stopAuto(); prev(); });
+    document.getElementById('cfReset').addEventListener('click',()=>{ stopAuto(); i=0; render(); });
+    document.getElementById('cfAuto').addEventListener('click',function(){
+      if(timer){ stopAuto(); return; }
+      if(i>=ph.length-1) i=0;
+      this.textContent='⏸ หยุด';
+      timer=setInterval(()=>{ if(i>=ph.length-1){ stopAuto(); return; } next(); }, 3000/spd);
+    });
+    document.getElementById('cfSpeed').addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); spd=+b.dataset.s;
+      if(timer){ clearInterval(timer); timer=setInterval(()=>{ if(i>=ph.length-1){ stopAuto(); return; } next(); }, 3000/spd); }
+    });
+    document.getElementById('cfSel').addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>{ x.classList.remove('on'); x.style.background='linear-gradient(135deg,#64748b,#94a3b8)'; });
+      b.classList.add('on'); b.style.background='linear-gradient(135deg,#2456e6,#4f46e5)';
+      mode=b.dataset.w; ph=phases(WC[mode]); i=0; stopAuto(); setGroup(); render();
+    });
+    setGroup(); render();
+  })();
+  </script>
+
+  <div class="demo" id="dw">
+    <h3 style="margin-top:0">🏔️ ลึกขึ้นอีกขั้น: 2 ชั้นซ่อน — เมื่อ δ กลายเป็น "ลูกโซ่เวียนเกิด" (recursion)</h3>
+    <p style="margin-top:0">เพิ่มชั้นซ่อนเป็น 2 ชั้น (อินพุต → ซ่อน A → ซ่อน B → เอาต์พุต) · จุดที่<b>เข้าใจยาก</b>คือ
+    δ ของชั้นลึก<b>ต้องใช้ δ ของชั้นที่อยู่ถัดไปทางเอาต์พุต</b> — เป็น "สูตรเดียวกันวนซ้ำ" (recursion) · กด ▶ ดูคลื่น δ ไหลย้อนทีละชั้น</p>
+
+    <style>
+      #dw .dw-svg { display:block; margin:0 auto 12px; max-width:620px; width:100%; height:auto;
+        border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:6px; }
+      #dw .dw-svg text { font-family:'Poppins','Kanit',sans-serif; }
+      #dw .dw-node circle { fill:#fff; stroke-width:2.5; }
+      #dw .dw-dim { opacity:.14; transition:opacity .4s; }
+      #dw .dw-lit { opacity:1; transition:opacity .4s; }
+      #dw .dw-flow { stroke-dasharray:6 6; animation:cfDash 1s linear infinite; }
+      #dw .dw-flowb line { stroke:#e5484d !important; stroke-width:3 !important; stroke-opacity:1 !important; }
+      #dw .dw-stage { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:14px 15px;
+        min-height:120px; font-size:.92rem; line-height:1.85; }
+      #dw .dw-formula { background:#0f1729; color:#e6edf7; border-radius:9px; padding:9px 14px; margin:8px 0;
+        font-size:clamp(.85rem,2vw,1.05rem); text-align:center; overflow-x:auto; white-space:nowrap; font-variant-numeric:tabular-nums; }
+      #dw .dw-formula b { color:#f0b429; }
+      #dw .dw-formula .rec { color:#5eead4; }
+      #dw .dw-cap b { color:#7c3aed; }
+      #dw .dw-ctl { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; }
+      #dw .dw-prog { margin-left:auto; font-weight:600; color:var(--muted); font-size:.85rem; }
+      #dwNext { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+    </style>
+
+    <svg id="dwSvg" class="dw-svg" viewBox="0 0 620 300" aria-label="เครือข่าย 2 ชั้นซ่อน"></svg>
+    <div class="dw-stage" id="dwStage"></div>
+    <div class="dw-ctl">
+      <button id="dwPrev" style="background:linear-gradient(135deg,#64748b,#94a3b8)">◀ ก่อนหน้า</button>
+      <button id="dwNext">▶ ขั้นถัดไป</button>
+      <button id="dwAuto">⏵ เล่นอัตโนมัติ</button>
+      <div class="seg" id="dwSpeed"><button data-s="1" class="on">×1</button><button data-s="2">×2</button></div>
+      <button id="dwReset" style="background:linear-gradient(135deg,#64748b,#94a3b8)">↺ เริ่มใหม่</button>
+      <span class="dw-prog" id="dwProg"></span>
+    </div>
+  </div>
+
+  <script>
+  /* ======================================================================
+     2 ชั้นซ่อน — recursion ของ δ + vanishing gradient (เชิงแนวคิด)
+     ====================================================================== */
+  (function(){
+    const svg=document.getElementById('dwSvg'); if(!svg) return;
+    const NS='http://www.w3.org/2000/svg';
+    const mk=(t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
+    const LY={ X:['X0','X1'], A:['A0','A1'], B:['B0','B1'], O:['O0','O1'] };
+    const COL={X:64,A:200,B:336,O:472}, YS=[104,208];
+    const NP={}; ['X','A','B','O'].forEach(L=>LY[L].forEach((id,r)=>NP[id]={x:COL[L],y:YS[r]}));
+    NP['L0']={x:566,y:156};
+    const NCOL={X:'#2456e6',A:'#7c3aed',B:'#7c3aed',O:'#12a150',L:'#e5484d'};
+    const LB={X0:'x₁',X1:'x₂',A0:'ha₁',A1:'ha₂',B0:'hb₁',B1:'hb₂',O0:'ŷ₁',O1:'ŷ₂',L0:'L'};
+    /* เส้น: X→A, A→B, B→O เต็ม + O→L */
+    const EG=[];
+    [['X','A'],['A','B'],['B','O']].forEach(([p,q])=>LY[p].forEach(a=>LY[q].forEach(b=>EG.push([a,b]))));
+    LY.O.forEach(o=>EG.push([o,'L0']));
+    const R=20;
+    EG.forEach(([a,b])=>{ const A=NP[a],B=NP[b], g=mk('g',{class:'dw-edge',id:'e'+a+b});
+      g.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,stroke:'#8a93a8','stroke-width':1.8,'stroke-opacity':.55})); svg.appendChild(g); });
+    Object.keys(NP).forEach(id=>{ const n=NP[id], L=id[0], g=mk('g',{class:'dw-node',id:'n'+id});
+      g.appendChild(mk('circle',{cx:n.x,cy:n.y,r:R,stroke:NCOL[L]}));
+      const t=mk('text',{x:n.x,y:n.y+5,'text-anchor':'middle','font-size':13,'font-weight':700,fill:NCOL[L]}); t.textContent=LB[id];
+      g.appendChild(t); svg.appendChild(g); });
+    [['อินพุต',64],['ซ่อน A',200],['ซ่อน B',336],['เอาต์พุต',472],['loss',566]].forEach(([t,x])=>{
+      const e=mk('text',{x,y:280,'text-anchor':'middle','font-size':12,'font-weight':600,fill:'#5b6475'}); e.textContent=t; svg.appendChild(e); });
+
+    const allE=EG.map(e=>'e'+e[0]+e[1]), allN=Object.keys(NP).map(id=>'n'+id);
+    const eBetween=(P,Q)=>{ const r=[]; LY[P].forEach(a=>LY[Q].forEach(b=>r.push('e'+a+b))); return r; };
+    const XA=eBetween('X','A'), AB=eBetween('A','B'), BO=eBetween('B','O'), OL=['eO0L0','eO1L0'];
+
+    const F=(cur,next,z)=>'δ<sup>('+cur+')</sup> = ( W<sup>('+next+')T</sup> · <b>δ<sup>('+next+')</sup></b> ) <span class="rec">⊙</span> σ′(z<sup>'+z+'</sup>)';
+    const steps=[
+      { litE:allE, litN:allN, flow:[], cls:'',
+        cap:'<b>ลึกขึ้น:</b> ตอนนี้มี <b>3 ชุด weight</b> (X→A, A→B, B→เอาต์พุต) · ยิ่งลึก การไล่ย้อนยิ่งเป็นลูกโซ่ยาว — แต่ใช้<b>สูตรเดียวซ้ำ</b>',
+        formula:'อินพุต → ซ่อน A → ซ่อน B → เอาต์พุต → loss' },
+      { litE:XA.concat(AB,BO), litN:allN, flow:XA.concat(AB,BO), cls:'',
+        cap:'<b>Forward:</b> ข้อมูลไหลไปข้างหน้า เก็บค่า a และ z ของ<b>ทุกชั้น</b> ไว้ (เดี๋ยวขาย้อนต้องใช้ครบ)',
+        formula:'a<sup>(A)</sup> = σ(z<sup>(A)</sup>) → a<sup>(B)</sup> = σ(z<sup>(B)</sup>) → ŷ = σ(z<sup>(O)</sup>)' },
+      { litE:OL, litN:['nO0','nO1','nL0'], flow:OL, cls:'dw-flowb',
+        cap:'<b>เริ่มย้อนที่เอาต์พุตก่อน</b> (เหมือนที่ทำมาทั้งหมด) — ได้ δ ของชั้นเอาต์พุต',
+        formula:'<b>δ<sup>(O)</sup></b> = (ŷ − y) ⊙ σ′(z<sup>(O)</sup>)' },
+      { litE:BO, litN:['nB0','nB1','nO0','nO1'], flow:BO, cls:'dw-flowb',
+        cap:'<b>ชั้น B:</b> รวม δ<sup>(O)</sup> ที่ไหลย้อนผ่าน weight ทุกเส้น แล้วคูณ σ′ ของตัวเอง · <b>δ<sup>(B)</sup> ต้องใช้ δ<sup>(O)</sup> ก่อน (รอได้!)</b>',
+        formula:F('B','O','(B)') },
+      { litE:AB, litN:['nA0','nA1','nB0','nB1'], flow:AB, cls:'dw-flowb',
+        cap:'<b>ชั้น A:</b> ทำ<b>สูตรเดิมเป๊ะ</b> แต่คราวนี้ใช้ δ<sup>(B)</sup> · นี่คือหัวใจที่เข้าใจยาก — <b>δ ชั้นก่อน = ฟังก์ชันของ δ ชั้นถัดไป → เวียนเกิด (recursion)</b>',
+        formula:F('A','B','(A)') },
+      { litE:allE, litN:allN, flow:[], cls:'',
+        cap:'<b>ได้ δ ครบทุกชั้น → อัปเดตพร้อมกันหมด:</b> ∂L/∂w = δ(โหนดปลายเส้น) × a(โหนดต้นเส้น) เหมือนเดิมทุกเส้น แล้ว w ← w − η·grad',
+        formula:'∂L/∂W<sup>(ℓ)</sup> = δ<sup>(ℓ)</sup> · (a<sup>(ℓ−1)</sup>)<sup>T</sup>' },
+      { litE:XA.concat(AB,BO,OL), litN:allN, flow:XA.concat(AB,BO), cls:'',
+        cap:'<b>⚠️ ราคาที่ต้องจ่ายเมื่อลึก:</b> ทุก hop ที่ย้อนกลับคูณ σ′ (≤ 0.25) กับ weight → ยิ่งลึก gradient ยิ่ง<b>จางหาย (vanishing)</b> ชั้นต้นๆ แทบไม่เรียนรู้ · ทางแก้ยุคใหม่: <b>ReLU · residual (ทางลัด) · BatchNorm</b>',
+        formula:'grad ชั้นต้น ≈ σ′·σ′·σ′··· ≤ 0.25 × 0.25 × 0.25 ··· → เล็กลงเรื่อยๆ' },
+      { litE:allE, litN:allN, flow:[], cls:'',
+        cap:'<b>💡 บทสรุป:</b> ไม่ว่าจะกี่ชั้น ก็คือ<b>สูตรเวียนเกิดอันเดียวกัน</b>ไล่ย้อนทีละชั้น → เขียนเป็น <b>ลูป for</b> ได้ → และนี่แหละที่ <b>framework ทำให้อัตโนมัติ</b> (ดูหัวข้อถัดไป 👇)',
+        formula:'<span class="rec">δ<sup>(ℓ)</sup> = ( W<sup>(ℓ+1)T</sup> · δ<sup>(ℓ+1)</sup> ) ⊙ σ′(z<sup>(ℓ)</sup>)</span> &nbsp;— ใช้ซ้ำทุกชั้น' }
+    ];
+
+    let i=0, timer=null, spd=1;
+    const stage=document.getElementById('dwStage'), prog=document.getElementById('dwProg'),
+          btnN=document.getElementById('dwNext'), btnP=document.getElementById('dwPrev');
+    function render(){
+      const s=steps[i];
+      allE.forEach(id=>{ const g=document.getElementById(id); const on=s.litE.includes(id);
+        g.setAttribute('class','dw-edge '+(on?'dw-lit':'dw-dim')+(on&&s.flow.includes(id)?' '+(s.cls||'')+' dw-flow':''));
+        g.querySelector('line').classList.toggle('dw-flow', on&&s.flow.includes(id)); });
+      allN.forEach(id=>document.getElementById(id).setAttribute('class','dw-node '+(s.litN.includes(id)?'dw-lit':'dw-dim')));
+      stage.innerHTML='<div class="dw-formula">'+s.formula+'</div><div class="dw-cap">'+s.cap+'</div>';
+      prog.textContent='ขั้น '+(i+1)+' / '+steps.length;
+      btnN.textContent=i>=steps.length-1?'✓ ครบแล้ว':'▶ ขั้นถัดไป';
+      btnN.disabled=i>=steps.length-1; btnP.disabled=i<=0;
+      btnN.style.opacity=btnN.disabled?.5:1; btnP.style.opacity=btnP.disabled?.5:1;
+    }
+    function next(){ if(i<steps.length-1){ i++; render(); } else stopAuto(); }
+    function stopAuto(){ if(timer){ clearInterval(timer); timer=null; document.getElementById('dwAuto').textContent='⏵ เล่นอัตโนมัติ'; } }
+    btnN.addEventListener('click',()=>{ stopAuto(); next(); });
+    btnP.addEventListener('click',()=>{ stopAuto(); if(i>0){ i--; render(); } });
+    document.getElementById('dwReset').addEventListener('click',()=>{ stopAuto(); i=0; render(); });
+    document.getElementById('dwAuto').addEventListener('click',function(){
+      if(timer){ stopAuto(); return; } if(i>=steps.length-1) i=0;
+      this.textContent='⏸ หยุด';
+      timer=setInterval(()=>{ if(i>=steps.length-1){ stopAuto(); return; } next(); }, 3200/spd);
+    });
+    document.getElementById('dwSpeed').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); spd=+b.dataset.s;
+      if(timer){ clearInterval(timer); timer=setInterval(()=>{ if(i>=steps.length-1){ stopAuto(); return; } next(); }, 3200/spd); } });
+    render();
+  })();
+  </script>
+
+  <div class="demo" id="fw">
+    <h3 style="margin-top:0">⚙️ แล้วของจริงเขาทำยังไง? — จาก "ไล่มือ" สู่ framework (PyTorch/TensorFlow)</h3>
+    <p style="margin-top:0">ทุกอย่างที่เราไล่มือมา — δ, chain rule, fork, telescoping, recursion 2 ชั้น — framework ทำให้<b>อัตโนมัติ</b>ด้วยกลไกชื่อ
+    <b>autograd</b> (reverse-mode automatic differentiation) · คุณแทบไม่ต้องหาสูตรอนุพันธ์เองเลยในชีวิตจริง แต่ที่เรียนมาทำให้<b>รู้ว่าข้างในมันทำอะไร</b></p>
+
+    <style>
+      #fw .fw-table { width:100%; border-collapse:collapse; margin:4px 0 14px; font-size:.87rem; }
+      #fw .fw-table th, #fw .fw-table td { border:1px solid var(--border); padding:7px 11px; text-align:left; vertical-align:top; }
+      #fw .fw-table th { background:rgba(124,58,237,.09); color:#7c3aed; }
+      #fw .fw-table td.k { color:#e5484d; font-weight:600; white-space:nowrap; }
+      #fw .fw-table code { background:rgba(124,58,237,.1); color:#6d28d9; border-radius:4px; padding:1px 5px; font-size:.85em; }
+      #fw .fw-code { position:relative; background:#0f1729; border-radius:12px; padding:14px 16px; overflow-x:auto; margin:6px 0 4px; }
+      #fw .fw-code pre { margin:0; }
+      #fw .fw-code code { font-family:'Consolas','Menlo',monospace; font-size:.83rem; line-height:1.7; color:#e6edf7; white-space:pre; }
+      #fw .fw-code .c { color:#7d8aa3; } #fw .fw-code .k { color:#f0b429; } #fw .fw-code .s { color:#7ee787; } #fw .fw-code .fn { color:#79c0ff; }
+      #fw .fw-copy { position:absolute; top:9px; right:9px; background:rgba(255,255,255,.1); color:#e6edf7;
+        border:1px solid rgba(255,255,255,.2); border-radius:7px; padding:3px 10px; font-size:.78rem; cursor:pointer; }
+      #fw .fw-copy:hover { background:rgba(255,255,255,.2); }
+      #fw .fw-note { font-size:.86rem; color:var(--muted); line-height:1.75; }
+      #fw .fw-note b { color:#7c3aed; }
+      #fw .fw-concept { background:rgba(18,161,80,.08); border-radius:10px; padding:10px 14px; margin:10px 0; font-size:.88rem; line-height:1.8; }
+      #fw .fw-concept b { color:#0e7a4f; }
+    </style>
+
+    <h4 style="margin:8px 0 4px">🔗 จับคู่: สิ่งที่เราทำมือ ↔ คำสั่ง framework</h4>
+    <div style="overflow-x:auto">
+    <table class="fw-table">
+      <tr><th>ขั้นที่เราทำด้วยมือ</th><th>PyTorch ทำให้อัตโนมัติ</th></tr>
+      <tr><td class="k">นิยาม weight + เครือข่าย</td><td><code>nn.Linear</code>, <code>nn.Sequential</code> — ตั้ง <code>requires_grad=True</code> ให้เอง</td></tr>
+      <tr><td class="k">Forward คำนวณ ŷ (เก็บค่ากลางทาง)</td><td><code>yh = model(x)</code> — บันทึกทุก operation เป็น <b>computational graph</b></td></tr>
+      <tr><td class="k">loss = ½(y−ŷ)²</td><td><code>loss = ((y-yh)**2).sum()*0.5</code> หรือ <code>nn.MSELoss()</code></td></tr>
+      <tr><td class="k">Backward: δ ทุกชั้น (chain rule, fork, recursion)</td><td><code>loss.backward()</code> — <b>บรรทัดเดียว</b> ไล่ย้อนทั้งกราฟให้หมด</td></tr>
+      <tr><td class="k">∂L/∂w = δ × a</td><td>เก็บไว้ใน <code>param.grad</code> อัตโนมัติ</td></tr>
+      <tr><td class="k">w ← w − η·grad</td><td><code>optimizer.step()</code></td></tr>
+      <tr><td class="k">ล้าง grad ก่อนรอบใหม่</td><td><code>optimizer.zero_grad()</code> (ลืมแล้ว grad จะสะสมผิด!)</td></tr>
+    </table>
+    </div>
+
+    <div class="fw-concept">🧠 <b>autograd ทำงานยังไง:</b> ตอน forward framework <b>จดทุก operation</b> ลง computational graph (บวก คูณ σ ...) ·
+    พอเรียก <code style="background:rgba(0,0,0,.06);padding:1px 4px;border-radius:4px">loss.backward()</code> มันก็<b>เดินกราฟย้อนกลับ</b> ใช้ chain rule ทีละ node —
+    ก็คือ δ-recursion + telescoping ที่เราไล่มือเป๊ะ เพียงแต่ทำให้ทุก operation อัตโนมัติ · เรียกว่า <b>reverse-mode automatic differentiation</b></div>
+
+    <h4 style="margin:14px 0 4px">💻 โค้ดจริง — เครือข่าย 2 ชั้นซ่อน (เหมือนการ์ดบน) รันใน Colab ได้เลย</h4>
+    <div class="fw-code">
+      <button class="fw-copy" id="fwCopy">📋 คัดลอก</button>
+<pre><code id="fwCode"><span class="k">import</span> torch, torch.nn <span class="k">as</span> nn
+
+<span class="c"># เครือข่าย 2 → 2 → 2 → 2 (2 ชั้นซ่อน) เหมือนที่เราไล่มือ</span>
+model = nn.Sequential(
+    nn.Linear(<span class="k">2</span>, <span class="k">2</span>), nn.Sigmoid(),   <span class="c"># ชั้นซ่อน A</span>
+    nn.Linear(<span class="k">2</span>, <span class="k">2</span>), nn.Sigmoid(),   <span class="c"># ชั้นซ่อน B</span>
+    nn.Linear(<span class="k">2</span>, <span class="k">2</span>), nn.Sigmoid(),   <span class="c"># เอาต์พุต</span>
+)
+x = torch.tensor([[<span class="k">0.05</span>, <span class="k">0.10</span>]])
+y = torch.tensor([[<span class="k">0.01</span>, <span class="k">0.99</span>]])
+opt = torch.optim.SGD(model.parameters(), lr=<span class="k">0.5</span>)   <span class="c"># η = 0.5</span>
+
+<span class="k">for</span> step <span class="k">in</span> <span class="fn">range</span>(<span class="k">10000</span>):
+    opt.zero_grad()            <span class="c"># ล้าง grad เก่า (สำคัญ!)</span>
+    yh = model(x)              <span class="c"># FORWARD — สร้าง computational graph</span>
+    loss = <span class="k">0.5</span> * ((y - yh)**<span class="k">2</span>).sum()  <span class="c"># L = ½Σ(y−ŷ)²</span>
+    loss.backward()            <span class="c"># BACKWARD — autograd หา δ ทุกชั้นให้เอง!</span>
+    opt.step()                 <span class="c"># w ← w − η·grad</span>
+
+<span class="fn">print</span>(loss.item())           <span class="c"># loss ลดลงเรื่อยๆ จนเกือบ 0</span>
+
+<span class="c"># แอบดู gradient ที่ autograd คำนวณ = ∂L/∂w ที่เราทำมือ:</span>
+<span class="k">for</span> name, p <span class="k">in</span> model.named_parameters():
+    <span class="fn">print</span>(name, p.grad)</code></pre>
+    </div>
+    <p class="fw-note">👉 <b>loss.backward()</b> บรรทัดเดียว = ทุกอย่างในหน้านี้ (δ_o → δ_B → δ_A, fork, telescoping) · เราไม่ต้องหาสูตรอนุพันธ์เองเลย —
+    แต่ที่เรียนมาทำให้ debug เป็น (เช่นเห็น <code>p.grad</code> เป็น 0 ก็รู้ว่าเจอ vanishing gradient)</p>
+
+    <div class="fw-note" style="margin-top:10px">
+      <b>framework อื่นก็หลักเดียวกัน:</b><br>
+      • <b>TensorFlow / Keras</b> — ระดับสูงใช้ <code style="background:rgba(124,58,237,.1);padding:1px 4px;border-radius:4px">model.compile()</code> + <code style="background:rgba(124,58,237,.1);padding:1px 4px;border-radius:4px">model.fit()</code> ซ่อนลูปทั้งหมด · ระดับล่างคุมเองด้วย <code style="background:rgba(124,58,237,.1);padding:1px 4px;border-radius:4px">tf.GradientTape()</code> (จดกราฟแบบเดียวกับ autograd)<br>
+      • <b>JAX</b> — ฟังก์ชันล้วน ใช้ <code style="background:rgba(124,58,237,.1);padding:1px 4px;border-radius:4px">grad(loss_fn)</code> แปลงฟังก์ชัน loss ให้กลายเป็นฟังก์ชันหา gradient ทันที<br>
+      • ทั้งหมดตั้งอยู่บนหลัก <b>reverse-mode autodiff</b> = chain rule ย้อนกลับที่คุณเพิ่งไล่มือทั้งหน้านี้
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const btn=document.getElementById('fwCopy'); if(!btn) return;
+    btn.addEventListener('click',()=>{
+      const txt=document.getElementById('fwCode').innerText;
+      const done=()=>{ btn.textContent='✓ คัดลอกแล้ว!'; setTimeout(()=>btn.textContent='📋 คัดลอก',1600); };
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(fallback); }
+      else fallback();
+      function fallback(){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+        ta.select(); try{document.execCommand('copy');}catch(_){} document.body.removeChild(ta); done(); }
+    });
+  })();
+  </script>
+
+  <details class="deepdive">
+    <summary><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>สรุปสูตรแบบพกพา — จำ 3 บรรทัดนี้ทำ backprop ได้ทั้งเครือข่าย</summary>
+    <p style="margin:0 0 6px"><strong>1) สัญญาณผิดพลาดของเอาต์พุต:</strong> δ<sub>o</sub> = (ŷ − y) · ŷ(1−ŷ) &nbsp;— รวม "พลาดเท่าไหร่" กับ "ความชัน sigmoid" ไว้ในตัวเดียว</p>
+    <p style="margin:0 0 6px"><strong>2) ส่งย้อนหาโหนดซ่อน (จุดที่คนพลาด):</strong> δ<sub>h</sub> = <span style="color:#e5484d">(Σ ของ δ ปลายทางทุกตัว × weight ของเส้นนั้น)</span> · a<sub>h</sub>(1−a<sub>h</sub>) &nbsp;— โหนดซ่อนต้อง<strong>รวมความผิดจากทุกเอาต์พุตที่มันไปถึง</strong></p>
+    <p style="margin:0"><strong>3) ความชันของ weight ใดๆ:</strong> ∂E/∂w = δ(ปลายเส้น) · a(ต้นเส้น) &nbsp;แล้ว&nbsp; w<sub>ใหม่</sub> = w<sub>เดิม</sub> − η·∂E/∂w — สูตรเดียวใช้ได้ทุกเส้นในทุกชั้น นี่คือทั้งหมดของ backprop</p>
+  </details>
+  </section>
+
+  <script>
+  /* ======================================================================
+     ส่วนที่ 5 — ที่มาสมการ weight ใหม่ (2-2-2, ตัวเลข Matt Mazur) คำนวณสด
+     ====================================================================== */
+  (function(){
+    const svg=document.getElementById('mmSvg'); if(!svg) return;
+    const NS='http://www.w3.org/2000/svg';
+    const sig=z=>1/(1+Math.exp(-z));
+    const f=(v,d=6)=>(+v).toFixed(d);
+
+    /* ---- ค่าเริ่มต้นชุดคลาสสิก ---- */
+    const I1=0.05,I2=0.10,B1=0.35,B2=0.60,T1=0.01,T2=0.99,ETA=0.5;
+    const W={w1:0.15,w2:0.20,w3:0.25,w4:0.30,w5:0.40,w6:0.45,w7:0.50,w8:0.55};
+    /* forward */
+    const net_h1=W.w1*I1+W.w2*I2+B1, out_h1=sig(net_h1);
+    const net_h2=W.w3*I1+W.w4*I2+B1, out_h2=sig(net_h2);
+    const net_o1=W.w5*out_h1+W.w6*out_h2+B2, out_o1=sig(net_o1);
+    const net_o2=W.w7*out_h1+W.w8*out_h2+B2, out_o2=sig(net_o2);
+    const Eo1=0.5*(T1-out_o1)**2, Eo2=0.5*(T2-out_o2)**2, Et=Eo1+Eo2;
+    /* output deltas + grads */
+    const dEo1=out_o1-T1, so1=out_o1*(1-out_o1), d_o1=dEo1*so1;
+    const dEo2=out_o2-T2, so2=out_o2*(1-out_o2), d_o2=dEo2*so2;
+    const gw5=d_o1*out_h1, gw6=d_o1*out_h2, gw7=d_o2*out_h1, gw8=d_o2*out_h2;
+    /* hidden */
+    const dE_oh1=d_o1*W.w5+d_o2*W.w7, sh1=out_h1*(1-out_h1), d_h1=dE_oh1*sh1;
+    const dE_oh2=d_o1*W.w6+d_o2*W.w8, sh2=out_h2*(1-out_h2), d_h2=dE_oh2*sh2;
+    const gw1=d_h1*I1, gw2=d_h1*I2, gw3=d_h2*I1, gw4=d_h2*I2;
+    const grad={w1:gw1,w2:gw2,w3:gw3,w4:gw4,w5:gw5,w6:gw6,w7:gw7,w8:gw8};
+    const nw={}; Object.keys(W).forEach(k=>nw[k]=W[k]-ETA*grad[k]);
+    /* forward ใหม่หลังอัปเดต 1 รอบ → E ใหม่ */
+    const a1b=sig(nw.w1*I1+nw.w2*I2+B1), a2b=sig(nw.w3*I1+nw.w4*I2+B1);
+    const o1b=sig(nw.w5*a1b+nw.w6*a2b+B2), o2b=sig(nw.w7*a1b+nw.w8*a2b+B2);
+    const Etb=0.5*(T1-o1b)**2+0.5*(T2-o2b)**2;
+
+    /* ---- สร้างภาพเครือข่าย ---- */
+    const N={ I1:{x:90,y:150,c:'#2456e6',lb:'i₁',v:f(I1,2)}, I2:{x:90,y:290,c:'#2456e6',lb:'i₂',v:f(I2,2)},
+      H1:{x:360,y:130,c:'#7c3aed',lb:'h₁',nn:f(net_h1,4),v:f(out_h1,4)}, H2:{x:360,y:300,c:'#7c3aed',lb:'h₂',nn:f(net_h2,4),v:f(out_h2,4)},
+      O1:{x:640,y:130,c:'#12a150',lb:'o₁',nn:f(net_o1,4),v:f(out_o1,4),tg:'เป้า '+f(T1,2)}, O2:{x:640,y:300,c:'#12a150',lb:'o₂',nn:f(net_o2,4),v:f(out_o2,4),tg:'เป้า '+f(T2,2)} };
+    const E=[ ['W1','I1','H1',W.w1],['W2','I2','H1',W.w2],['W3','I1','H2',W.w3],['W4','I2','H2',W.w4],
+      ['W5','H1','O1',W.w5],['W6','H2','O1',W.w6],['W7','H1','O2',W.w7],['W8','H2','O2',W.w8] ];
+    const mk=(t,a)=>{ const e=document.createElementNS(NS,t); for(const k in a) e.setAttribute(k,a[k]); return e; };
+    const R=34;
+    E.forEach(([id,a,b,wv],idx)=>{
+      const A=N[a],B=N[b];
+      const g=mk('g',{class:'mm-edge',id:'g'+id});
+      g.appendChild(mk('line',{x1:A.x,y1:A.y,x2:B.x,y2:B.y,stroke:(wv>=0?'#2456e6':'#e5484d'),
+        'stroke-width':Math.min(6,1.4+Math.abs(wv)*3),'stroke-opacity':.55}));
+      /* ตำแหน่งป้าย weight — สลับ 0.33/0.62 กันชนเส้นที่ไขว้ */
+      const tt=(idx%2===0)?0.36:0.64;
+      const lx=A.x+(B.x-A.x)*tt, ly=A.y+(B.y-A.y)*tt-6;
+      const bg=mk('rect',{x:lx-27,y:ly-13,width:54,height:17,rx:5,fill:'#f7f8fb','fill-opacity':.9});
+      const tx=mk('text',{x:lx,y:ly,'text-anchor':'middle','font-size':11.5,'font-weight':700,
+        fill:(wv>=0?'#2456e6':'#e5484d')}); tx.textContent=id.toLowerCase()+'='+f(wv,2);
+      g.appendChild(bg); g.appendChild(tx); svg.appendChild(g);
+    });
+    Object.keys(N).forEach(k=>{
+      const n=N[k], g=mk('g',{class:'mm-node',id:'g'+k});
+      g.appendChild(mk('circle',{cx:n.x,cy:n.y,r:R,stroke:n.c}));
+      const lb=mk('text',{x:n.x,y:n.y-R-7,'text-anchor':'middle','font-size':14,'font-weight':700,fill:n.c}); lb.textContent=n.lb;
+      g.appendChild(lb);
+      if(n.nn){
+        const t1=mk('text',{x:n.x,y:n.y-6,'text-anchor':'middle','font-size':9.5,'font-weight':600,fill:'#b45309'}); t1.textContent='net '+n.nn;
+        const ln=mk('line',{x1:n.x-22,y1:n.y-1,x2:n.x+22,y2:n.y-1,stroke:'#e3e7ef','stroke-width':1});
+        const t2=mk('text',{x:n.x,y:n.y+13,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#12833f'}); t2.textContent='out '+n.v;
+        g.appendChild(t1); g.appendChild(ln); g.appendChild(t2);
+      } else {
+        const vv=mk('text',{x:n.x,y:n.y+5,'text-anchor':'middle','font-size':14,'font-weight':700,fill:'#1f2533'}); vv.textContent=n.v;
+        g.appendChild(vv);
+      }
+      if(n.tg){ const t=mk('text',{x:n.x+R+8,y:n.y+4,'font-size':11,'font-weight':700,fill:'#12a150'}); t.textContent=n.tg; g.appendChild(t); }
+      svg.appendChild(g);
+    });
+    /* bias + คอลัมน์ป้าย */
+    [['b₁='+f(B1,2),360,60,'#8a93a8'],['b₂='+f(B2,2),640,60,'#8a93a8'],
+     ['อินพุต',90,360,'#2456e6'],['ชั้นซ่อน (sigmoid)',360,372,'#7c3aed'],['เอาต์พุต (sigmoid)',640,372,'#12a150']]
+    .forEach(([t,x,y,c])=>{ const e=mk('text',{x,y,'text-anchor':'middle','font-size':12,'font-weight':600,fill:c}); e.textContent=t; svg.appendChild(e); });
+
+    /* ---- ตัวช่วยสร้างสูตรมีสี ---- */
+    const S=(cls,txt)=>'<span class="mm-fac '+cls+'">'+txt+'</span>';
+    const tblRows=(keys)=>keys.map(k=>'<tr><td>'+k+'</td><td>'+f(W[k],4)+'</td><td>−'+f(ETA,1)+'×'+f(grad[k])+'</td><td class="up">'+f(nw[k],8)+'</td></tr>').join('');
+    const tbl=(keys)=>'<table><tr><th>weight</th><th>ค่าเดิม</th><th>−η·∂E/∂w</th><th>ค่าใหม่</th></tr>'+tblRows(keys)+'</table>';
+
+    /* ---- ขั้นตอนทั้งหมด ---- */
+    const ALL=['gI1','gI2','gH1','gH2','gO1','gO2','gW1','gW2','gW3','gW4','gW5','gW6','gW7','gW8'];
+    const steps=[
+      { t:'ตั้งต้น — ค่าเริ่มต้นทั้งหมด', dir:'set', lit:null, flow:[], b:
+        '<span class="mm-note">เครือข่ายชุดคลาสสิก: 2 อินพุต → 2 โหนดซ่อน → 2 เอาต์พุต ทุกโหนดใช้ sigmoid · loss = ผลรวม ½(เป้า − เอาต์พุต)²</span>'
+        +'<div class="mm-eq">อินพุต '+S('i','i₁='+f(I1,2))+' '+S('i','i₂='+f(I2,2))+' · เป้า '+S('o','o₁='+f(T1,2))+' '+S('o','o₂='+f(T2,2))+' · η = '+f(ETA,1)+'</div>'
+        +'<div class="mm-eq">weight เริ่มต้น: w1..w4 = 0.15, 0.20, 0.25, 0.30 · w5..w8 = 0.40, 0.45, 0.50, 0.55 · b₁=0.35 b₂=0.60</div>'
+        +'<span class="mm-note">เป้าหมายของ widget นี้: หาให้ได้ว่า weight <b>ทั้ง 8 ตัวควรกลายเป็นเท่าไหร่</b> หลังเรียนรู้ 1 รอบ — ไล่ที่มาทีละบรรทัด</span>' },
+
+      { t:'Forward · โหนดซ่อน h₁', dir:'fwd', lit:['gI1','gI2','gW1','gW2','gH1'], flow:['gW1','gW2'], b:
+        '<div class="mm-eq">net<sub>h1</sub> = '+S('i','w1·i₁')+' + '+S('i','w2·i₂')+' + b₁ = (0.15)(0.05)+(0.20)(0.10)+0.35 = <b>'+f(net_h1,4)+'</b></div>'
+        +'<div class="mm-eq">'+S('h','out_h1')+' = σ('+f(net_h1,4)+') = <b>'+f(out_h1,8)+'</b></div>' },
+      { t:'Forward · โหนดซ่อน h₂', dir:'fwd', lit:['gI1','gI2','gW3','gW4','gH2'], flow:['gW3','gW4'], b:
+        '<div class="mm-eq">net<sub>h2</sub> = '+S('i','w3·i₁')+' + '+S('i','w4·i₂')+' + b₁ = (0.25)(0.05)+(0.30)(0.10)+0.35 = <b>'+f(net_h2,4)+'</b></div>'
+        +'<div class="mm-eq">'+S('h','out_h2')+' = σ('+f(net_h2,4)+') = <b>'+f(out_h2,8)+'</b></div>' },
+      { t:'Forward · เอาต์พุต o₁', dir:'fwd', lit:['gH1','gH2','gW5','gW6','gO1'], flow:['gW5','gW6'], b:
+        '<div class="mm-eq">net<sub>o1</sub> = '+S('h','w5·out_h1')+' + '+S('h','w6·out_h2')+' + b₂ = (0.40)('+f(out_h1,4)+')+(0.45)('+f(out_h2,4)+')+0.60 = <b>'+f(net_o1,4)+'</b></div>'
+        +'<div class="mm-eq">'+S('o','out_o1')+' = σ('+f(net_o1,4)+') = <b>'+f(out_o1,8)+'</b></div>' },
+      { t:'Forward · เอาต์พุต o₂', dir:'fwd', lit:['gH1','gH2','gW7','gW8','gO2'], flow:['gW7','gW8'], b:
+        '<div class="mm-eq">net<sub>o2</sub> = '+S('h','w7·out_h1')+' + '+S('h','w8·out_h2')+' + b₂ = (0.50)('+f(out_h1,4)+')+(0.55)('+f(out_h2,4)+')+0.60 = <b>'+f(net_o2,4)+'</b></div>'
+        +'<div class="mm-eq">'+S('o','out_o2')+' = σ('+f(net_o2,4)+') = <b>'+f(out_o2,8)+'</b></div>'
+        +'<span class="mm-note">จบขาไป — เก็บค่ากลางทาง (out_h1, out_h2, out_o1, out_o2) ไว้ ขากลับต้องใช้!</span>' },
+      { t:'Loss · พลาดรวมแค่ไหน', dir:'fwd', lit:['gO1','gO2'], flow:[], b:
+        '<div class="mm-eq">E<sub>o1</sub> = ½(o₁ − out_o1)² = ½(0.01 − '+f(out_o1,4)+')² = <b>'+f(Eo1,8)+'</b></div>'
+        +'<div class="mm-eq">E<sub>o2</sub> = ½(o₂ − out_o2)² = ½(0.99 − '+f(out_o2,4)+')² = <b>'+f(Eo2,8)+'</b></div>'
+        +'<div class="mm-res">E<sub>total</sub> = E<sub>o1</sub> + E<sub>o2</sub> = <b>'+f(Et,8)+'</b> ← ตัวเลขนี้คือสิ่งที่เราจะทำให้เล็กลง</div>' },
+
+      { t:'ตั้งคำถาม — w5 ควรขยับเท่าไหร่?', dir:'bwd', lit:['gH1','gW5','gO1'], flow:['gW5'], b:
+        '<span class="mm-note">สูตรอัปเดตคือ '+S('d','w5_ใหม่ = w5 − η·∂E_total/∂w5')+' — หัวใจอยู่ที่หา '+S('d','∂E_total/∂w5')+' "ถ้าขยับ w5 นิดหนึ่ง E_total เปลี่ยนเท่าไหร่"</span>'
+        +'<div class="mm-eq">w5 กระทบ E ผ่านลูกโซ่: w5 → net_o1 → out_o1 → E_total</div>'
+        +'<div class="mm-eq"><b>∂E_total/∂w5 = '+S('o','∂E_total/∂out_o1')+' × '+S('o','∂out_o1/∂net_o1')+' × '+S('h','∂net_o1/∂w5')+'</b></div>'
+        +'<span class="mm-note">กฎลูกโซ่: คูณอนุพันธ์ทีละท่อนตามเส้นทาง — กด ▶ เพื่อแทนเลขแต่ละท่อน</span>' },
+      { t:'w5 · แทนเลขทั้ง 3 ท่อน', dir:'bwd', lit:['gH1','gW5','gO1'], flow:['gW5'], b:
+        '<div class="mm-eq">'+S('o','∂E_total/∂out_o1')+' = out_o1 − o₁ = '+f(out_o1,6)+' − 0.01 = <b>'+f(dEo1,8)+'</b></div>'
+        +'<div class="mm-eq">'+S('o','∂out_o1/∂net_o1')+' = out_o1(1−out_o1) = '+f(out_o1,4)+'×'+f(1-out_o1,4)+' = <b>'+f(so1,8)+'</b> <span class="mm-note">(นี่คือ σ′)</span></div>'
+        +'<div class="mm-eq">'+S('h','∂net_o1/∂w5')+' = out_h1 = <b>'+f(out_h1,8)+'</b> <span class="mm-note">(ค่าต้นเส้น)</span></div>'
+        +'<div class="mm-res">∂E_total/∂w5 = '+f(dEo1,6)+' × '+f(so1,6)+' × '+f(out_h1,6)+' = <b>'+f(gw5,8)+'</b></div>' },
+      { t:'w5 · ได้ค่าใหม่', dir:'bwd', lit:['gH1','gW5','gO1'], flow:['gW5'], b:
+        '<div class="mm-res">w5<sub>ใหม่</sub> = w5 − η·∂E_total/∂w5 = 0.40 − 0.5×'+f(gw5,6)+' = <b>'+f(nw.w5,8)+'</b></div>'
+        +'<span class="mm-note">✓ ตรงกับบทความ Matt Mazur เป๊ะ (w5⁺ = 0.35891648) — w5 ลดลงนิดเดียวเพราะมันดัน out_o1 ให้สูงเกินเป้า</span>' },
+      { t:'ลัดด้วย δ — อัปเดต w5,w6,w7,w8 รวด', dir:'bwd', lit:['gH1','gH2','gW5','gW6','gW7','gW8','gO1','gO2'], flow:['gW5','gW6','gW7','gW8'], b:
+        '<span class="mm-note">สังเกตว่า 2 ท่อนแรกไม่ขึ้นกับ w5 เลย — รวมเป็นตัวเดียวเรียก '+S('d','δ (สัญญาณผิดพลาด)')+' แล้วท่อนสุดท้ายคือ "ค่าต้นเส้น" เสมอ</span>'
+        +'<div class="mm-eq">'+S('d','δ_o1')+' = (out_o1−o₁)·out_o1(1−out_o1) = <b>'+f(d_o1,8)+'</b> &nbsp;·&nbsp; '+S('d','δ_o2')+' = (out_o2−o₂)·out_o2(1−out_o2) = <b>'+f(d_o2,8)+'</b></div>'
+        +'<div class="mm-eq">กฎเดียว: <b>∂E/∂w = δ(ปลายเส้น) × out(ต้นเส้น)</b> → ∂E/∂w5 = δ_o1·out_h1, ∂E/∂w7 = δ_o2·out_h1 ...</div>'
+        +tbl(['w5','w6','w7','w8']) },
+
+      { t:'ชั้นซ่อนยากขึ้น — w1 กระทบ E ผ่าน "สองทาง"', dir:'bwd', lit:['gH1','gW5','gW7','gO1','gO2'], flow:['gW5','gW7'], b:
+        '<span class="mm-note">out_h1 ถูกส่งต่อไปทั้ง o₁ (ผ่าน w5) และ o₂ (ผ่าน w7) — เวลาคิดย้อนกลับจึงต้อง<b>รวมความผิดจากทั้งสองทาง</b> นี่คือจุดที่ต่างจากแล็บเอาต์พุตเดียว และเป็นจุดที่คนพลาดบ่อยที่สุด</span>'
+        +'<div class="mm-eq">'+S('d','∂E_total/∂out_h1')+' = '+S('d','∂E_o1/∂out_h1')+' + '+S('d','∂E_o2/∂out_h1')+'</div>'
+        +'<span class="mm-note">แต่ละทางคือ "δ ของเอาต์พุตนั้น × weight ของเส้นที่เชื่อม" — กด ▶ แทนเลข</span>' },
+      { t:'ชั้นซ่อน · รวมสองทางเป็น ∂E/∂out_h1', dir:'bwd', lit:['gH1','gW5','gW7','gO1','gO2'], flow:['gW5','gW7'], b:
+        '<div class="mm-eq">'+S('d','∂E_o1/∂out_h1')+' = δ_o1 · w5 = '+f(d_o1,6)+' × 0.40 = <b>'+f(d_o1*W.w5,8)+'</b></div>'
+        +'<div class="mm-eq">'+S('d','∂E_o2/∂out_h1')+' = δ_o2 · w7 = ('+f(d_o2,6)+') × 0.50 = <b>'+f(d_o2*W.w7,8)+'</b></div>'
+        +'<div class="mm-res">∂E_total/∂out_h1 = '+f(d_o1*W.w5,6)+' + ('+f(d_o2*W.w7,6)+') = <b>'+f(dE_oh1,8)+'</b></div>'
+        +'<span class="mm-note">✓ ตรงกับบทความ (0.036350306) — เห็นไหมว่า o₂ "ดึงกลับ" เพราะ w5 อยากดัน out_h1 ขึ้น แต่ o₂ อยากให้ลง</span>' },
+      { t:'w1 · กฎลูกโซ่ 3 ท่อนถึงอินพุต', dir:'bwd', lit:['gI1','gW1','gH1','gW5','gW7','gO1','gO2'], flow:['gW1'], b:
+        '<div class="mm-eq"><b>∂E_total/∂w1 = '+S('d','∂E_total/∂out_h1')+' × '+S('h','∂out_h1/∂net_h1')+' × '+S('i','∂net_h1/∂w1')+'</b></div>'
+        +'<div class="mm-eq">'+S('h','∂out_h1/∂net_h1')+' = out_h1(1−out_h1) = '+f(out_h1,4)+'×'+f(1-out_h1,4)+' = <b>'+f(sh1,8)+'</b></div>'
+        +'<div class="mm-eq">'+S('i','∂net_h1/∂w1')+' = i₁ = <b>'+f(I1,2)+'</b></div>'
+        +'<div class="mm-res">∂E_total/∂w1 = '+f(dE_oh1,6)+' × '+f(sh1,6)+' × '+f(I1,2)+' = <b>'+f(gw1,8)+'</b></div>' },
+      { t:'w1 · ได้ค่าใหม่ + อัปเดต w1..w4', dir:'bwd', lit:['gI1','gI2','gW1','gW2','gW3','gW4','gH1','gH2'], flow:['gW1','gW2','gW3','gW4'], b:
+        '<div class="mm-res">w1<sub>ใหม่</sub> = 0.15 − 0.5×'+f(gw1,6)+' = <b>'+f(nw.w1,8)+'</b> <span class="mm-note">(บทความ: 0.149780716 ✓)</span></div>'
+        +'<span class="mm-note">w2,w3,w4 ใช้สูตรเดียวกัน (δ_h ของโหนดปลายเส้น × อินพุตต้นเส้น) — สังเกตว่าขยับ<b>น้อยมาก</b> เพราะ σ′ สองชั้นคูณกัน + i₁ เล็ก (นี่คือเมล็ดพันธุ์ของ vanishing gradient!)</span>'
+        +tbl(['w1','w2','w3','w4']) },
+      { t:'สรุป — weight ใหม่ทั้ง 8 ตัว & loss ลดจริง', dir:'set', lit:null, flow:[], b:
+        '<div class="mm-note">อัปเดตครบทั้ง 8 ตัวพร้อมกันในการไล่ย้อน<b>รอบเดียว</b> — นี่คือ backpropagation เต็มรูป:</div>'
+        +tbl(['w1','w2','w3','w4','w5','w6','w7','w8'])
+        +'<div class="mm-res">ลอง forward ใหม่ด้วย weight ชุดนี้: E<sub>total</sub> = '+f(Et,6)+' → <b>'+f(Etb,6)+'</b> ↓ ลดลงจริงหลังเรียน 1 รอบ</div>'
+        +'<span class="mm-note">Matt Mazur วนลูปนี้ <b>10,000 รอบ</b> → E เหลือ ~0.0000035 · GPT ก็ลูปเดียวกันนี้เป๊ะ ต่างแค่มี weight หลายแสนล้านตัวและวนล้านๆ รอบ · เทียบเลขทุกบรรทัดกับบทความต้นฉบับได้เลย 🔗</span>' }
+    ];
+
+    let i=0, timer=null, spd=1;
+    const panel=document.getElementById('mmPanel'), prog=document.getElementById('mmProg'),
+          btnN=document.getElementById('mmNext'), btnP=document.getElementById('mmPrev');
+    const tagCol={fwd:['#2456e6','→ Forward'], bwd:['#e5484d','← Backward'], set:['#7c3aed','● ภาพรวม']};
+    function render(){
+      const s=steps[i];
+      ALL.forEach(id=>{ const el=document.getElementById(id);
+        el.setAttribute('class', (s.lit===null||s.lit.includes(id))?'mm-edge mm-lit':'mm-edge mm-dim');
+        if(id[1]!=='W') el.setAttribute('class', (s.lit===null||s.lit.includes(id))?'mm-node mm-lit':'mm-node mm-dim');
+      });
+      /* เส้นไหลตามทิศ backward */
+      document.querySelectorAll('#mmSvg .mm-edge line').forEach(l=>l.classList.remove('mm-flow'));
+      (s.flow||[]).forEach(id=>{ const l=document.querySelector('#'+id+' line'); if(l) l.classList.add('mm-flow'); });
+      const tc=tagCol[s.dir];
+      panel.innerHTML='<h5><span class="mm-tag" style="background:'+tc[0]+'">'+tc[1]+'</span> '+s.t+'</h5>'+s.b;
+      prog.textContent='ขั้น '+(i+1)+' / '+steps.length;
+      btnN.textContent = i>=steps.length-1 ? '✓ ครบแล้ว' : '▶ ขั้นถัดไป';
+      btnN.disabled = i>=steps.length-1; btnP.disabled = i<=0;
+      btnN.style.opacity=btnN.disabled?.5:1; btnP.style.opacity=btnP.disabled?.5:1;
+    }
+    function next(){ if(i<steps.length-1){ i++; render(); } else stopAuto(); }
+    function prev(){ if(i>0){ i--; render(); } }
+    function stopAuto(){ if(timer){ clearInterval(timer); timer=null; document.getElementById('mmAuto').textContent='⏵ เล่นอัตโนมัติ'; } }
+    btnN.addEventListener('click', ()=>{ stopAuto(); next(); });
+    btnP.addEventListener('click', ()=>{ stopAuto(); prev(); });
+    document.getElementById('mmReset').addEventListener('click', ()=>{ stopAuto(); i=0; render(); });
+    document.getElementById('mmAuto').addEventListener('click', function(){
+      if(timer){ stopAuto(); return; }
+      if(i>=steps.length-1) i=0;
+      this.textContent='⏸ หยุด';
+      timer=setInterval(()=>{ if(i>=steps.length-1){ stopAuto(); return; } next(); }, 2600/spd);
+    });
+    document.getElementById('mmSpeed').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      spd=+b.dataset.s;
+      if(timer){ clearInterval(timer); timer=setInterval(()=>{ if(i>=steps.length-1){ stopAuto(); return; } next(); }, 2600/spd); }
+    });
+    render();
+  })();
+  </script>
+
+  <!-- ===================== ส่วนที่ 6 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 6 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — backprop มือเปล่าบนเครือข่ายจิ๋วสุด 1-1-1</div>
+    <p>เครือข่าย: x → [w₁, b₁, sigmoid] → h → [w₂, b₂, sigmoid] → ŷ · loss = ½(y−ŷ)²
+    <br>กำหนด x = 1, เป้า y = 1, w₁ = 0.5, b₁ = 0, w₂ = 0.5, b₂ = 0, η = 1
+    <br>จงทำครบวงจร 1 รอบ: forward → loss → backward → update (ปัด 4 ตำแหน่ง)</p>
+    <details class="answer">
+      <summary>ดูเฉลย (ละเอียดทุกบรรทัด)</summary>
+      <strong>Forward:</strong><br>
+      z_h = w₁x + b₁ = 0.5·1 + 0 = 0.5 → a_h = σ(0.5) = <b>0.6225</b><br>
+      z_o = w₂a_h + b₂ = 0.5·0.6225 + 0 = 0.3112 → ŷ = σ(0.3112) = <b>0.5772</b><br>
+      <strong>Loss:</strong> L = ½(1 − 0.5772)² = ½(0.4228)² = <b>0.0894</b><br>
+      <strong>Backward:</strong><br>
+      δ_o = (ŷ−y)·ŷ(1−ŷ) = (−0.4228)(0.5772)(0.4228) = <b>−0.1032</b><br>
+      ∂L/∂w₂ = δ_o·a_h = (−0.1032)(0.6225) = <b>−0.0642</b> · ∂L/∂b₂ = δ_o = −0.1032<br>
+      δ_h = δ_o·w₂·a_h(1−a_h) = (−0.1032)(0.5)(0.6225)(0.3775) = <b>−0.0121</b><br>
+      ∂L/∂w₁ = δ_h·x = −0.0121 · ∂L/∂b₁ = δ_h = −0.0121<br>
+      <strong>Update (η=1):</strong> w₂ = 0.5+0.0642 = <b>0.5642</b> · b₂ = <b>0.1032</b> · w₁ = <b>0.5121</b> · b₁ = <b>0.0121</b><br>
+      <strong>ตรวจ:</strong> forward ใหม่ได้ ŷ ≈ 0.6124 → L ใหม่ ≈ <b>0.0751</b> &lt; 0.0894 ✓ loss ลดจริง — เครื่อง "เรียนรู้" แล้วหนึ่งก้าว
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — gradient descent เลขล้วน</div>
+    <p>ให้ L(w) = (w−3)² + 1 เริ่มที่ w = 0, η = 0.25 · จงคำนวณ w หลังก้าวที่ 1, 2, 3 (สูตร: dL/dw = 2(w−3))</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      ก้าว 1: slope = 2(0−3) = −6 → w = 0 − 0.25(−6) = <b>1.5</b><br>
+      ก้าว 2: slope = 2(1.5−3) = −3 → w = 1.5 + 0.75 = <b>2.25</b><br>
+      ก้าว 3: slope = 2(2.25−3) = −1.5 → w = 2.25 + 0.375 = <b>2.625</b><br>
+      สังเกต: ระยะห่างจากคำตอบ (w*=3) หดครึ่งหนึ่งทุกก้าว (3 → 1.5 → 0.75 → 0.375) เพราะตัวคูณ = 1−2η = 0.5
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 3 (ทำในคาบ) — ทำไมเครือข่ายลึกเรียนช้า</div>
+    <p>σ′(z) = a(1−a) มีค่าสูงสุดเท่าไหร่ ที่ a เท่าไหร่? ถ้าเครือข่ายลึก 10 ชั้น สัญญาณ gradient ที่ไหลถึงชั้นแรกจะเหลืออย่างมากที่สุดกี่เท่าของต้นทาง? แล้ว ReLU (ความชัน = 1 เมื่อ z&gt;0) ช่วยอย่างไร?</p>
+    <details class="answer">
+      <summary>ดูเฉลย</summary>
+      สูงสุด = <b>0.25</b> ที่ a = 0.5 (พิสูจน์: a(1−a) เป็นพาราโบลาคว่ำ จุดยอดที่ a=½)<br>
+      ผ่าน 10 ชั้น ≤ 0.25¹⁰ = 1/1,048,576 ≈ <b>9.5×10⁻⁷</b> — ชั้นแรกแทบไม่ขยับ = vanishing gradient<br>
+      ReLU ให้ความชัน 1 ในโซนบวก → คูณกี่ชั้นก็ไม่หด (ถ้าเส้นทางยัง active) จึงเทรนเครือข่ายลึกมากๆ ได้จริง
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — η ใหญ่เกินแล้วระเบิดจริงไหม</div>
+    <p>โจทย์เดิมข้อ 2 (L(w)=(w−3)²+1 เริ่ม w=0) แต่ใช้ η = 1.5 · จงคำนวณ w หลังก้าวที่ 1–3 แล้วแสดงว่าระยะห่างจาก w*=3 "โตขึ้น" ทุกก้าวด้วยตัวคูณเท่าไหร่ พร้อมอธิบายเงื่อนไขของ η ที่ทำให้ลู่เข้า (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 5 (การบ้าน) — โยงสู่ GPT</div>
+    <p>GPT ถูกเทรนด้วยลูป forward → loss → backward → update เดียวกับที่เราทำมือวันนี้ จงระบุว่าในกรณี GPT: (ก) "อินพุต" และ "เป้าหมาย y" คืออะไร (ข) loss ใช้ตัวไหน (ใบ้: cross-entropy กับ softmax) (ค) อะไรคือสิ่งที่ต่างจากแล็บของเราบ้าง (ขนาด/ฮาร์ดแวร์/จำนวนรอบ) (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 7 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 7 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>สัปดาห์นี้พาเราเข้าใกล้ LLM อย่างไร:</strong><br>
+    วันนี้คุณคำนวณ <strong>อัลกอริทึมเดียวกันเป๊ะกับที่ใช้เทรน GPT</strong> ด้วยมือเปล่า — ไม่มีเวทมนตร์อื่นซ่อนอยู่<br>
+    ต่างกันแค่สเกล: แล็บของเรามี weight 9 ตัว เทรนทีละ 1 ตัวอย่าง — GPT มี weight <strong>หลายแสนล้านตัว</strong> ไล่ backprop วงจรเดิมนี้ <strong>ล้านๆ รอบ</strong> บนข้อความทั้งอินเทอร์เน็ต ด้วย GPU หลายพันตัวนานหลายเดือน · ตัว loss ที่ GPT ลด ก็คือ "ทายคำถัดไปพลาดแค่ไหน" (cross-entropy) — ทุกครั้งที่ ChatGPT ตอบเก่ง นั่นคือผลของ gradient descent ที่คุณเพิ่งกดเล่นเมื่อครู่<br>
+    <strong>สัปดาห์หน้า:</strong> ได้เครื่องมือเรียนรู้ครบมือแล้ว — เอาไปสอนเครื่องให้ "มองเห็นภาพ" กับ <strong>CNN</strong> สถาปัตยกรรมที่เข้าใจธรรมชาติของรูปภาพ
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">3Blue1Brown</span> <a href="https://www.youtube.com/watch?v=Ilg3gGewQ5U" target="_blank">What is backpropagation really doing?</a> — ภาพเคลื่อนไหวสวยที่สุดของ backprop (ตอน 3) · ต่อด้วย<a href="https://www.youtube.com/watch?v=tIeHLnjs5U8" target="_blank">ตอน 4 (แคลคูลัสเบื้องหลัง)</a> ซึ่งตรงกับแล็บของเราทุกสูตร</li>
+      <li><span class="src">Karpathy</span> <a href="https://www.youtube.com/watch?v=VMj-3S1tku0" target="_blank">The spelled-out intro to neural networks and backpropagation (micrograd)</a> — สร้าง backprop จากศูนย์ทีละบรรทัดโค้ด 2.5 ชม. ที่คุ้มที่สุดในชีวิต</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=IN2XmBhILt4" target="_blank">Backpropagation, Step-by-Step</a> — ไล่ทีละเลขเหมือนแล็บเรา เอาไว้ทวนก่อนสอบ</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week08.html">← Neural Network</a>
+    <a href="week10.html">CNN →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<script>
+/* ======================================================================
+   เวทีเล่น Gradient Descent — ลูกบอลกลิ้งลงหุบ loss เห็นเลขทุกก้าว
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('gdCv'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=760,H=330, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.aspectRatio=W+'/'+H; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  /* โค้ง 2 แบบ */
+  const CURVES={
+    A:{ dom:[-2,8], Lmax:27, w0:0,
+        f:w=>(w-3)*(w-3)+1, df:w=>2*(w-3),
+        dfTxt:w=>'2('+w.toFixed(3)+'−3) = '+(2*(w-3)).toFixed(3) },
+    B:{ dom:[-3.6,3.6], Lmax:5.6, w0:3,
+        f:w=>0.05*Math.pow(w,4)-0.45*w*w+0.15*w+2,
+        df:w=>0.2*Math.pow(w,3)-0.9*w+0.15,
+        dfTxt:w=>'0.2w³−0.9w+0.15 = '+(0.2*Math.pow(w,3)-0.9*w+0.15).toFixed(3) }
+  };
+  const S={ c:'A', w:0, eta:0.3, n:0, trail:[], boom:false, auto:null, drag:false };
+  const PAD={l:46,r:16,t:14,b:34};
+  const cur=()=>CURVES[S.c];
+  const px=w=>{ const d=cur().dom; return PAD.l+(w-d[0])/(d[1]-d[0])*(W-PAD.l-PAD.r); };
+  const pyL=L=> (H-PAD.b) - Math.max(0,Math.min(1,L/cur().Lmax))*(H-PAD.t-PAD.b);
+  const uw=p=>{ const d=cur().dom; return d[0]+(p-PAD.l)/(W-PAD.l-PAD.r)*(d[1]-d[0]); };
+
+  const logEl=document.getElementById('gdLog'), badge=document.getElementById('gdBadge'),
+        boomEl=document.getElementById('gdBoom');
+
+  function updateBadge(){
+    const L=cur().f(S.w);
+    badge.innerHTML='w = <b>'+S.w.toFixed(3)+'</b> · loss = <b>'+(isFinite(L)?L.toFixed(3):'∞')+'</b> · ก้าวที่ <b>'+S.n+'</b>';
+  }
+  function addLog(html){
+    if(S.n===1) logEl.innerHTML='';
+    const d=document.createElement('div'); d.className='stp'; d.innerHTML=html;
+    logEl.appendChild(d); logEl.scrollTop=logEl.scrollHeight;
+  }
+  function step(){
+    if(S.boom) return;
+    const c=cur(), slope=c.df(S.w), wNew=S.w-S.eta*slope;
+    S.n++;
+    addLog('<b>ก้าว '+S.n+':</b> slope = '+c.dfTxt(S.w)
+      +' &nbsp;→&nbsp; w_ใหม่ = '+S.w.toFixed(3)+' − '+S.eta.toFixed(2)+'×('+slope.toFixed(3)+') = <b>'+wNew.toFixed(3)+'</b>'
+      +' · loss '+c.f(S.w).toFixed(3)+' → <b class="'+(c.f(wNew)>c.f(S.w)?'neg':'')+'">'+ (isFinite(c.f(wNew))?c.f(wNew).toFixed(3):'∞') +'</b>');
+    S.trail.push(S.w);
+    if(S.trail.length>26) S.trail.shift();
+    S.w=wNew;
+    const d=c.dom, span=d[1]-d[0];
+    if(S.w<d[0]-span*0.6 || S.w>d[1]+span*0.6 || !isFinite(S.w)){
+      S.boom=true; boomEl.style.display='block'; stopAuto();
+      addLog('<b class="neg">💥 |w| โตขึ้นเรื่อยๆ — ก้าวใหญ่เกินจนกระเด็นออกจากหุบ (diverge)</b>');
+    }
+    if(Math.abs(slope)<0.001 && !S.boom) addLog('<span style="color:#12a150;font-weight:700">✓ ความชัน ≈ 0 — ถึงก้นแอ่งแล้ว (ก้าวต่อไปแทบไม่ขยับ)</span>');
+    updateBadge();
+  }
+  function reset(all){
+    S.w=cur().w0; S.n=0; S.trail=[]; S.boom=false;
+    boomEl.style.display='none'; stopAuto();
+    if(all!==false) logEl.innerHTML='<span style="color:var(--muted)">บันทึกการก้าวจะพิมพ์ตรงนี้ — ลากลูกบอลแล้วกด ▶</span>';
+    updateBadge();
+  }
+  function stopAuto(){ if(S.auto){ clearInterval(S.auto); S.auto=null;
+    document.getElementById('gdAuto').textContent='⏵ เดินอัตโนมัติ'; } }
+
+  document.getElementById('gdStep').addEventListener('click', ()=>{ stopAuto(); step(); });
+  document.getElementById('gdAuto').addEventListener('click', function(){
+    if(S.auto){ stopAuto(); return; }
+    this.textContent='⏸ หยุด';
+    S.auto=setInterval(()=>{ step(); if(S.boom||S.n>80) stopAuto(); }, 600);
+  });
+  document.getElementById('gdReset').addEventListener('click', ()=>reset());
+  document.getElementById('gdCurve').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    S.c=b.dataset.c; reset();
+  });
+  const etaIn=document.getElementById('gdEta'), etaVal=document.getElementById('gdEtaVal');
+  etaIn.addEventListener('input', ()=>{ S.eta=+etaIn.value; etaVal.textContent=S.eta.toFixed(2); });
+  document.getElementById('gdEtaSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    S.eta=+b.dataset.e; etaIn.value=S.eta; etaVal.textContent=S.eta.toFixed(2);
+  });
+
+  /* ลากลูกบอล / คลิกวาง */
+  const loc=e=>{ const r=cv.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*W, y:(e.clientY-r.top)/r.height*H}; };
+  cv.addEventListener('pointerdown', e=>{ S.drag=true; stopAuto();
+    const p=loc(e); const d=cur().dom;
+    S.w=Math.max(d[0],Math.min(d[1],uw(p.x))); S.boom=false; boomEl.style.display='none';
+    S.n=0; S.trail=[]; updateBadge();
+    try{cv.setPointerCapture(e.pointerId);}catch(_){} });
+  cv.addEventListener('pointermove', e=>{ if(!S.drag) return;
+    const p=loc(e); const d=cur().dom;
+    S.w=Math.max(d[0],Math.min(d[1],uw(p.x))); updateBadge(); });
+  cv.addEventListener('pointerup', ()=>S.drag=false);
+
+  /* วาด */
+  let t0=0;
+  function frame(ts){
+    if(!t0)t0=ts; const time=(ts-t0)/1000;
+    const c=cur();
+    ctx.clearRect(0,0,W,H);
+    /* แกน */
+    ctx.strokeStyle='rgba(90,100,120,.3)'; ctx.lineWidth=1;
+    ctx.strokeRect(PAD.l,PAD.t,W-PAD.l-PAD.r,H-PAD.t-PAD.b);
+    ctx.fillStyle='#5b6475'; ctx.font='600 11px Poppins, Kanit, sans-serif';
+    const d=c.dom;
+    for(let i=0;i<=4;i++){ const w=d[0]+(d[1]-d[0])*i/4;
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(w.toFixed(1), px(w), H-PAD.b+7);
+      ctx.strokeStyle='rgba(90,100,120,.1)';
+      ctx.beginPath(); ctx.moveTo(px(w),PAD.t); ctx.lineTo(px(w),H-PAD.b); ctx.stroke(); }
+    ctx.save(); ctx.translate(14,H/2); ctx.rotate(-Math.PI/2);
+    ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText('loss L(w)',0,0); ctx.restore();
+    ctx.textAlign='center'; ctx.textBaseline='bottom'; ctx.fillText('weight w', (PAD.l+W-PAD.r)/2, H-2);
+    /* โค้ง loss */
+    ctx.beginPath();
+    for(let k=0;k<=160;k++){ const w=d[0]+(d[1]-d[0])*k/160;
+      const Y=pyL(c.f(w)); k?ctx.lineTo(px(w),Y):ctx.moveTo(px(w),Y); }
+    ctx.strokeStyle='#7c3aed'; ctx.lineWidth=3; ctx.lineCap='round'; ctx.stroke();
+    /* trail */
+    S.trail.forEach((w,i)=>{ const a=(i+1)/S.trail.length*0.4;
+      ctx.beginPath(); ctx.arc(px(w),pyL(c.f(w)),5,0,Math.PI*2);
+      ctx.fillStyle='rgba(232,89,12,'+a+')'; ctx.fill(); });
+    /* tangent ที่ลูกบอล */
+    if(!S.boom){
+      const w=S.w, slope=c.df(w);
+      const sx=(W-PAD.l-PAD.r)/(d[1]-d[0]);          /* px ต่อ 1 หน่วย w */
+      const sy=(H-PAD.t-PAD.b)/c.Lmax;               /* px ต่อ 1 หน่วย L */
+      const dx=42, dy=slope*(dx/sx)*sy;
+      const X=px(w), Y=pyL(c.f(w));
+      ctx.strokeStyle='rgba(229,72,77,.8)'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+      ctx.beginPath(); ctx.moveTo(X-dx,Y+dy); ctx.lineTo(X+dx,Y-dy); ctx.stroke(); ctx.setLineDash([]);
+      /* ลูกบอล (เด้งนิดๆ ตกแต่ง) */
+      const bob=Math.sin(time*3)*1.5;
+      ctx.beginPath(); ctx.arc(X,Y-9+bob,9,0,Math.PI*2);
+      ctx.fillStyle='#e8590c'; ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(X-3,Y-12+bob,2.6,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,.7)'; ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  updateBadge();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

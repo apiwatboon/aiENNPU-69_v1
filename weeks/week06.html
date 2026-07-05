@@ -1,0 +1,2379 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Decision Tree &amp; Random Forest: ต้นไม้ตัดสินใจ | วิชา AI</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap">
+<style>
+  body, body * { font-family: 'Poppins', 'Kanit', sans-serif !important; font-size-adjust: 0.475; }
+
+  /* ── SVG line icon (แทน emoji) ── */
+  .ico {
+    display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.2em;
+    fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    margin-right: .18em; flex: none;
+  }
+  .ico .f { fill: currentColor; stroke: none; }
+  .ico-ok { color: var(--green); }
+  .ico-btn { width: 1.05em; height: 1.05em; vertical-align: -.16em; margin-right: .12em; }
+  .cdot { display:inline-block; width:.72em; height:.72em; border-radius:50%; vertical-align:middle; margin:0 1px; }
+
+  /* ── หัวข้อ widget = แถบ banner ไล่สี ── */
+  .demo > h3 {
+    display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+    font-size:1.14rem; font-weight:700; letter-spacing:.2px; color:#fff;
+    background:linear-gradient(135deg,#12a150 0%, #0ea371 45%, #2456e6 100%);
+    border-radius:11px; padding:11px 16px; margin:0 0 14px;
+    box-shadow:0 6px 18px -9px rgba(18,161,80,.7);
+  }
+  .demo > h3 .ico { color:#fff; flex:none; width:1.25em; height:1.25em; }
+  .demo > h3 b, .demo > h3 strong { color:#fff; }
+
+  /* เลขข้อ badge วงกลม */
+  .h-step { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:1.08rem; font-weight:700; }
+  .step-badge { display:inline-flex; align-items:center; justify-content:center; width:29px; height:29px; flex:none;
+    border-radius:50%; color:#fff; font-weight:800; font-size:1rem; box-shadow:0 3px 9px -3px rgba(15,23,42,.55); }
+  .sb-1 { background:linear-gradient(135deg,#2456e6,#4f46e5); }
+  .sb-2 { background:linear-gradient(135deg,#12a150,#0ea371); }
+  .sb-3 { background:linear-gradient(135deg,#7c3aed,#4f46e5); }
+
+  /* ── flowchart ต้นไม้ตัดสินใจ (ส่วนที่ 1) ── */
+  .tree-wrap { position:relative; width:100%; max-width:760px; margin:8px auto 4px; aspect-ratio:760/400; }
+  .tree-wrap svg.lines { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+  .tnode { position:absolute; transform:translate(-50%,-50%); z-index:2;
+    border-radius:11px; padding:8px 12px; text-align:center; font-weight:700; font-size:.9rem; line-height:1.25;
+    box-shadow:0 4px 14px -8px rgba(15,23,42,.5); white-space:nowrap; }
+  .tnode small { display:block; font-weight:500; font-size:.72rem; opacity:.8; }
+  .t-q { background:#fff; border:2px solid #2456e6; color:#1f2533; }
+  [data-theme="dark"] .t-q { background:#1b2233; color:#e7ecf5; }
+  .t-yes { background:linear-gradient(135deg,#12a150,#0ea371); color:#fff; }
+  .t-no { background:linear-gradient(135deg,#e5484d,#d13b40); color:#fff; }
+  .tlab { position:absolute; transform:translate(-50%,-50%); z-index:3;
+    background:var(--card); border:1px solid var(--border); color:var(--muted);
+    border-radius:999px; padding:1px 9px; font-size:.74rem; font-weight:600; }
+
+  /* ── เวทีต้นไม้แบ่งพื้นที่ (ส่วนที่ 2) ── */
+  .dt-grid { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+  @media(min-width:820px){ .dt-grid{ grid-template-columns:minmax(0,460px) 1fr; } }
+  .dt-stage { border:1px solid var(--border); border-radius:14px; background:#f7f8fb; overflow:hidden; position:relative; }
+  .dt-stage canvas { display:block; width:100%; height:auto; cursor:crosshair; }
+  .dt-treebox { border:1px solid var(--border); border-radius:14px; background:var(--card); padding:8px; }
+  .dt-treebox canvas { display:block; width:100%; height:auto; }
+  .dt-cap { font-size:.82rem; font-weight:700; color:var(--muted); margin:0 0 6px; padding:0 4px; }
+
+  .ctl-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .ctl-row > label.cap { font-weight:600; min-width:96px; }
+  input[type=range].rng { flex:1 1 150px; accent-color:var(--accent); min-width:130px; }
+  .pill-val { font-weight:800; font-size:1.05rem; color:var(--accent); background:var(--accent-soft);
+    border-radius:9px; padding:1px 12px; min-width:38px; text-align:center; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; background:var(--card); }
+  .seg button { font-family:inherit; font-size:.85rem; font-weight:600; border:none; background:transparent;
+    color:var(--ink); padding:6px 14px; cursor:pointer; margin:0; box-shadow:none; transition:.2s; display:inline-flex; align-items:center; gap:6px; }
+  .seg button.on { background:linear-gradient(135deg,var(--accent),#12a150); color:#fff; }
+  .seg button:not(.on):hover { background:rgba(127,127,127,.1); }
+  .btn-mini { font-family:inherit; font-weight:700; font-size:.85rem; border:1px solid var(--border);
+    background:var(--card); color:var(--ink); border-radius:9px; padding:6px 13px; cursor:pointer; margin:0;
+    display:inline-flex; align-items:center; gap:6px; }
+  .btn-mini:hover { border-color:var(--accent); color:var(--accent); }
+  .acc-row { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; }
+  .acc-card { flex:1 1 150px; border:1px solid var(--border); border-radius:11px; padding:9px 13px; background:var(--card); }
+  .acc-card .lab { font-size:.8rem; color:var(--muted); font-weight:600; }
+  .acc-card .num { font-size:1.5rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  .acc-meter { height:8px; border-radius:6px; background:rgba(127,127,127,.16); overflow:hidden; margin-top:5px; }
+  .acc-meter > i { display:block; height:100%; border-radius:6px; transition:width .4s; }
+
+  /* ── Gini step (ส่วนที่ 3) ── */
+  .gini-panel { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:12px 15px; margin-top:12px; font-size:.92rem; line-height:1.9; }
+  .gini-panel .row { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .gini-panel b.blue { color:#2456e6; } .gini-panel b.red { color:#e5484d; }
+  .gcalc { font-variant-numeric:tabular-nums; }
+  .best-tag { display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg,#12a150,#0ea371);
+    color:#fff; border-radius:999px; padding:2px 11px; font-weight:700; font-size:.85rem; }
+
+  /* voting (ส่วนที่ 6) */
+  .vote-wrap { border:1px dashed var(--border); border-radius:12px; padding:11px 14px; margin-top:12px; background:rgba(18,161,80,.045); }
+  .vote-bar { display:flex; height:26px; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--card); margin:8px 0 4px; }
+  .vote-bar > .vb { height:100%; transition:width .25s; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:.8rem; }
+  .fi-bar { display:flex; align-items:center; gap:9px; margin:5px 0; }
+  .fi-bar .fn { width:118px; font-weight:600; font-size:.86rem; }
+  .fi-track { flex:1; height:16px; border-radius:8px; background:rgba(127,127,127,.14); overflow:hidden; }
+  .fi-track > i { display:block; height:100%; border-radius:8px; background:linear-gradient(90deg,#7c3aed,#2456e6); transition:width .5s; }
+  .fi-bar .pct { width:52px; text-align:right; font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; }
+
+  /* code block */
+  .code-box { position:relative; background:#0f1524; border-radius:12px; padding:14px 16px; margin:12px 0; overflow-x:auto; }
+  .code-box pre { margin:0; }
+  .code-box code { font-family:'Consolas','Menlo',monospace; font-size:.83rem; line-height:1.75; color:#e6edf7; white-space:pre; }
+  .code-box .c { color:#7d8aa3; } .code-box .k { color:#f0b429; } .code-box .s { color:#7ee787; } .code-box .fn { color:#79c0ff; } .code-box .n { color:#ffa657; }
+  .code-copy { position:absolute; top:10px; right:10px; background:rgba(255,255,255,.1); color:#e6edf7;
+    border:1px solid rgba(255,255,255,.22); border-radius:8px; padding:4px 11px; font-size:.8rem; font-weight:600; cursor:pointer; z-index:2; display:inline-flex; align-items:center; gap:5px; }
+  .code-copy:hover { background:rgba(255,255,255,.2); }
+
+  .wsec { margin-bottom: 8px; }
+  .keyword { color:var(--accent); font-weight:700; }
+
+  /* ── StatQuest Random Forest walkthrough (ส่วนที่ 7-6) ── */
+  .sqf-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; margin:4px 0; }
+  .sqf-tbl { border-collapse:collapse; width:100%; min-width:520px; font-size:.8rem; font-variant-numeric:tabular-nums; }
+  .sqf-tbl th, .sqf-tbl td { border:1px solid var(--border); padding:4px 7px; text-align:center; }
+  .sqf-tbl th { background:rgba(127,127,127,.09); font-weight:700; font-size:.76rem; color:var(--muted); }
+  .sqf-tbl td.sid { font-weight:800; }
+  .sqf-yes { color:#12a150; font-weight:700; } .sqf-no { color:#e5484d; font-weight:700; }
+  .sqf-pass { color:#12a150; font-weight:800; } .sqf-fail { color:#e5484d; font-weight:800; }
+  .sqf-tbl tr.pick td { background:rgba(36,86,230,.14); }
+  .sqf-tbl tr.oob td { background:rgba(228,101,20,.17); }
+  .sqf-tbl tr.flash td { background:rgba(18,161,80,.28); }
+  .sqf-cnt { display:inline-block; min-width:20px; font-weight:800; color:#2456e6; }
+  .sqf-cnt.z { color:#e8590c; }
+  .sqf-legend { display:flex; gap:16px; flex-wrap:wrap; font-size:.84rem; margin-top:8px; align-items:center; }
+  .sqf-sw { display:inline-block; width:14px; height:14px; border-radius:4px; vertical-align:-2px; margin-right:5px; }
+  .sqf-chips { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:10px 0; }
+  .sqf-chip { display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--border); border-radius:999px;
+    padding:5px 14px; font-weight:600; font-size:.88rem; background:var(--card); transition:.25s; }
+  .sqf-chip.cand { border-color:#2456e6; background:rgba(36,86,230,.12); color:#2456e6; box-shadow:0 3px 10px -5px rgba(36,86,230,.6); }
+  .sqf-chip.win { border-color:#12a150; background:linear-gradient(135deg,#12a150,#0ea371); color:#fff; }
+  .sqf-chip.out { opacity:.34; }
+  .sqf-grid2 { display:grid; grid-template-columns:1fr; gap:14px; align-items:start; }
+  @media(min-width:780px){ .sqf-grid2{ grid-template-columns:1fr 1fr; } }
+  .sqf-heatbox { border:1px solid var(--border); border-radius:12px; background:#f7f8fb; padding:8px; }
+  .sqf-heatbox canvas { display:block; width:100%; height:auto; }
+  .sqf-step-panel { border:1px solid var(--border); border-radius:12px; background:var(--card); padding:11px 14px; margin-top:10px; font-size:.9rem; line-height:1.85; }
+  .sqf-num { font-weight:800; font-variant-numeric:tabular-nums; color:var(--accent); font-size:1.05em; }
+  .sqf-copybox { display:flex; gap:12px; flex-wrap:wrap; }
+  .sqf-copy { flex:1 1 220px; border:1.5px solid var(--border); border-radius:12px; padding:11px 14px; background:var(--card); }
+  .sqf-copy.self { border-color:#12a150; box-shadow:0 4px 14px -8px rgba(18,161,80,.7); }
+  .sqf-copy h6 { margin:0 0 6px; font-size:.9rem; font-weight:700; display:flex; align-items:center; gap:6px; }
+  .sqf-badge-self { display:inline-flex; align-items:center; gap:4px; background:linear-gradient(135deg,#12a150,#0ea371); color:#fff; border-radius:999px; padding:1px 9px; font-size:.72rem; font-weight:700; }
+</style>
+<script defer src="../assets/anim.js"></script>
+</head>
+<body>
+
+<header class="site">
+  <div class="container">
+    <div class="breadcrumb"><a href="../index.html">← หน้าหลักรายวิชา</a></div>
+    <h1>Decision Tree &amp; Random Forest: เครื่องที่ "ถามทีละคำถาม"</h1>
+    <p class="subtitle">KNN วัดระยะ, K-means จับกลุ่ม — คราวนี้เปลี่ยนแนวคิดใหม่หมด: โมเดลที่<strong>ถามคำถาม yes/no ทีละข้อ</strong>เหมือนเกม 20 คำถาม จนได้คำตอบ · ข้อดีคือ <strong>อ่านกฎออกด้วยตา</strong> (interpretable) ไม่ต้องใช้คณิตเลย</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <div class="goal-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v6"/><circle cx="12" cy="4" r="1.4" class="f"/><path d="M12 9l-6 5M12 9l6 5"/><circle cx="6" cy="15" r="2.2"/><circle cx="18" cy="15" r="2.2"/><path d="M6 17v3M18 17v3"/></svg>เป้าหมายสัปดาห์นี้ — เรียนจบแล้วนักศึกษาต้อง:</strong>
+    <ol style="margin:8px 0 0">
+      <li>อธิบายได้ว่า <strong>Decision Tree</strong> คือชุดคำถาม if/else ต่อกัน (root → กิ่ง → ใบ) และ<em>อ่านกฎ</em>ออกได้ ต่างจาก KNN ที่วัดระยะ</li>
+      <li>เข้าใจว่าเครื่องเลือก "คำถามที่ดีที่สุด" ยังไง — คำนวณ <strong>Gini impurity</strong> ของแต่ละจุดตัดแล้วเลือกตัวที่ทำให้กลุ่มย่อย "บริสุทธิ์" ที่สุด</li>
+      <li>มองออกว่าเส้นแบ่งของต้นไม้เป็น <strong>ขั้นบันไดตั้งฉากแกน</strong> และต้นไม้ลึกเกินไปจะ <strong>overfit</strong> (จำ noise)</li>
+      <li>อธิบาย <strong>Random Forest</strong> ได้: ปลูกต้นไม้หลายต้นบนข้อมูลสุ่มย่อย แล้ว<em>โหวต</em> → ลด overfit และเส้นแบ่งเนียนขึ้น</li>
+      <li>รู้ว่าทำไม tree/forest ยังครอง <strong>ข้อมูลตาราง (tabular)</strong> และงาน Kaggle ส่วนใหญ่ ขณะที่ neural network ครองภาพ/ข้อความ</li>
+    </ol>
+  </div>
+
+  <!-- ===================== ส่วนที่ 1 ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 1 — แนวคิด: เล่นเกม "20 คำถาม" กับข้อมูล <span class="badge">แนวคิด</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">เคยเล่นเกมทายของไหม? อีกฝ่ายคิดคำตอบไว้ในใจ เราถามได้แต่คำถามที่ตอบ <em>"ใช่/ไม่ใช่"</em> — "มีชีวิตไหม?" "ตัวใหญ่กว่าแมวไหม?" ค่อย ๆ ตัดตัวเลือกลงจนเหลือคำตอบเดียว · <strong>Decision Tree ก็คิดแบบนี้เป๊ะ ๆ</strong> มันเรียงคำถาม yes/no ต่อกันเป็น "ต้นไม้" จากบนลงล่างจนถึง "ใบ" ที่เป็นคำตอบ</p>
+    <p>ต่างจากสัปดาห์ก่อนชัดเจน: <strong>KNN</strong> ตอบโดย<em>วัดระยะ</em>ไปหาเพื่อนบ้าน (ต้องคิดเลขระยะทาง) — แต่ <strong>Decision Tree</strong> ตอบด้วย<em>กฎที่อ่านออก</em> ("ถ้าฝนตก และลมแรง → ไม่เล่น") ไม่มีคณิตอะไรเลย มีแค่การเปรียบเทียบทีละเงื่อนไข นี่คือเหตุผลที่มันเป็นโมเดลที่ <span class="keyword">อธิบายให้คนฟังรู้เรื่อง</span> (interpretable) มากที่สุดตัวหนึ่ง</p>
+
+    <p style="margin-bottom:4px"><strong>ตัวอย่างจริง: "วันนี้ควรออกไปเล่นกีฬาไหม?"</strong> — เครื่องเรียนจากสถิติที่ผ่านมาแล้วสร้างต้นไม้นี้ ลองไล่ตามลูกศรจากบนลงล่างดู:</p>
+
+    <div class="tree-wrap" aria-label="แผนภาพต้นไม้ตัดสินใจ">
+      <svg class="lines" viewBox="0 0 760 400" preserveAspectRatio="none">
+        <g stroke="#94a3b8" stroke-width="2" fill="none">
+          <path d="M380 62 L170 150"/><path d="M380 62 L380 150"/><path d="M380 62 L590 150"/>
+          <path d="M170 178 L90 300"/><path d="M170 178 L250 300"/>
+          <path d="M590 178 L510 300"/><path d="M590 178 L670 300"/>
+        </g>
+      </svg>
+      <div class="tnode t-q" style="left:50%; top:9%">ท้องฟ้าเป็นยังไง?<small>คำถามแรก (root)</small></div>
+      <div class="tnode t-q" style="left:22.4%; top:41%">ความชื้นสูงไหม?</div>
+      <div class="tnode t-yes" style="left:50%; top:41%"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>ออกไปเล่น</div>
+      <div class="tnode t-q" style="left:77.6%; top:41%">ลมแรงไหม?</div>
+      <div class="tnode t-no" style="left:11.8%; top:79%"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>อยู่บ้าน</div>
+      <div class="tnode t-yes" style="left:32.9%; top:79%"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>ออกไปเล่น</div>
+      <div class="tnode t-no" style="left:67.1%; top:79%"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>อยู่บ้าน</div>
+      <div class="tnode t-yes" style="left:88.2%; top:79%"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>ออกไปเล่น</div>
+      <div class="tlab" style="left:33%; top:29%">แดด</div>
+      <div class="tlab" style="left:50%; top:27%">เมฆครึ้ม</div>
+      <div class="tlab" style="left:67%; top:29%">ฝน</div>
+      <div class="tlab" style="left:15%; top:63%">สูง</div>
+      <div class="tlab" style="left:29.5%; top:63%">ต่ำ</div>
+      <div class="tlab" style="left:70.5%; top:63%">แรง</div>
+      <div class="tlab" style="left:85%; top:63%">เบา</div>
+    </div>
+
+    <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:.9rem">
+      <span><span class="tnode t-q" style="position:static; transform:none; padding:2px 9px; font-size:.8rem; display:inline-block">?</span> = คำถาม (internal node)</span>
+      <span><span class="cdot" style="background:#12a150"></span> ใบสีเขียว = คำตอบ "เล่น"</span>
+      <span><span class="cdot" style="background:#e5484d"></span> ใบสีแดง = คำตอบ "ไม่เล่น"</span>
+    </div>
+    <p style="margin-bottom:0; margin-top:10px"><strong>จุดสำคัญ:</strong> ทุกคำถามคือการ <em>"ตัด" (split)</em> ข้อมูลออกเป็นสองส่วน · คำถามที่ดีคือคำถามที่ทำให้แต่ละส่วน "เหลือคำตอบเดียวมากที่สุด" · หน้าที่ของอัลกอริทึมคือ <span class="keyword">หาว่าจะถามอะไร ตรงไหน ก่อนหลัง</span> — เราจะเห็นเครื่องเลือกเองในส่วนถัดไป</p>
+  </div>
+
+  </section>
+
+  <style>
+    .chap { border-radius:16px; padding:15px 20px; margin:34px 0 20px; display:flex; align-items:center; gap:15px;
+      color:#fff; position:relative; overflow:hidden; box-shadow:0 10px 26px -12px rgba(15,23,42,.5); }
+    .chap .chap-ico { width:40px; height:40px; flex:none; stroke:#fff; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .chap-title { font-weight:800; font-size:1.14rem; letter-spacing:.2px; line-height:1.25; }
+    .chap-sub { font-size:.89rem; opacity:.93; margin-top:3px; line-height:1.4; }
+    .chap-num { position:absolute; right:18px; top:-6px; font-size:3.8rem; font-weight:800; opacity:.16; letter-spacing:-2px; }
+    .chap-dt { background:linear-gradient(120deg,#12a150,#0b7a3c); }
+    .chap-rf { background:linear-gradient(120deg,#7c3aed,#5b21b6); }
+    h2.topic-dt { border-left:5px solid #12a150; padding-left:13px; }
+    h2.topic-rf { border-left:5px solid #7c3aed; padding-left:13px; }
+  </style>
+  <div class="chap chap-dt">
+    <span class="chap-num">1</span>
+    <svg class="chap-ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M12 13v8M12 17l-3.2-2.2M12 16l3.2-2.2"/></svg>
+    <div>
+      <div class="chap-title">ตอนที่ 1 · DECISION TREE — ต้นไม้ตัดสินใจ (ต้นเดียว)</div>
+      <div class="chap-sub">ต้นไม้ถาม-ตอบทีละคำถาม · เลือกคำถามด้วย Gini · สร้างจากตาราง · ตัดกิ่งกัน overfit</div>
+    </div>
+  </div>
+
+  <!-- ===================== ส่วนที่ 2 — เวทีเล่นชิ้นเอก ===================== -->
+  <section class="wsec">
+  <h2 class="topic-dt">ส่วนที่ 2 — เวทีเล่น: ต้นไม้ "แบ่งพื้นที่" เป็นขั้นบันได <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="demo" id="dtDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20h16M9 20V8M15 20v-6"/><rect x="6" y="4" width="6" height="4" rx="1"/><rect x="13" y="9" width="6" height="4" rx="1"/></svg>Decision Tree Playground — ลากตัวเลื่อน "ความลึก" ดูเส้นแบ่งงอกทีละชั้น</h3>
+    <p style="margin-top:0">ทางซ้ายคือจุดข้อมูล 2 คลาส (<b style="color:#e5484d">แดง</b> / <b style="color:#2456e6">น้ำเงิน</b>) · ทางขวาคือ <b>ต้นไม้จริง</b> ที่เครื่องปลูกให้ (โหนด = "ถาม x หรือ y เทียบกับเลขนี้") · เพิ่ม <b>ความลึก</b> แล้วดูเครื่องตัดพื้นที่เป็นสี่เหลี่ยมทีละครั้ง จนเกิด <b>เส้นแบ่งขั้นบันได</b> ตั้งฉากแกน — ลายเซ็นของต้นไม้ · <b>คลิกบนภาพ</b>เพื่อวางจุดใหม่ (เลือกสีก่อน) แล้วต้นไม้จะปลูกใหม่ทันที</p>
+
+    <div class="dt-grid">
+      <div>
+        <p class="dt-cap">พื้นที่ข้อมูล + เขตตัดสินใจ (คลิกเพื่อวางจุด)</p>
+        <div class="dt-stage"><canvas id="dtCanvas" width="460" height="460" style="width:100%"></canvas></div>
+      </div>
+      <div>
+        <p class="dt-cap">ต้นไม้ที่เครื่องปลูก (โหนด = คำถาม, ใบ = คำตอบ)</p>
+        <div class="dt-treebox"><canvas id="dtTree" width="500" height="460" style="width:100%"></canvas></div>
+      </div>
+    </div>
+
+    <div class="ctl-row">
+      <label class="cap" for="dtDepth">ความลึกต้นไม้</label>
+      <input type="range" class="rng" id="dtDepth" min="1" max="6" value="1" step="1">
+      <span class="pill-val" id="dtDepthV">1</span>
+      <span style="font-size:.84rem; color:var(--muted)">ชั้น</span>
+      <button class="btn-mini" id="dtGrow" style="border-color:#7c3aed; color:#7c3aed"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ปลูกต้นไม้</button>
+    </div>
+    <div class="ctl-row">
+      <label class="cap">สีที่จะวาง</label>
+      <div class="seg" id="dtClassSeg">
+        <button data-c="0" class="on"><span class="cdot" style="background:#e5484d"></span> แดง</button>
+        <button data-c="1"><span class="cdot" style="background:#2456e6"></span> น้ำเงิน</button>
+      </div>
+      <button class="btn-mini" id="dtReseed"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>สุ่มข้อมูลใหม่</button>
+      <button class="btn-mini" id="dtClear"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>ล้างจุด</button>
+    </div>
+
+    <div class="acc-row">
+      <div class="acc-card">
+        <div class="lab">จำนวนใบ (กฎ) ในต้นไม้</div>
+        <div class="num" id="dtLeaves" style="color:#7c3aed">—</div>
+      </div>
+      <div class="acc-card">
+        <div class="lab">ความแม่นบนข้อมูลที่เห็น (train)</div>
+        <div class="num" id="dtAcc" style="color:#12a150">—</div>
+        <div class="acc-meter"><i id="dtAccBar" style="width:0;background:#12a150"></i></div>
+      </div>
+    </div>
+    <p style="font-size:.87rem; color:var(--muted); margin:10px 0 0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>สังเกต: เพิ่มความลึก → เส้นแบ่งซอยละเอียดขึ้นเรื่อย ๆ จน "ห่อ" ทุกจุดพอดี (train ใกล้ 100%) แต่หน้าตากลายเป็นเกาะเล็ก ๆ ตามจุดเดี่ยว = เริ่ม <b>overfit</b> — เดี๋ยวส่วนที่ 6 จะแก้ด้วยป่า</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 3 — Gini ทีละสเต็ป ===================== -->
+  <section class="wsec">
+  <h2 class="topic-dt">ส่วนที่ 3 — เครื่องเลือก "จุดตัดที่ดีที่สุด" ยังไง? (Gini) <span class="badge purple">ทีละขั้น</span></h2>
+
+  <style>
+    #giniIntroDemo .gi-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+    @media(max-width:640px){ #giniIntroDemo .gi-grid{ grid-template-columns:1fr; } }
+    #giniIntroDemo .gi-bag { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; align-content:center;
+      padding:14px; border:1px solid var(--border); border-radius:12px; background:#f7f8fb; min-height:88px; }
+    #giniIntroDemo .gi-ball { width:26px; height:26px; border-radius:50%; box-shadow:0 2px 5px -2px rgba(15,23,42,.55);
+      transition: background-color .45s ease, transform .32s cubic-bezier(.34,1.56,.64,1); }
+    #giniIntroDemo .gi-read { border:1px solid var(--border); border-radius:12px; background:var(--card);
+      padding:10px 14px; margin-top:11px; font-size:.92rem; line-height:1.95; font-variant-numeric:tabular-nums; }
+    #giniIntroDemo .gi-gval { font-weight:800; font-size:1.12rem; }
+    #giniIntroDemo .gi-game { border:1px dashed var(--border); border-radius:12px; padding:12px 15px; margin-top:15px;
+      background:rgba(18,161,80,.05); }
+    #giniIntroDemo .gi-dot { width:14px; height:14px; border-radius:50%; display:inline-block; vertical-align:-2px;
+      box-shadow:0 1px 3px -1px rgba(15,23,42,.5); }
+  </style>
+  <div class="demo" id="giniIntroDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 3h6M10 3v5.5l-4.5 9A2 2 0 0 0 7.3 20.5h9.4a2 2 0 0 0 1.8-3l-4.5-9V3"/><path d="M7.5 14h9"/></svg>Gini คืออะไร — วัด "ความปนเปื้อน" ของกล่องยังไง</h3>
+    <p style="margin-top:0"><b>Gini impurity</b> ตอบคำถามเดียว: กล่องข้อมูลนี้ "ปนกัน" มากแค่ไหน? · เข้าใจง่ายสุดผ่านเกมนี้ — <b>หยิบลูกบอลจากกล่องมา 1 ลูกแบบสุ่ม แล้วเดาสีมันด้วยการจับฉลากตามสัดส่วนสีในกล่อง</b> · <b style="color:#7c3aed">โอกาสที่จะเดาผิด นั่นแหละคือค่า Gini</b> · กล่องสีเดียวล้วน → เดาไม่มีวันผิด (G=0 บริสุทธิ์) · กล่องครึ่ง-ครึ่ง → เดาผิดบ่อยสุด (G=0.5 ปนสุด)</p>
+
+    <div class="gi-grid">
+      <div>
+        <div class="gi-bag" id="giBag"></div>
+        <div class="ctl-row">
+          <label class="cap" for="giRed">แดงกี่ลูก (จาก 10)</label>
+          <input type="range" class="rng" id="giRed" min="0" max="10" value="4" step="1">
+          <span class="pill-val" id="giRedV">4</span>
+        </div>
+        <div class="gi-read" id="giFormula"></div>
+      </div>
+      <div>
+        <div style="border:1px solid var(--border); border-radius:12px; background:#f7f8fb; overflow:hidden">
+          <canvas id="giCurveCv" width="400" height="300" style="width:100%; height:auto; display:block"></canvas>
+        </div>
+        <p style="font-size:.83rem; color:var(--muted); margin:6px 2px 0">เส้นโค้ง Gini: พุ่งสูงสุด 0.5 ตอนสีปนกันครึ่ง-ครึ่ง แล้วดิ่งลง 0 เมื่อกล่องเหลือสีเดียว · จุด <span style="color:#7c3aed">●</span> = กล่องตอนนี้</p>
+      </div>
+    </div>
+
+    <div class="gi-game">
+      <b style="font-size:.93rem"><svg class="ico" viewBox="0 0 24 24" style="color:#12a150"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>เกมพิสูจน์: "โอกาสเดาผิด = Gini"</b>
+      <p style="margin:5px 0 9px; font-size:.88rem; color:var(--muted)">กด ▶ ให้เครื่องเล่นเกม "หยิบ 1 ลูก แล้วเดาสีตามสัดส่วน" ซ้ำเร็ว ๆ แล้วดู <b>อัตราเดาผิดจริง</b> ค่อย ๆ ลู่เข้าหาค่า <b>Gini</b> ที่คำนวณไว้เป๊ะ</p>
+      <div class="ctl-row" style="margin-top:0">
+        <button class="btn-mini" id="giPlay" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>เล่นเกมทายสี</button>
+        <button class="btn-mini" id="giGReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6M20 9A8 8 0 0 0 6 6L4 8"/></svg>ล้าง</button>
+      </div>
+      <div class="gi-read" id="giTally" style="margin-top:11px"></div>
+    </div>
+  </div>
+
+  <div class="demo" id="giniDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v18M5 8l7-5 7 5"/><path d="M3 12h18"/></svg>ที่มาของตัวเลข: ลองทุกจุดตัด แล้ววัด "ความปนเปื้อน" (Gini)</h3>
+    <p style="margin-top:0">มีจุด 10 จุดเรียงบนแกนเดียว (ฟีเจอร์ x) · <b style="color:#e5484d">แดง</b> 4 จุด, <b style="color:#2456e6">น้ำเงิน</b> 6 จุด · เครื่องจะลอง "เส้นตัด" ทุกช่องว่างระหว่างจุด แล้วสำหรับแต่ละเส้น คำนวณ <b>Gini impurity</b> ของกลุ่มซ้าย/ขวา แล้วเฉลี่ยแบบถ่วงน้ำหนัก · <b>ยิ่ง Gini น้อย = กลุ่มยิ่งบริสุทธิ์ (เหลือสีเดียว)</b> · เลื่อนดูทีละเส้นตัด แล้วดูตัวเลขคำนวณสด ๆ:</p>
+
+    <div style="background:rgba(124,58,237,.06); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:10px; font-size:.9rem; line-height:1.7">
+      <b>สูตร Gini ของกลุ่มหนึ่ง:</b> <span class="gcalc">G = 1 − (p<sub>แดง</sub>² + p<sub>น้ำเงิน</sub>²)</span> &nbsp; โดย p = สัดส่วนของแต่ละสีในกลุ่ม<br>
+      กลุ่มสีเดียวล้วน → G = 0 (บริสุทธิ์สุด) · ครึ่ง-ครึ่ง → G = 0.5 (ปนสุด) · <b>คะแนนรวมของเส้นตัด</b> = ถ่วงน้ำหนักตามจำนวนจุด: <span class="gcalc">(n<sub>ซ้าย</sub>/N)·G<sub>ซ้าย</sub> + (n<sub>ขวา</sub>/N)·G<sub>ขวา</sub></span>
+    </div>
+
+    <div style="border:1px solid var(--border); border-radius:12px; background:#f7f8fb; overflow:hidden">
+      <canvas id="giniCv" width="720" height="300" style="width:100%; height:auto; display:block"></canvas>
+    </div>
+
+    <div class="ctl-row">
+      <button class="btn-mini" id="giniPrev"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>เส้นก่อนหน้า</button>
+      <input type="range" class="rng" id="giniRng" min="0" max="8" value="4" step="1">
+      <button class="btn-mini" id="giniNext">เส้นถัดไป<svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0 0 0 4px"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button class="btn-mini" id="giniBest" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>กระโดดไปจุดตัดที่ดีที่สุด</button>
+    </div>
+
+    <div class="gini-panel" id="giniPanel"></div>
+    <p style="font-size:.87rem; color:var(--muted); margin:10px 0 0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>เส้นที่ให้คะแนนรวมต่ำสุด = คำถามที่ดีที่สุดที่โหนดนี้จะถาม · ต้นไม้จริงในส่วนที่ 2 ก็เลือกด้วยวิธีนี้เป๊ะ ๆ เพียงแต่ทำกับ<b>ทั้งสองแกน</b> (x และ y) แล้วเลือกอันที่ดีที่สุด</p>
+  </div>
+
+  <div class="exercise" style="margin-top:14px">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>เช็กความเข้าใจเร็ว ๆ</div>
+    <p>กลุ่มหนึ่งมี <b style="color:#e5484d">แดง 3</b> จุด กับ <b style="color:#2456e6">น้ำเงิน 1</b> จุด (รวม 4) · Gini ของกลุ่มนี้เท่าไหร่?</p>
+    <details class="answer"><summary>ดูเฉลย</summary>
+      p<sub>แดง</sub>=3/4=0.75, p<sub>น้ำเงิน</sub>=1/4=0.25 → G = 1 − (0.75² + 0.25²) = 1 − (0.5625 + 0.0625) = 1 − 0.625 = <strong>0.375</strong>
+    </details>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 4 — สร้างต้นไม้จากตาราง (StatQuest DT Part 1) ===================== -->
+  <section class="wsec">
+  <h2 class="topic-dt">ส่วนที่ 4 — สร้าง Decision Tree จากตาราง (ฉบับ StatQuest) <span class="badge purple">ทีละขั้น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">ส่วนที่ 2–3 เห็นต้นไม้ "แบ่งพื้นที่ 2 มิติ" เป็นขั้นบันได และคิด Gini บนแกนเดียวไปแล้ว · ตอนนี้จะสร้าง <b>ต้นไม้จำแนก (classification tree)</b> จริง ๆ บน <b>ตารางข้อมูล</b> ที่มีหลายคอลัมน์ — เป็น<b>ตารางนักศึกษา 12 คนชุดเดียวกับที่ "ป่า" จะใช้ในส่วนถัดไป</b> · หลักการมีแค่ 3 ขั้น วนซ้ำ:</p>
+    <div class="km-cycle" style="display:flex; gap:11px; flex-wrap:wrap; align-items:stretch; margin-top:12px">
+      <div style="flex:1 1 190px; border:1.5px solid var(--border); border-left:5px solid #2456e6; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-1">1</span> วัด Gini ทุกฟีเจอร์</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ลองแบ่งตารางด้วยแต่ละคอลัมน์ แล้วคิด <b>Gini ถ่วงน้ำหนัก</b> ของการแบ่งนั้น</p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.6rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 190px; border:1.5px solid var(--border); border-left:5px solid #7c3aed; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-3">2</span> เลือกคำถามดีสุด → แตกกิ่ง</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ฟีเจอร์ที่ให้ Gini <b>ต่ำสุด</b> = คำถามของโหนดนี้ · แยกข้อมูลออกเป็น 2 กิ่ง</p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.6rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 190px; border:1.5px solid var(--border); border-left:5px solid #12a150; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-2">3</span> ทำซ้ำจนใบบริสุทธิ์</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ทำ ①② กับแต่ละกิ่งย่อยไปเรื่อย ๆ · กิ่งที่<b>เหลือป้ายเดียว</b> (Gini=0) กลายเป็น<b>ใบ</b> ตอบผ่าน/ตก</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Widget 1: root selection -->
+  <div class="demo" id="dtsqRootDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M4 20V6M4 20h16M8 20v-6M12 20v-9M16 20v-4"/></svg>ขั้น ① เลือก "คำถามแรก" (root) — แข่ง Gini ของทั้ง 4 ฟีเจอร์</h3>
+    <p style="margin-top:0">โหนดบนสุดจะถามฟีเจอร์ไหนดี? เครื่องลอง<b>แบ่งตารางด้วยทุกฟีเจอร์</b> แล้วดูว่าฟีเจอร์ไหนทำให้ 2 กลุ่มย่อย "บริสุทธิ์" ที่สุด (Gini ถ่วงน้ำหนักต่ำสุด) · กด <b>▶ ถัดไป</b> เพื่อไล่ทีละฟีเจอร์ ดูการคำนวณสด ๆ · ฟีเจอร์ตัวเลข (ชั่วโมงติว) จะลอง<b>จุดกึ่งกลาง</b>หลายค่าแล้วรายงานอันดีสุด</p>
+    <div class="sqf-scroll"><table class="sqf-tbl" id="dtsqRootTbl"></table></div>
+    <div class="ctl-row" style="margin-top:10px">
+      <button class="btn-mini" id="dtsqRootNext" style="border-color:#2456e6; color:#2456e6"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ถัดไป</button>
+      <button class="btn-mini" id="dtsqRootReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>เริ่มใหม่</button>
+      <span class="sqf-legend" style="margin:0"><span><span class="sqf-sw" style="background:rgba(36,86,230,.35)"></span>กิ่ง "ไม่/น้อยกว่า"</span><span><span class="sqf-sw" style="background:rgba(228,101,20,.32)"></span>กิ่ง "ใช่/ตั้งแต่"</span></span>
+    </div>
+    <div class="gini-panel" id="dtsqRootCalc" style="margin-top:12px">— กด "ถัดไป" เพื่อเริ่มวัดฟีเจอร์แรก —</div>
+    <div style="margin-top:14px">
+      <b style="font-size:.9rem"><svg class="ico" viewBox="0 0 24 24" style="color:#7c3aed"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 8v8M8 12h8"/></svg>Gini ถ่วงน้ำหนักของแต่ละคำถาม — <b>ยิ่งสั้น (ต่ำ) ยิ่งดี</b></b>
+      <div class="fi-bar"><span class="fn">ส่งการบ้าน (hw)</span><span class="fi-track"><i id="dtsqBarHw" style="background:linear-gradient(90deg,#e5484d,#e8590c)"></i></span><span class="pct" id="dtsqBarHwV">—</span></div>
+      <div class="fi-bar"><span class="fn">เข้าเรียน (att)</span><span class="fi-track"><i id="dtsqBarAtt" style="background:linear-gradient(90deg,#e5484d,#e8590c)"></i></span><span class="pct" id="dtsqBarAttV">—</span></div>
+      <div class="fi-bar"><span class="fn">ชั่วโมงติว (hours)</span><span class="fi-track"><i id="dtsqBarHours" style="background:linear-gradient(90deg,#e5484d,#e8590c)"></i></span><span class="pct" id="dtsqBarHoursV">—</span></div>
+      <div class="fi-bar"><span class="fn">นอนพอ (sleep)</span><span class="fi-track"><i id="dtsqBarSleep" style="background:linear-gradient(90deg,#e5484d,#e8590c)"></i></span><span class="pct" id="dtsqBarSleepV">—</span></div>
+    </div>
+    <p style="margin:10px 0 0; font-size:.86rem; color:var(--muted)" id="dtsqRootNote"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>Gini รวมก่อนแบ่ง = 0.5 (ผ่าน 6 ตก 6 ครึ่งต่อครึ่ง) · เป้าหมายคือหาคำถามที่<b>ลด Gini</b>ได้มากที่สุด</p>
+  </div>
+
+  <!-- Widget 2: grow whole tree -->
+  <div class="demo" id="dtsqBuildDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22v-6M9 16l3-2 3 2M12 10V4M8 7h8M6 10h4M14 10h4"/></svg>ขั้น ②③ แตกกิ่งจนจบ — ▶ สร้างต้นไม้ทีละโหนด</h3>
+    <p style="margin-top:0">เมื่อเลือก root ได้แล้ว ก็ทำแบบเดียวกันกับทุกกิ่งย่อย: หาคำถามดีสุดของข้อมูลที่มาถึงโหนดนั้น แล้วแตกต่อ จนกิ่งไหน<b>เหลือป้ายเดียว</b> (บริสุทธิ์) ก็หยุดเป็น<b>ใบ</b> · กด <b>▶ สร้างต้นไม้</b> ดูมันงอกทีละโหนด:</p>
+    <div class="ctl-row" style="margin-top:0">
+      <button class="btn-mini" id="dtsqBuildRun" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>สร้างต้นไม้</button>
+      <button class="btn-mini" id="dtsqBuildReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>เริ่มใหม่</button>
+      <span id="dtsqBuildMsg" style="font-size:.88rem; color:var(--muted)">— กดเพื่อปลูก —</span>
+    </div>
+    <div class="sqf-heatbox" style="margin-top:12px"><canvas id="dtsqTreeCv" width="680" height="420" style="width:100%"></canvas></div>
+    <div class="ctl-row" style="margin-top:12px">
+      <label class="cap">ลองส่งนักศึกษาลงต้นไม้</label>
+      <div class="seg" id="dtsqQAtt"><button data-v="1" class="on">เข้าเรียน ✓</button><button data-v="0">ขาด ✗</button></div>
+      <div class="seg" id="dtsqQHw"><button data-v="1" class="on">ส่ง HW ✓</button><button data-v="0">ไม่ส่ง ✗</button></div>
+      <div class="seg" id="dtsqQSleep"><button data-v="1" class="on">นอนพอ ✓</button><button data-v="0">อดนอน ✗</button></div>
+    </div>
+    <div class="ctl-row" style="margin-top:0">
+      <label class="cap" for="dtsqQHours">ชั่วโมงติว</label>
+      <input type="range" class="rng" id="dtsqQHours" min="0" max="12" value="7" step="1">
+      <span class="pill-val" id="dtsqQHoursV">7</span>
+      <button class="btn-mini" id="dtsqQRun" style="border-color:#2456e6; color:#2456e6"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>ส่งลงต้นไม้</button>
+    </div>
+    <div class="sqf-step-panel" id="dtsqQPanel">สร้างต้นไม้ก่อน แล้วปรับโปรไฟล์ กด "ส่งลงต้นไม้" เพื่อดูมันไหลลงไปหยุดที่ใบไหน</div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>ต้นนี้ทายข้อมูลฝึกได้ <b>ถูกครบทั้ง 12/12</b> คน — เพราะมันแตกกิ่งจนทุกใบบริสุทธิ์ · แต่ "แม่น 100% บน train" มีด้านมืด ดูส่วนที่ 5</p>
+  </div>
+
+  <div class="demo" id="d3tDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22v-6M9 18l3-2 3 2"/><path d="M12 14c-3.3 0-5-2-5-5 0-2.2 1.2-3.4 2.4-4.4M12 14c3.3 0 5-2 5-5 0-2.2-1.2-3.4-2.4-4.4M12 14V3"/></svg>ต้นไม้ต้นเดียวกัน… แต่มองเป็นต้นไม้จริงในสามมิติ</h3>
+    <p style="margin-top:0">Decision Tree ที่เพิ่งสร้างด้านบน จริง ๆ แล้ว<b>คือต้นไม้</b> — โหนดคำถามคือ<b>จุดแยกกิ่ง</b> ส่วนใบตอบ "ผ่าน/ตก" คือ<b>พุ่มใบสีเขียว/แดง</b> · ลากเพื่อหมุนดูรอบด้าน หรือกด "งอกต้นไม้" ให้มันงอกทีละชั้นจากรากขึ้นไป</p>
+    <div class="dt-stage" id="d3tStage" style="touch-action:none">
+      <div style="position:absolute; top:8px; right:10px; font-size:.8rem; color:#7f8ac4; display:flex; align-items:center; gap:4px; pointer-events:none; z-index:2"><svg class="ico" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M6 9l6-6 6 6M6 15l6 6 6-6"/></svg> ลากเพื่อหมุน</div>
+      <canvas id="d3tCanvas" width="720" height="470" style="width:100%"></canvas>
+    </div>
+    <div class="ctl-row" style="margin-top:12px">
+      <button class="btn-mini" id="d3tGrow" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>งอกต้นไม้</button>
+      <button class="btn-mini" id="d3tSpin"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>หมุนอัตโนมัติ: เปิด/ปิด</button>
+      <span style="font-size:.86rem; color:var(--muted)">โหนด = จุดแยกกิ่ง · ใบสี = คำตอบ (<span style="color:#12a150;font-weight:700">เขียว = ผ่าน</span> · <span style="color:#e5484d;font-weight:700">แดง = ตก</span>)</span>
+    </div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>รากล่างสุดคือคำถามแรก "<b>ส่งการบ้าน?</b>" · แต่ละครั้งที่แยกกิ่ง = ตอบคำถาม 1 ข้อ · ไต่จากรากขึ้นไปจนสุดกิ่งก็ได้พุ่มใบคำตอบ เหมือนไล่ต้นไม้ 2 มิติด้านบนเป๊ะ ๆ</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 5 — เลือกฟีเจอร์ & ข้อมูลหาย (StatQuest DT Part 2) ===================== -->
+  <section class="wsec">
+  <h2 class="topic-dt">ส่วนที่ 5 — ตัดกิ่งกัน overfit &amp; ข้อมูลหาย (Part 2) <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">ต้นไม้ในส่วนที่ 4 แม่น 12/12 เพราะมันยอม<b>แตกกิ่งเล็ก ๆ ห่อทุกจุด</b> รวมทั้ง <b>S9</b> (ส่งการบ้าน + ติว 9 ชม. แต่ยัง<b class="sqf-fail">ตก</b> เพราะไม่เข้าเรียน + อดนอน) ที่เป็น <b>outlier</b> · การไล่จับ S9 เป็นใบเดี่ยว = การ<b>จำ noise</b> (overfitting) · ทางแก้ระดับต้นไม้เดียวคือ <b>ตัดกิ่ง (pruning)</b> ด้วยกฎง่าย ๆ</p>
+  </div>
+
+  <!-- Widget 1: pruning via min_samples_split -->
+  <div class="demo" id="dtsqPruneDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M14.5 3.5a2.1 2.1 0 1 0 0 4.2 2.1 2.1 0 0 0 0-4.2zM6 20l7-7M20 20l-5.5-5.5M6 4l6 6"/></svg>ตัดกิ่ง — "โหนดต้องมีข้อมูลอย่างน้อยเท่าไรจึงจะแตกได้"</h3>
+    <p style="margin-top:0">กฎยอดนิยม: ถ้าโหนดหนึ่ง<b>มีข้อมูลน้อยกว่าเกณฑ์</b> ก็<b>ห้ามแตกกิ่งต่อ</b> ให้หยุดเป็นใบเลย (majority) · เลื่อนแถบดู "ขั้นต่ำต่อโหนด" เพิ่มขึ้น → ต้นไม้จะ<b>เตี้ยลง ใบน้อยลง</b> และ<b>เลิกไล่จับ S9</b> → กฎเรียบง่ายขึ้น ทนต่อข้อมูลใหม่กว่า</p>
+    <div class="ctl-row" style="margin-top:0">
+      <label class="cap" for="dtsqMinS">ขั้นต่ำต่อโหนด (min samples)</label>
+      <input type="range" class="rng" id="dtsqMinS" min="2" max="12" value="2" step="1">
+      <span class="pill-val" id="dtsqMinSV">2</span>
+    </div>
+    <div class="acc-row" style="margin-top:12px">
+      <div class="acc-card" style="flex:1 1 150px"><div class="lab">จำนวนใบ (ความซับซ้อน)</div><div class="num" id="dtsqLeafN" style="color:#7c3aed">—</div></div>
+      <div class="acc-card" style="flex:1 1 150px"><div class="lab">Train accuracy</div><div class="num" id="dtsqTrainN" style="color:#2456e6">—</div><div class="acc-meter"><i id="dtsqTrainBar" style="width:0;background:#2456e6"></i></div></div>
+      <div class="acc-card" style="flex:1 1 150px"><div class="lab">ไล่จับ outlier S9?</div><div class="num" id="dtsqS9N" style="font-size:1rem">—</div></div>
+    </div>
+    <div class="sqf-heatbox" style="margin-top:12px"><canvas id="dtsqPruneCv" width="680" height="380" style="width:100%"></canvas></div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)" id="dtsqPruneNote"></p>
+  </div>
+
+  <!-- Widget 2: missing data -->
+  <div class="demo" id="dtsqMissDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="2.3"/></svg>ข้อมูลหาย — วิธีของต้นไม้เดียว: เติมค่าที่พบบ่อย/ค่ากลาง แล้วเดินต้นไม้</h3>
+    <p style="margin-top:0">นักศึกษาคนหนึ่งกรอกข้อมูลมา<b>ไม่ครบ 1 ช่อง</b> · ต้นไม้เดียวมีวิธีเติมแบบเร็ว ๆ: ถ้าช่องที่หายเป็น <b>ตัวเลข</b> → เติมด้วย <b>ค่ากลาง (median)</b> ของคอลัมน์นั้น · ถ้าเป็น <b>ใช่/ไม่</b> → เติมด้วย<b>ค่าที่พบบ่อยสุด (mode)</b> · แล้วค่อยส่งลงต้นไม้ตามปกติ · กด <b>▶ ถัดไป</b> ไล่ทีละขั้น (วิธีละเอียดกว่าที่ใช้ proximity อยู่ในส่วนที่ 8)</p>
+    <div class="ctl-row" style="margin-top:0">
+      <label class="cap">ช่องที่หายของนักศึกษาคนนี้</label>
+      <div class="seg" id="dtsqMissWhich"><button data-f="hours" class="on">ชั่วโมงติว (ตัวเลข)</button><button data-f="sleep">นอนพอ (ใช่/ไม่)</button></div>
+    </div>
+    <div class="ctl-row" style="margin-top:0">
+      <button class="btn-mini" id="dtsqMissNext" style="border-color:#2456e6; color:#2456e6"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>ถัดไป</button>
+      <button class="btn-mini" id="dtsqMissReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>เริ่มใหม่</button>
+    </div>
+    <div class="sqf-step-panel" id="dtsqMissPanel">— เลือกช่องที่หาย แล้วกด "ถัดไป" —</div>
+  </div>
+
+  <div class="exercise" style="margin-top:14px">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>เช็กความเข้าใจ — เลือก root &amp; ตัดกิ่ง</div>
+    <p>(ก) ถ้าฟีเจอร์ A แบ่งแล้วได้ Gini ถ่วงน้ำหนัก 0.28 ส่วนฟีเจอร์ B ได้ 0.44 โหนดนี้ควรถามฟีเจอร์ไหนเป็นคำถามแรก เพราะอะไร · (ข) การตั้ง "ขั้นต่ำต่อโหนด" ให้สูงขึ้น ช่วยแก้ปัญหาอะไร และมีข้อเสียอะไร</p>
+    <details class="example"><summary>ดูแนวคำตอบ</summary>
+      <p>ขั้น 1 — Gini ต่ำ = อะไร: Gini ถ่วงน้ำหนักยิ่งต่ำ แปลว่าหลังแบ่งแล้ว 2 กลุ่มย่อย "บริสุทธิ์" (เอนไปทางป้ายเดียว) มากกว่า = คำถามนั้นแยกได้ดีกว่า</p>
+      <p>ขั้น 2 — เทียบ: A=0.28 &lt; B=0.44 → A ดีกว่า</p>
+      <p>ขั้น 3 — ตัดกิ่งช่วยอะไร: บังคับให้โหนดที่ข้อมูลน้อยหยุดแตก → ต้นไม้ไม่สร้างใบเดี่ยวไล่จับ noise/outlier (เช่น S9) → overfit น้อยลง</p>
+      <p>✅ คำตอบ: (ก) ถามฟีเจอร์ <b>A</b> เพราะ Gini ถ่วงน้ำหนักต่ำกว่า (0.28 &lt; 0.44) = แบ่งได้บริสุทธิ์กว่า · (ข) ช่วยลด <b>overfitting</b> (เลิกจำ noise/outlier) ทำให้กฎเรียบง่ายและทั่วไปกว่า · ข้อเสีย: ถ้าตั้งสูงเกินไปต้นไม้จะ<b>เรียบง่ายเกิน (underfit)</b> พลาดรูปแบบจริงบางอย่าง (train accuracy ตกลง)</p>
+    </details>
+  </div>
+  </section>
+
+  <div class="chap chap-rf">
+    <span class="chap-num">2</span>
+    <svg class="chap-ico" viewBox="0 0 24 24"><circle cx="12" cy="6.5" r="3.3"/><circle cx="5.5" cy="12" r="2.6"/><circle cx="18.5" cy="12" r="2.6"/><path d="M12 9.8V21M5.5 14.6V21M18.5 14.6V21"/></svg>
+    <div>
+      <div class="chap-title">ตอนที่ 2 · RANDOM FOREST — ปลูกทั้ง "ป่า" (หลายต้นโหวตกัน)</div>
+      <div class="chap-sub">รวมพลังหลายต้น: Bootstrap · Bagging · OOB error · proximity &amp; จับกลุ่ม</div>
+    </div>
+  </div>
+
+  <!-- ===================== ส่วนที่ 6 — Overfitting → Random Forest ===================== -->
+  <section class="wsec">
+  <h2 class="topic-rf">ส่วนที่ 6 — ต้นเดียวจำเก่งเกินไป → ปลูกทั้ง"ป่า" (Random Forest) <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="card">
+    <div class="km-cycle" style="display:flex; gap:12px; flex-wrap:wrap; align-items:stretch">
+      <div style="flex:1 1 250px; border:1.5px solid var(--border); border-left:5px solid #e5484d; border-radius:12px; padding:12px 15px; background:var(--card)">
+        <div class="h-step" style="font-size:1rem; margin-bottom:5px"><span class="step-badge sb-1" style="background:linear-gradient(135deg,#e5484d,#d13b40)">!</span> ปัญหา: ต้นเดียวลึกไป = จำ noise</div>
+        <p style="margin:0; font-size:.9rem; line-height:1.7">ปล่อยให้ต้นไม้ลึกไม่จำกัด มันจะสร้างกฎเล็ก ๆ ห่อทุกจุดฝึก (train แม่น 100%) รวมทั้งจุดหลงที่เป็น noise → พอเจอ<b>ข้อมูลใหม่</b> ก็ทายพลาด (test ตก) นี่คือ <b>overfitting</b></p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.7rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 250px; border:1.5px solid var(--border); border-left:5px solid #12a150; border-radius:12px; padding:12px 15px; background:var(--card)">
+        <div class="h-step" style="font-size:1rem; margin-bottom:5px"><span class="step-badge sb-2"><svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><path d="M20 6L9 17l-5-5"/></svg></span> ทางแก้: ปลูกหลายต้นแล้วโหวต</div>
+        <p style="margin:0; font-size:.9rem; line-height:1.7">แต่ละต้นเห็น<b>ข้อมูลสุ่มย่อยคนละชุด</b> (bootstrap) และสุ่มฟีเจอร์ → ต้นไม้แต่ละต้นผิดคนละแบบ · เอามา<b>โหวตเสียงข้างมาก</b> ความผิดสุ่ม ๆ หักล้างกัน เหลือแต่แนวโน้มจริง → เนียนขึ้น ทนขึ้น</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo" id="rfDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22v-5M8 17l4-3 4 3M6 13c-2 0-3-1.5-3-3s1-3 3-3M6 7a4 4 0 0 1 7-2 3.5 3.5 0 0 1 5 3 3 3 0 0 1-1 6"/></svg>Single Tree ปะทะ Random Forest — สลับดูเส้นแบ่งและความแม่น</h3>
+    <p style="margin-top:0">ข้อมูลชุดนี้เป็นรูป <b>"พระจันทร์คู่"</b> ที่มี noise ปน (แยกด้วยเส้นตรงไม่ได้) · สลับโหมดดูความต่าง: ต้นเดียวลึก ๆ เส้นจะ<b>ขรุขระ จำ noise</b> · ป่าหลายต้นเส้นจะ<b>เนียน</b>กว่าและ test แม่นกว่า · <b>คลิกบนภาพ</b>เพื่อดู "ต้นไม้แต่ละต้นโหวตอะไร" ที่จุดนั้น</p>
+
+    <div class="ctl-row" style="margin-top:0">
+      <div class="seg" id="rfModeSeg">
+        <button data-m="tree" class="on">ต้นไม้เดียว</button>
+        <button data-m="forest">Random Forest</button>
+      </div>
+      <button class="btn-mini" id="rfReseed"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>สุ่มข้อมูลใหม่</button>
+    </div>
+
+    <div class="dt-grid" style="margin-top:12px">
+      <div>
+        <p class="dt-cap">เขตตัดสินใจ (คลิกเพื่อดูการโหวต)</p>
+        <div class="dt-stage"><canvas id="rfCanvas" width="460" height="460" style="width:100%"></canvas></div>
+      </div>
+      <div>
+        <div class="ctl-row" style="margin-top:0" id="rfTreeCtl">
+          <label class="cap" for="rfDepth">ความลึกต้นไม้</label>
+          <input type="range" class="rng" id="rfDepth" min="1" max="10" value="10" step="1">
+          <span class="pill-val" id="rfDepthV">10</span>
+        </div>
+        <div class="ctl-row" style="margin-top:0; display:none" id="rfForestCtl">
+          <label class="cap" for="rfTrees">จำนวนต้นไม้</label>
+          <input type="range" class="rng" id="rfTrees" min="1" max="40" value="25" step="1">
+          <span class="pill-val" id="rfTreesV">25</span>
+          <button class="btn-mini" id="rfPlant" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ปลูกทั้งป่าทีละต้น</button>
+          <span id="rfPlantMsg" style="font-size:.83rem; color:var(--muted)"></span>
+        </div>
+
+        <div class="acc-row" style="margin-top:12px">
+          <div class="acc-card">
+            <div class="lab">Train accuracy</div>
+            <div class="num" id="rfTrain" style="color:#2456e6">—</div>
+            <div class="acc-meter"><i id="rfTrainBar" style="width:0;background:#2456e6"></i></div>
+          </div>
+          <div class="acc-card">
+            <div class="lab">Test accuracy (ข้อมูลใหม่ที่ไม่เคยเห็น)</div>
+            <div class="num" id="rfTest" style="color:#12a150">—</div>
+            <div class="acc-meter"><i id="rfTestBar" style="width:0;background:#12a150"></i></div>
+          </div>
+        </div>
+
+        <div class="vote-wrap" id="rfVote">
+          <b style="font-size:.9rem"><svg class="ico" viewBox="0 0 24 24" style="color:#7c3aed"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ผลโหวตของจุดที่คลิก</b>
+          <div class="vote-bar" id="rfVoteBar"><div class="vb" style="width:50%; background:#e5484d">รอคลิก</div><div class="vb" style="width:50%; background:#2456e6"></div></div>
+          <p style="margin:2px 0 0; font-size:.84rem; color:var(--muted)" id="rfVoteMsg">คลิกบนภาพเพื่อดูว่าต้นไม้แต่ละต้นทายจุดนั้นเป็นสีอะไร แล้วเสียงข้างมากชนะ</p>
+        </div>
+
+        <div style="margin-top:12px">
+          <b style="font-size:.9rem"><svg class="ico" viewBox="0 0 24 24" style="color:#2456e6"><path d="M4 20V6M4 20h16M8 20v-6M12 20v-9M16 20v-4"/></svg>ฟีเจอร์ไหนสำคัญกว่า? (feature importance)</b>
+          <div class="fi-bar"><span class="fn">แกน x (แนวนอน)</span><span class="fi-track"><i id="fiX"></i></span><span class="pct" id="fiXv">—</span></div>
+          <div class="fi-bar"><span class="fn">แกน y (แนวตั้ง)</span><span class="fi-track"><i id="fiY"></i></span><span class="pct" id="fiYv">—</span></div>
+          <p style="margin:4px 0 0; font-size:.82rem; color:var(--muted)">= ฟีเจอร์นั้นช่วยลด Gini รวมมากแค่ไหน — ป่าบอกเราได้ว่าตัวแปรไหน "มีบทบาท" ในการทำนาย</p>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:.87rem; color:var(--muted); margin:12px 0 0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ลองเลื่อน "ต้นไม้เดียว" ให้ลึกสุด → ดู train พุ่ง 100% แต่ test ตกลง (overfit) · แล้วสลับเป็น Random Forest เพิ่มจำนวนต้น → test มักดีขึ้นและนิ่งกว่า นี่คือพลังของการโหวต · <b>เรื่อง overfitting/train-test แบบเต็ม ๆ อยู่ในเรื่อง Backpropagation</b></p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 7 — Bagging (StatQuest Part 1) ===================== -->
+  <section class="wsec">
+  <h2 class="topic-rf">ส่วนที่ 7 — "ป่า" สร้างมายังไง: Bootstrap → สุ่มฟีเจอร์ → โหวต (Bagging) <span class="badge purple">ทีละขั้น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">ส่วนที่ 6 เห็นแล้วว่าป่าชนะต้นเดียวเพราะ "โหวต" · ตอนนี้จะเปิดฝากล่องดูว่าป่าถูก<b>สร้างขึ้นมายังไงทีละขั้น</b> โดยใช้ตารางข้อมูลจริงเล็ก ๆ ที่ตามดูทุกตัวเลขได้ · ชุดข้อมูล: นักศึกษา 12 คน (S1–S12) ทำนายว่า <b class="sqf-pass">สอบผ่าน</b> หรือ <b class="sqf-fail">สอบตก</b> จาก 4 ฟีเจอร์ — เข้าเรียนสม่ำเสมอ (att), ส่งการบ้านครบ (hw), นอนพอก่อนสอบ (sleep), และชั่วโมงติว (hours)</p>
+
+    <div class="km-cycle" style="display:flex; gap:11px; flex-wrap:wrap; align-items:stretch; margin-top:12px">
+      <div style="flex:1 1 175px; border:1.5px solid var(--border); border-left:5px solid #2456e6; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-1">1</span> Bootstrap</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">สุ่มหยิบ 12 แถว <b>แบบใส่คืน</b> (ซ้ำได้) → ได้ชุดข้อมูลหน้าตาใหม่ · แถวที่<b>ไม่ถูกหยิบ</b>เลย ≈ 1/3 = <b style="color:#e8590c">OOB</b></p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.6rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 175px; border:1.5px solid var(--border); border-left:5px solid #7c3aed; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-3">2</span> ต้นไม้ฟีเจอร์สุ่ม</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ปลูกต้นไม้จากชุด bootstrap นั้น · ที่<b>ทุกโหนด</b> พิจารณาแค่ <b>ฟีเจอร์สุ่ม 2 จาก 4</b> → ต้นไม้แต่ละต้นต่างกัน</p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.6rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 175px; border:1.5px solid var(--border); border-left:5px solid #12a150; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge sb-2">3</span> ทำซ้ำหลายต้น</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ทำ ①②&nbsp;ซ้ำ <b>21 ต้น</b> — แต่ละต้นเห็นข้อมูล/ฟีเจอร์คนละมุม</p>
+      </div>
+      <div class="kc-arrow" style="align-self:center; font-size:1.6rem; color:#94a3b8; font-weight:800">→</div>
+      <div style="flex:1 1 175px; border:1.5px solid var(--border); border-left:5px solid #e8590c; border-radius:12px; padding:11px 13px; background:var(--card)">
+        <div class="h-step" style="font-size:.98rem; margin-bottom:5px"><span class="step-badge" style="background:linear-gradient(135deg,#e8590c,#b45309)">4</span> โหวต (Bagging)</div>
+        <p style="margin:0; font-size:.86rem; line-height:1.6">ให้ทุกต้น<b>ทายแล้วนับเสียง</b> · เสียงข้างมากชนะ · คำว่า <b>Bagging</b> = <i>Bootstrap</i> + <i>Aggregating</i> (โหวต)</p>
+      </div>
+    </div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ในชุดนี้ <b>ไม่มีฟีเจอร์เดียว</b>ที่ทายถูกทุกคน (เช่น S9 ส่งการบ้าน+ติว 9 ชม. แต่ยัง<b class="sqf-fail">ตก</b> เพราะไม่เข้าเรียน+อดนอน) — นี่แหละเหตุผลที่ต้องใช้หลายต้นโหวต และสุ่มฟีเจอร์ให้ต้นไม้ต่างมุมกัน</p>
+  </div>
+
+  <!-- Widget 1: Bootstrap + OOB -->
+  <div class="demo" id="sqBootDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>ขั้น ① Bootstrap — หยิบข้อมูลแบบใส่คืน แล้วดู "แถวที่หลุด" = OOB</h3>
+    <p style="margin-top:0">กด <b>▶ สุ่ม bootstrap</b> แล้วดูเครื่องหยิบ 12 ครั้งแบบใส่คืน (หยิบซ้ำได้ — ดูคอลัมน์ <b>×ครั้ง</b>) · แถวที่โดนหยิบอย่างน้อย 1 ครั้ง = ชุดฝึกของต้นนี้ (<span class="sqf-sw" style="background:rgba(36,86,230,.5)"></span>ฟ้า) · แถวที่<b>ไม่โดนหยิบเลย</b> = <b style="color:#e8590c">Out-Of-Bag (OOB)</b> (<span class="sqf-sw" style="background:rgba(228,101,20,.6)"></span>ส้ม) เอาไว้ทดสอบต้นนี้ฟรี ๆ · กดซ้ำได้เรื่อย ๆ ได้ชุดใหม่ทุกครั้ง</p>
+    <div class="sqf-scroll">
+      <table class="sqf-tbl" id="sqBootTbl"></table>
+    </div>
+    <div class="ctl-row">
+      <button class="btn-mini" id="sqBootRun" style="border-color:#2456e6; color:#2456e6"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>สุ่ม bootstrap</button>
+      <span id="sqBootMsg" style="font-size:.88rem; color:var(--muted)">— รอกดปุ่ม —</span>
+    </div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>ทำไม OOB ≈ 1/3? โอกาสที่แถวหนึ่ง<b>ไม่โดนหยิบใน 12 ครั้ง</b> = (1−1/12)¹² ≈ 0.37 → เฉลี่ยราว 4 จาก 12 แถวหลุดออกมาเป็น OOB ทุกครั้ง โดยไม่ต้องกันข้อมูลไว้เป็น test set แยก</p>
+  </div>
+
+  <!-- Widget 2: random feature at node -->
+  <div class="demo" id="sqFeatDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="3" y="15" width="7" height="5" rx="1.5"/><rect x="14" y="15" width="7" height="5" rx="1.5"/></svg>ขั้น ② ที่ทุกโหนด — สุ่มฟีเจอร์มาแค่ 2 จาก 4 แล้วเลือกดีสุด</h3>
+    <p style="margin-top:0">ต้นไม้ธรรมดาจะดูครบทั้ง 4 ฟีเจอร์แล้วเลือกอันดีที่สุดเสมอ → ทุกต้นเลยหน้าตาเหมือนกัน · <b>Random Forest ต่างตรงนี้</b>: ที่แต่ละโหนด <b>สุ่มหยิบมาแค่ 2 ฟีเจอร์</b>เป็นผู้เข้าชิง (candidate) แล้วเลือกดีสุด<b>ในกลุ่มนั้น</b> · บางครั้งฟีเจอร์เก่ง (hours) ไม่ถูกสุ่มมา ต้นนั้นก็ต้องหาทางอื่น → ต้นไม้แต่ละต้นเลย<b>ต่างมุมกัน (decorrelated)</b> ทำให้การโหวตทรงพลัง กด <b>▶ สุ่มฟีเจอร์</b> ดู:</p>
+    <div class="sqf-chips" id="sqFeatChips"></div>
+    <div class="ctl-row" style="margin-top:2px">
+      <button class="btn-mini" id="sqFeatRun" style="border-color:#7c3aed; color:#7c3aed"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M20 9A8 8 0 0 0 6 6L4 8M4 15a8 8 0 0 0 14 3l2-2"/></svg>สุ่มฟีเจอร์ที่โหนดนี้</button>
+      <span id="sqFeatMsg" style="font-size:.88rem; color:var(--muted)">— สุ่มดูว่าครั้งนี้ได้ผู้เข้าชิงเป็นใคร —</span>
+    </div>
+  </div>
+
+  <!-- Widget 3: Bagging vote -->
+  <div class="demo" id="sqVoteDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>ขั้น ④ Bagging — ส่งนักศึกษาคนใหม่ลงทุกต้น แล้วนับเสียงโหวต</h3>
+    <p style="margin-top:0">ปรับโปรไฟล์นักศึกษาคนใหม่ด้านล่าง แล้วกด <b>▶ โหวต</b> · เครื่องจะส่งเขาไล่ลงต้นไม้ทั้ง <b>21 ต้น</b> ทีละต้น แต่ละต้นทาย <b class="sqf-pass">ผ่าน</b> หรือ <b class="sqf-fail">ตก</b> แล้วหยอดเสียงลงแถบ · เสียงข้างมากชนะ</p>
+    <div class="ctl-row">
+      <label class="cap">โปรไฟล์</label>
+      <div class="seg" id="sqAtt"><button data-v="1" class="on">เข้าเรียน ✓</button><button data-v="0">ขาด ✗</button></div>
+      <div class="seg" id="sqHw"><button data-v="1" class="on">ส่ง HW ✓</button><button data-v="0">ไม่ส่ง ✗</button></div>
+      <div class="seg" id="sqSleep"><button data-v="1" class="on">นอนพอ ✓</button><button data-v="0">อดนอน ✗</button></div>
+    </div>
+    <div class="ctl-row">
+      <label class="cap" for="sqHours">ชั่วโมงติว</label>
+      <input type="range" class="rng" id="sqHours" min="0" max="12" value="7" step="1">
+      <span class="pill-val" id="sqHoursV">7</span>
+      <button class="btn-mini" id="sqVoteRun" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>โหวต</button>
+    </div>
+    <div class="vote-wrap" style="margin-top:12px">
+      <b style="font-size:.9rem">ผลโหวตจาก 21 ต้น</b>
+      <div class="vote-bar" id="sqVoteBar"><div class="vb" style="width:100%; background:#cfd5e0; color:#5b6475">รอโหวต</div></div>
+      <p style="margin:2px 0 0; font-size:.86rem; color:var(--muted)" id="sqVoteMsg">ปรับโปรไฟล์แล้วกดปุ่มโหวต</p>
+    </div>
+  </div>
+
+  <!-- Widget 4: OOB error + tuning + importance -->
+  <div class="demo" id="sqOobDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z"/><path d="M12 7v5l3 2"/></svg>OOB error — วัดความแม่นของป่า "โดยไม่ต้องมี test set"</h3>
+    <p style="margin-top:0">ไอเดียเด็ด: แต่ละแถวถูกทำนายด้วย<b>เฉพาะต้นที่มันเป็น OOB</b> (ต้นที่<b>ไม่เคยเห็น</b>มันตอนฝึก) แล้วโหวต → เทียบกับป้ายจริง · สัดส่วนที่ทายผิด = <b>OOB error</b> = ค่าประมาณความแม่นบนข้อมูลใหม่ ฟรี ๆ ในตัว · ลองปรับ <b>จำนวนฟีเจอร์ต่อโหนด</b> และ <b>จำนวนต้นไม้</b> ดู OOB error ขยับ — นี่คือหัวใจของการ "จูน" โมเดล</p>
+    <div class="acc-row">
+      <div class="acc-card" style="flex:1 1 220px">
+        <div class="lab">OOB error ของป่าปัจจุบัน</div>
+        <div class="num" id="sqOobNum" style="color:#e8590c">—</div>
+        <div class="acc-meter"><i id="sqOobBar" style="width:0;background:#e8590c"></i></div>
+        <div class="lab" id="sqOobDetail" style="margin-top:5px">—</div>
+      </div>
+      <div class="acc-card" style="flex:1 1 220px">
+        <div class="lab">แถวที่ OOB ทายผิด</div>
+        <div class="num" id="sqOobWrong" style="color:#e5484d; font-size:1.1rem">—</div>
+        <div class="lab" style="margin-top:5px">มักเป็นเคส "ขัดกับสามัญสำนึก" เช่น S9 (ตกทั้งที่ติวเยอะ)</div>
+      </div>
+    </div>
+    <div class="ctl-row">
+      <label class="cap" for="sqMtry">ฟีเจอร์/โหนด</label>
+      <input type="range" class="rng" id="sqMtry" min="1" max="4" value="2" step="1">
+      <span class="pill-val" id="sqMtryV">2</span>
+      <span style="font-size:.82rem; color:var(--muted)">จาก 4</span>
+    </div>
+    <div class="ctl-row">
+      <label class="cap" for="sqTrees">จำนวนต้นไม้</label>
+      <input type="range" class="rng" id="sqTrees" min="1" max="51" value="21" step="2">
+      <span class="pill-val" id="sqTreesV">21</span>
+    </div>
+    <div style="margin-top:14px">
+      <b style="font-size:.9rem"><svg class="ico" viewBox="0 0 24 24" style="color:#2456e6"><path d="M4 20V6M4 20h16M8 20v-6M12 20v-9M16 20v-4"/></svg>ฟีเจอร์ไหนสำคัญ? (feature importance — วัดจากการช่วยลด Gini รวมทั้งป่า)</b>
+      <div class="fi-bar"><span class="fn">ชั่วโมงติว (hours)</span><span class="fi-track"><i id="sqFiHours"></i></span><span class="pct" id="sqFiHoursV">—</span></div>
+      <div class="fi-bar"><span class="fn">ส่งการบ้าน (hw)</span><span class="fi-track"><i id="sqFiHw"></i></span><span class="pct" id="sqFiHwV">—</span></div>
+      <div class="fi-bar"><span class="fn">เข้าเรียน (att)</span><span class="fi-track"><i id="sqFiAtt"></i></span><span class="pct" id="sqFiAttV">—</span></div>
+      <div class="fi-bar"><span class="fn">นอนพอ (sleep)</span><span class="fi-track"><i id="sqFiSleep"></i></span><span class="pct" id="sqFiSleepV">—</span></div>
+      <p style="margin:4px 0 0; font-size:.82rem; color:var(--muted)">ในชุดนี้ "ชั่วโมงติว" กับ "ส่งการบ้าน" มีบทบาทสูงสุด ส่วน "นอนพอ" แทบไม่ช่วยแยก — ป่าบอกเราได้เองว่าตัวแปรไหนสำคัญ</p>
+    </div>
+  </div>
+
+  <div class="demo" id="d3fDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M6 21v-4M6 17c-2 0-3-1.3-3-3.2 0-1.5.9-2.4 1.8-3M6 17c2 0 3-1.3 3-3.2 0-1.5-.9-2.4-1.8-3M12 21v-6M12 15c-2.4 0-3.8-1.6-3.8-3.8 0-2 1.4-3.4 2.6-4.4M12 15c2.4 0 3.8-1.6 3.8-3.8 0-2-1.4-3.4-2.6-4.4M18 21v-4M18 17c2 0 3-1.3 3-3.2 0-1.5-.9-2.4-1.8-3"/></svg>และนี่คือ "ป่า" จริง ๆ — ดงต้นไม้ในสามมิติ</h3>
+    <p style="margin-top:0">ปลูกจริง <b>15 ต้น</b> (แต่ละต้นฝึกจาก bootstrap คนละชุด สุ่มฟีเจอร์คนละมุม) ยืนเป็นดงบนพื้น · ลากเพื่อหมุนดูทั้งป่า · ตั้งโปรไฟล์นักศึกษา 1 คน แล้วกด "ให้ป่าโหวต" — จะเห็นทุกต้น<b>สว่างทีละต้น</b> บอกคำตอบของมัน (เขียว = ผ่าน, แดง = ตก) แล้ว<b>เสียงข้างมากชนะ</b></p>
+    <div class="dt-stage" id="d3fStage" style="touch-action:none">
+      <div style="position:absolute; top:8px; right:10px; font-size:.8rem; color:#7f8ac4; display:flex; align-items:center; gap:4px; pointer-events:none; z-index:2"><svg class="ico" viewBox="0 0 24 24" style="width:1em;height:1em"><path d="M6 9l6-6 6 6M6 15l6 6 6-6"/></svg> ลากเพื่อหมุน</div>
+      <canvas id="d3fCanvas" width="720" height="430" style="width:100%"></canvas>
+    </div>
+    <div class="ctl-row" style="margin-top:12px">
+      <label class="cap">โปรไฟล์นักศึกษา</label>
+      <div class="seg" id="d3fAtt"><button data-v="1" class="on">เข้าเรียน ✓</button><button data-v="0">ขาด ✗</button></div>
+      <div class="seg" id="d3fHw"><button data-v="1" class="on">ส่ง HW ✓</button><button data-v="0">ไม่ส่ง ✗</button></div>
+      <div class="seg" id="d3fSleep"><button data-v="1" class="on">นอนพอ ✓</button><button data-v="0">อดนอน ✗</button></div>
+    </div>
+    <div class="ctl-row" style="margin-top:0">
+      <label class="cap" for="d3fHours">ชั่วโมงติว</label>
+      <input type="range" class="rng" id="d3fHours" min="0" max="12" value="7" step="1">
+      <span class="pill-val" id="d3fHoursV">7</span>
+    </div>
+    <div class="ctl-row" style="margin-top:0">
+      <span style="font-size:.82rem; color:var(--muted)">พรีเซ็ต:</span>
+      <button class="btn-mini" data-preset="strong">ตั้งใจเต็มที่</button>
+      <button class="btn-mini" data-preset="edge">ก้ำกึ่ง</button>
+      <button class="btn-mini" data-preset="weak">เสี่ยงสูง</button>
+      <button class="btn-mini" id="d3fVote" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ให้ป่าโหวต</button>
+    </div>
+    <div style="margin-top:14px; display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+      <div style="flex:1 1 240px">
+        <div style="display:flex; height:22px; border-radius:8px; overflow:hidden; border:1px solid var(--border); background:var(--card)">
+          <i id="d3fBarPass" style="width:0%; background:#12a150; transition:width .18s"></i>
+          <i id="d3fBarFail" style="width:0%; background:#e5484d; transition:width .18s"></i>
+        </div>
+        <div style="font-size:.82rem; color:var(--muted); margin-top:5px"><span style="color:#12a150;font-weight:700">ผ่าน <span id="d3fCntPass">0</span></span> · <span style="color:#e5484d;font-weight:700">ตก <span id="d3fCntFail">0</span></span> · จาก 15 ต้น</div>
+      </div>
+      <div id="d3fResult" style="font-weight:800; font-size:1.05rem; color:var(--muted)">— กด "ให้ป่าโหวต" —</div>
+    </div>
+    <p style="margin:10px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>แต่ละต้น = 1 tree ในป่า · ต้นเดียวอาจเดาพลาด แต่พอโหวตกันทั้งดง <b>เสียงข้างมากชนะ</b> — นี่คือหัวใจของ Bagging ที่ทำให้ป่าแม่นกว่าต้นเดียว</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 8 — Missing data & Proximity (StatQuest Part 2) ===================== -->
+  <section class="wsec">
+  <h2 class="topic-rf">ส่วนที่ 8 — ข้อมูลหาย &amp; จับกลุ่มด้วย proximity <span class="badge">ทดลองเล่น</span></h2>
+
+  <div class="card">
+    <p style="margin-top:0">ป่าไม่ได้ทำแค่ทำนาย — ผลพลอยได้ที่ทรงพลังคือ <b>proximity (ความคล้าย)</b>: จับ 2 แถวส่งลงทุกต้น ถ้ามัน<b>ตกใบเดียวกันบ่อย</b> แปลว่าป่ามองว่า "คล้ายกัน" · จาก proximity เราทำได้ 2 อย่างที่ต้นไม้เดี่ยวทำไม่ได้ — <b>เติมค่าที่หายไป</b> และ <b>จับกลุ่ม (clustering)</b></p>
+  </div>
+
+  <!-- Widget 1: impute missing (training) -->
+  <div class="demo" id="sqMissDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><circle cx="12" cy="12" r="2.5"/></svg>เติมค่าที่หาย — เดาหยาบก่อน แล้วใช้ proximity ปรับจนนิ่ง</h3>
+    <p style="margin-top:0">สมมติค่า <b>ชั่วโมงติว</b> ของนักศึกษาคนหนึ่ง<b>หายไป</b> · วิธีของ Random Forest ทำเป็นรอบ ๆ: <b>รอบ 0</b> เดาหยาบด้วย<b>ค่ากลาง (median) ของคนป้ายเดียวกัน</b> → จากนั้นสร้างป่า วัด proximity แล้ว<b>ปรับค่าด้วยค่าเฉลี่ยถ่วงน้ำหนักตามความคล้าย</b> ทำซ้ำจน<b>ค่านิ่ง (converged)</b> · เลือกนักศึกษาแล้วกด <b>▶ ปรับค่า</b> ทีละรอบ:</p>
+    <div class="ctl-row">
+      <label class="cap">ซ่อน hours ของ</label>
+      <div class="seg" id="sqMissWho"><button data-i="0" class="on">S1 (ผ่าน)</button><button data-i="6">S7 (ตก)</button><button data-i="10">S11 (ตก)</button></div>
+    </div>
+    <div class="ctl-row">
+      <button class="btn-mini" id="sqMissStep" style="border-color:#2456e6; color:#2456e6"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>ปรับค่า (รอบถัดไป)</button>
+      <button class="btn-mini" id="sqMissReset"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>เริ่มใหม่</button>
+    </div>
+    <div class="sqf-step-panel" id="sqMissPanel">— กด "ปรับค่า" เพื่อเริ่ม —</div>
+  </div>
+
+  <!-- Widget 2: proximity heatmap + reorder + scatter -->
+  <div class="demo" id="sqProxDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>ตาราง proximity → จัดเรียงใหม่ = จับกลุ่มได้เหมือน K-means</h3>
+    <p style="margin-top:0">ซ้าย: ตาราง 12×12 · ช่อง (i,j) ยิ่ง<b>เข้ม</b> = สองคนนั้นตกใบเดียวกันบ่อย = <b>คล้ายกันมาก</b> · กด <b>▶ จัดเรียงใหม่</b> เครื่องจะเรียงลำดับแถว/คอลัมน์ใหม่ตามความคล้าย แล้วจะเห็น<b>บล็อกเข้ม 2 ก้อน</b>โผล่ขึ้นชัด = <b>2 กลุ่ม (ผ่าน / ตก)</b> · ขวา: วางแต่ละคนเป็นจุดในระนาบ (ยิ่งใกล้ = ยิ่งคล้าย) ระบายสีตามป้ายจริง</p>
+    <div class="sqf-grid2">
+      <div>
+        <p class="dt-cap">proximity heatmap (เข้ม = คล้าย)</p>
+        <div class="sqf-heatbox"><canvas id="sqProxCv" width="360" height="360" style="width:100%"></canvas></div>
+      </div>
+      <div>
+        <p class="dt-cap">แผนที่ความคล้าย (1 − proximity = ระยะทาง)</p>
+        <div class="sqf-heatbox"><canvas id="sqScatterCv" width="360" height="360" style="width:100%"></canvas></div>
+      </div>
+    </div>
+    <div class="ctl-row">
+      <button class="btn-mini" id="sqProxReorder" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18M7 3v18"/></svg>จัดเรียงใหม่ (จับกลุ่ม)</button>
+      <button class="btn-mini" id="sqProxOrig"><svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M4 4v6h6"/><path d="M20 9A8 8 0 0 0 6 6L4 8"/></svg>เรียงตามเดิม</button>
+      <span class="sqf-legend" style="margin:0"><span><span class="sqf-sw" style="background:#12a150"></span>ผ่าน</span><span><span class="sqf-sw" style="background:#e5484d"></span>ตก</span></span>
+    </div>
+    <p style="margin:8px 0 0; font-size:.86rem; color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>เชื่อมกับ <b>เรื่อง K-means</b>: proximity = ความคล้าย → <b>1 − proximity = ระยะทาง</b> → พอมีระยะทางก็จับกลุ่มได้เหมือน clustering ทุกประการ · สังเกต S9 (คนที่ตกทั้งที่ติวเยอะ) จะอยู่ค่อนข้าง<b>โดดเดี่ยว</b> — proximity ต่ำกับทุกคน คือ outlier ที่ป่าตรวจจับได้เอง</p>
+  </div>
+
+  <!-- Widget 3: classify new sample with missing value -->
+  <div class="demo" id="sqNewDemo">
+    <h3 style="margin-top:0"><svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>จำแนกคนใหม่ที่ข้อมูลหาย — "ทำสำเนาต่อป้าย" แล้วดูอันไหนสอดคล้องตัวเอง</h3>
+    <p style="margin-top:0">มีนักศึกษาใหม่: <b>เข้าเรียน ✓ · ส่งการบ้าน ✓ · นอนพอ ✓</b> แต่<b>ไม่รู้ชั่วโมงติว</b> · เทคนิค: ทำ <b>สำเนา 2 อัน (อันละป้าย)</b> — อัน "สมมติว่าผ่าน" เติม hours ด้วย median ของกลุ่มผ่าน, อัน "สมมติว่าตก" เติมด้วย median ของกลุ่มตก → ส่งทั้งคู่ลงป่า · <b>สำเนาที่ป่าทายออกมาตรงกับป้ายที่สมมติ (สอดคล้องตัวเอง)</b> คือคำตอบ · กด <b>▶ ทดลอง</b>:</p>
+    <div class="ctl-row" style="margin-top:0">
+      <button class="btn-mini" id="sqNewRun" style="border-color:#12a150; color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ทดลอง</button>
+      <span id="sqNewMsg" style="font-size:.88rem; color:var(--muted)">— กดเพื่อสร้างสำเนา 2 อันแล้วส่งลงป่า —</span>
+    </div>
+    <div class="sqf-copybox" style="margin-top:12px" id="sqNewBox"></div>
+  </div>
+
+  <div class="exercise" style="margin-top:14px">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>เช็กความเข้าใจ — OOB &amp; proximity</div>
+    <p>(ก) ทำ bootstrap หยิบ 12 แถวแบบใส่คืน โดยเฉลี่ยจะมีกี่แถวที่เป็น OOB และเราใช้มันทำอะไร · (ข) proximity ของ S<sub>i</sub> กับ S<sub>j</sub> = 0.9 หมายความว่าอะไร และ "ระยะทาง" ระหว่างสองคนนี้เท่าไหร่</p>
+    <details class="example"><summary>ดูแนวคำตอบ</summary>
+      <p>ขั้น 1 — OOB คืออะไร: แต่ละต้นฝึกบน bootstrap (สุ่มใส่คืน) แถวที่ไม่ถูกหยิบเลยคือ OOB</p>
+      <p>ขั้น 2 — เฉลี่ยกี่แถว: โอกาสไม่ถูกหยิบ ≈ (1−1/12)¹² ≈ 0.37 → ราว <b>4 จาก 12 แถว</b> เป็น OOB ทุกครั้ง</p>
+      <p>ขั้น 3 — ใช้ทำอะไร: ทำนายแต่ละแถวด้วยเฉพาะต้นที่มันเป็น OOB → ได้ค่าประมาณความแม่นบนข้อมูลใหม่ (OOB error) โดยไม่ต้องกัน test set แยก</p>
+      <p>✅ คำตอบ: (ก) เฉลี่ย ~4 แถว (≈ 1/3) ใช้เป็น test ในตัวเพื่อวัด OOB error · (ข) proximity 0.9 = สองคนนี้ตกใบเดียวกัน 90% ของต้นทั้งหมด (คล้ายกันมาก) และระยะทาง = 1 − 0.9 = <b>0.1</b> (ใกล้กันมาก)</p>
+    </details>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 9 — โค้ด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 9 — โค้ดรันได้จริง (scikit-learn) <span class="badge green">ลงมือ</span></h2>
+  <div class="card">
+    <p style="margin-top:0">คัดลอกไปวางใน <a href="https://colab.research.google.com" target="_blank">Google Colab</a> แล้วกดรันได้เลย — จะได้เห็นทั้งอาการ overfit ของต้นเดียว, รูปต้นไม้จริง, และป่าที่แม่นกว่า พร้อม feature importance</p>
+    <div class="code-box">
+      <button class="code-copy" id="codeCopy"><svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg><span id="codeCopyLbl">คัดลอก</span></button>
+<pre><code id="codeSrc"><span class="c"># ============================================</span>
+<span class="c"># Decision Tree &amp; Random Forest</span>
+<span class="c"># รันได้เลยบน Google Colab</span>
+<span class="c"># ============================================</span>
+<span class="k">from</span> sklearn.datasets <span class="k">import</span> make_moons
+<span class="k">from</span> sklearn.model_selection <span class="k">import</span> train_test_split
+<span class="k">from</span> sklearn.tree <span class="k">import</span> DecisionTreeClassifier, plot_tree
+<span class="k">from</span> sklearn.ensemble <span class="k">import</span> RandomForestClassifier
+<span class="k">from</span> sklearn.metrics <span class="k">import</span> accuracy_score
+<span class="k">import</span> matplotlib.pyplot <span class="k">as</span> plt
+
+<span class="c"># 1) ชุดข้อมูลของเล่น "พระจันทร์คู่" (โค้ง แยกด้วยเส้นตรงไม่ได้)</span>
+X, y = <span class="fn">make_moons</span>(n_samples=<span class="n">400</span>, noise=<span class="n">0.30</span>, random_state=<span class="n">42</span>)
+X_tr, X_te, y_tr, y_te = <span class="fn">train_test_split</span>(X, y, test_size=<span class="n">0.3</span>, random_state=<span class="n">0</span>)
+
+<span class="c"># 2) ต้นไม้ต้นเดียว — ลอง max_depth หลายค่า ดูอาการ overfit</span>
+<span class="k">for</span> d <span class="k">in</span> [<span class="n">1</span>, <span class="n">3</span>, <span class="n">6</span>, <span class="k">None</span>]:      <span class="c"># None = ลึกไม่จำกัด → จำ noise</span>
+    tree = <span class="fn">DecisionTreeClassifier</span>(max_depth=d, random_state=<span class="n">0</span>).<span class="fn">fit</span>(X_tr, y_tr)
+    tr = <span class="fn">accuracy_score</span>(y_tr, tree.<span class="fn">predict</span>(X_tr))
+    te = <span class="fn">accuracy_score</span>(y_te, tree.<span class="fn">predict</span>(X_te))
+    <span class="fn">print</span>(<span class="s">f"depth={str(d):&gt;4} | train={tr:.2f}  test={te:.2f}"</span>)
+
+<span class="c"># 3) วาดโครงต้นไม้ — อ่านกฎ if/else ได้ด้วยตา</span>
+tree = <span class="fn">DecisionTreeClassifier</span>(max_depth=<span class="n">3</span>, random_state=<span class="n">0</span>).<span class="fn">fit</span>(X_tr, y_tr)
+plt.<span class="fn">figure</span>(figsize=(<span class="n">11</span>, <span class="n">6</span>))
+<span class="fn">plot_tree</span>(tree, filled=<span class="k">True</span>, feature_names=[<span class="s">"x"</span>, <span class="s">"y"</span>], class_names=[<span class="s">"A"</span>, <span class="s">"B"</span>])
+plt.<span class="fn">show</span>()
+
+<span class="c"># 4) Random Forest — ปลูกหลายต้นแล้วโหวต (ลด overfit เอง)</span>
+rf = <span class="fn">RandomForestClassifier</span>(n_estimators=<span class="n">200</span>, random_state=<span class="n">0</span>).<span class="fn">fit</span>(X_tr, y_tr)
+<span class="fn">print</span>(<span class="s">"Forest  | test ="</span>, <span class="fn">accuracy_score</span>(y_te, rf.<span class="fn">predict</span>(X_te)))
+
+<span class="c"># 5) ฟีเจอร์ไหนสำคัญ? — ป่าบอกได้เลย</span>
+<span class="fn">print</span>(<span class="s">"feature_importances_ ="</span>, rf.feature_importances_)</code></pre>
+    </div>
+    <p style="margin-bottom:0; font-size:.88rem; color:var(--muted)">ลองเปลี่ยน <code>noise</code> ให้สูงขึ้น หรือปรับ <code>max_depth</code> / <code>n_estimators</code> แล้วสังเกตช่องว่าง train–test — จะเห็นเรื่องเดียวกับเวทีด้านบนเป๊ะ ๆ</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 8 — แบบฝึกหัด ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 10 — แบบฝึกหัด <span class="badge green">แบบฝึกหัด</span></h2>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 1 (ทำในคาบ) — คำนวณ Gini ด้วยมือ</div>
+    <p>โหนดหนึ่งมีจุด 6 จุด: <b style="color:#e5484d">แดง 2</b>, <b style="color:#2456e6">น้ำเงิน 4</b> · (ก) หา Gini ของโหนดนี้ · (ข) ถ้าตัดแล้วได้ ซ้าย = {แดง 2} และ ขวา = {น้ำเงิน 4} คะแนน Gini รวม (ถ่วงน้ำหนัก) เป็นเท่าไหร่ · (ค) การตัดนี้ดีไหม เพราะอะไร</p>
+    <details class="answer"><summary>ดูเฉลย</summary>
+      (ก) p<sub>แดง</sub>=2/6=0.333, p<sub>น้ำเงิน</sub>=4/6=0.667 → G = 1 − (0.333² + 0.667²) = 1 − (0.111 + 0.444) = <strong>0.444</strong><br>
+      (ข) ซ้าย {แดง 2} บริสุทธิ์ → G=0 · ขวา {น้ำเงิน 4} บริสุทธิ์ → G=0 · รวม = (2/6)(0) + (4/6)(0) = <strong>0</strong><br>
+      (ค) ดีมาก — Gini ลดจาก 0.444 เหลือ 0 (ทั้งสองฝั่งเหลือสีเดียวล้วน) แปลว่าคำถามนี้แยกคลาสได้สมบูรณ์
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v3h3"/><path d="M9 12h6M9 16h4"/></svg>ข้อ 2 (ทำในคาบ) — ทำไมต้นไม้ลึกถึง overfit</div>
+    <p>อธิบายด้วยคำพูดตัวเอง: ทำไมต้นไม้ที่ปล่อยให้ลึกไม่จำกัดถึงได้ train accuracy = 100% แต่ test accuracy กลับแย่? และการจำกัด <code>max_depth</code> ช่วยยังไง</p>
+    <details class="answer"><summary>ดูเฉลย</summary>
+      ต้นไม้ลึกไม่จำกัดจะแตกกิ่งจนแต่ละใบเหลือจุดฝึกไม่กี่จุด (หรือจุดเดียว) — มัน "จำ" ตำแหน่งของทุกจุดฝึก <em>รวมทั้ง noise/ข้อยกเว้น</em> ทำให้ทายข้อมูลฝึกถูกหมด แต่กฎที่ห่อ noise พวกนั้นไม่ใช่แนวโน้มจริง พอเจอข้อมูลใหม่จึงพลาด · จำกัด <code>max_depth</code> บังคับให้ต้นไม้จับได้แต่ "รูปแบบใหญ่ ๆ" ที่ generalize ได้ ไม่ลงไปจำรายละเอียดจุกจิก
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22v-5M8 17l4-3 4 3M6 13c-2 0-3-1.5-3-3s1-3 3-3M6 7a4 4 0 0 1 7-2 3.5 3.5 0 0 1 5 3 3 3 0 0 1-1 6"/></svg>ข้อ 3 (ทำในคาบ) — ป่าดีกว่าต้นเดียวเพราะอะไร</div>
+    <p>Random Forest ปลูกต้นไม้หลายต้นแล้วโหวต · จง (ก) บอกว่าต้นไม้แต่ละต้นเห็นข้อมูล/ฟีเจอร์ต่างกันยังไง (bootstrap + สุ่มฟีเจอร์) · (ข) อธิบายว่าทำไมการ "เฉลี่ยหลายต้น" ถึงลด overfit</p>
+    <details class="answer"><summary>ดูเฉลย</summary>
+      (ก) แต่ละต้นฝึกบน <em>bootstrap sample</em> (สุ่มหยิบจุดจากชุดฝึกแบบใส่คืน ได้ชุดข้อมูลคนละหน้าตา) และที่แต่ละ split ยังสุ่มพิจารณา<em>เฉพาะบางฟีเจอร์</em> → ต้นไม้แต่ละต้นจึงหลากหลาย ไม่เหมือนกัน<br>
+      (ข) ต้นไม้แต่ละต้น overfit คนละแบบ = ผิดคนละจุด (error สุ่ม ๆ ไม่สัมพันธ์กัน) · เมื่อโหวตเสียงข้างมาก ความผิดสุ่มหักล้างกันไป เหลือแต่สัญญาณจริงที่ทุกต้นเห็นตรงกัน → variance ลด เส้นแบ่งเนียนขึ้น ทน noise ขึ้น
+    </details>
+  </div>
+
+  <div class="exercise">
+    <div class="ex-head"><svg class="ico" viewBox="0 0 24 24"><path d="M4 11l8-6 8 6"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/></svg>ข้อ 4 (การบ้าน) — Tree/Forest ปะทะ KNN และ Neural Net</div>
+    <p>(ก) เปรียบเทียบ Decision Tree กับ KNN (เรื่อง KNN): แต่ละตัวตัดสินใจด้วยอะไร, ตัวไหน "อ่านกฎออก" · (ข) ทำไม tree/forest จึงยังครองงานข้อมูลตาราง (tabular) และการแข่ง Kaggle ขณะที่ neural network (เรื่อง Neural Network) ครองงานภาพ/ข้อความ (การบ้าน — ไม่มีเฉลย)</p>
+  </div>
+  </section>
+
+  <!-- ===================== ส่วนที่ 9 — ขั้นบันได ===================== -->
+  <section class="wsec">
+  <h2>ส่วนที่ 11 — ขั้นบันไดของสัปดาห์นี้ <span class="badge amber">ขั้นบันได</span></h2>
+  <div class="ladder-box">
+    <strong><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h4v-4h4v-4h4v-4h6"/></svg>เราเดินทางถึงไหนแล้ว:</strong><br>
+    <strong>KNN / K-means</strong> (วัดระยะในปริภูมิ) → <strong>Decision Tree</strong> (เปลี่ยนเป็น "กฎ if/else ที่อ่านออก" — โมเดลคลาสสิกที่ interpretable ที่สุด) → <strong>Random Forest</strong> (รวมหลายต้นแบบ ensemble ให้แม่นและทน noise) — นี่คือ<em>สายพันธุ์ tree-based</em> ที่ยังครองงาน <strong>ข้อมูลตาราง (tabular)</strong> และเวที Kaggle จนถึงทุกวันนี้ (คู่กับ XGBoost/LightGBM)<br>
+    <strong>สัปดาห์หน้า (เรื่อง SVM): SVM</strong> — เปลี่ยนมุมอีกครั้ง ไปหาเส้นแบ่งที่ "เว้นระยะขอบ (margin) ให้กว้างที่สุด" แทนการซอยเป็นขั้นบันได · แล้ว <strong>Neural Network</strong> จะพาไปสู่โมเดลที่<em>เรียนรู้ฟีเจอร์เอง</em> ซึ่งครองงานภาพ/ข้อความและเป็นบล็อกก่อสร้างของ LLM<br>
+    <strong>บทเรียนติดตัว:</strong> ความสมดุลระหว่าง "จำเก่ง (overfit)" กับ "generalize ได้" ที่เห็นในต้นไม้วันนี้ คือหัวใจเดียวกับที่เราจะเจอตลอดทั้งวิชา (เต็ม ๆ ใน <strong>Overfitting &amp; Regularization</strong>)
+  </div>
+  </section>
+
+  <div class="resources">
+    <h3><svg class="ico" viewBox="0 0 24 24"><path d="M5 4a2 2 0 0 1 2-2h11v16H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 1 2-2h11"/></svg>เรียนต่อกับมหาวิทยาลัยโลก (ประกอบสัปดาห์นี้)</h3>
+    <ul>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=_L39rN6gz7Y" target="_blank">Decision Trees, Clearly Explained</a> — อธิบาย Gini และการเลือก split ทีละขั้นแบบเห็นภาพ</li>
+      <li><span class="src">StatQuest</span> <a href="https://www.youtube.com/watch?v=J4Wdy0Wc_xQ" target="_blank">Random Forests Part 1: Building &amp; Using</a> — bootstrap + โหวต เข้าใจง่ายมาก</li>
+      <li><span class="src">scikit-learn</span> <a href="https://scikit-learn.org/stable/modules/tree.html" target="_blank">Decision Trees — User Guide</a> และ <a href="https://scikit-learn.org/stable/modules/ensemble.html#forest" target="_blank">Random Forests</a> — เอกสารทางการพร้อมโค้ดรันจริง</li>
+    </ul>
+  </div>
+
+  <div class="week-nav">
+    <a href="week05.html">← K-means Clustering</a>
+    <a href="week07.html">SVM →</a>
+  </div>
+
+</div>
+
+<footer class="site">สื่อการสอนวิชาปัญญาประดิษฐ์ — ภาคเรียนที่ 1/2569</footer>
+
+<!-- ================= JS: CART library + widgets ================= -->
+<script>
+/* ======================================================================
+   ส่วนที่ 2 — Decision Tree Playground (ปลูกต้นไม้จริงด้วย CART + Gini)
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('dtCanvas'), tv=document.getElementById('dtTree');
+  if(!cv||!tv) return;
+  const ctx=cv.getContext('2d'), tctx=tv.getContext('2d');
+  const W=460,H=460, TW=500,TH=460, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  tv.width=TW*dpr; tv.height=TH*dpr; tctx.setTransform(dpr,0,0,dpr,0,0);
+  const COL=['#e5484d','#2456e6'], FILL=['rgba(229,72,77,.17)','rgba(36,86,230,.15)'];
+  const DMIN=0, DMAX=10, pad=26;
+  const mX=x=> pad + (x-DMIN)/(DMAX-DMIN)*(W-2*pad);
+  const mY=y=> (H-pad) - (y-DMIN)/(DMAX-DMIN)*(H-2*pad);
+  const invX=px=> DMIN + (px-pad)/(W-2*pad)*(DMAX-DMIN);
+  const invY=py=> DMIN + ((H-pad)-py)/(H-2*pad)*(DMAX-DMIN);
+
+  let sd=1;
+  function seed(s){ sd=s>>>0; }
+  const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+  const gs=()=> (rnd()+rnd()+rnd()+rnd()-2)*0.5;
+
+  let PTS=[], depth=1, addClass=0, root=null;
+
+  function genData(){
+    PTS=[];
+    /* เส้นแบ่ง "ทแยงมุม" (y > x) — คมชัดแต่เฉียง ทำให้ต้นไม้ต้องซอยเป็น
+       ขั้นบันไดหลายชั้นเพื่อไล่ตามเส้นทแยง + มี noise ใกล้เส้นให้ต้นลึก overfit */
+    for(let i=0;i<58;i++){
+      const x=0.6+rnd()*8.8, y=0.6+rnd()*8.8;
+      let c = (y>x) ? 1 : 0;
+      if(Math.abs(y-x)<1.1 && rnd()<0.32) c=1-c;   /* พลิกป้ายใกล้เส้น = noise */
+      PTS.push({x:clamp(x), y:clamp(y), c});
+    }
+  }
+  function clamp(v){ return Math.max(0.3, Math.min(9.7, v)); }
+
+  /* ---- CART ---- */
+  function giniOf(pts){ if(!pts.length) return 0;
+    let n0=0; for(const p of pts) if(p.c===0) n0++;
+    const p0=n0/pts.length, p1=1-p0; return 1-(p0*p0+p1*p1); }
+  function bestSplit(pts){
+    let best=null;
+    for(const ax of ['x','y']){
+      const vals=[...new Set(pts.map(p=>p[ax]))].sort((a,b)=>a-b);
+      for(let i=0;i<vals.length-1;i++){
+        const t=(vals[i]+vals[i+1])/2;
+        const L=[],R=[]; for(const p of pts){ (p[ax]<t?L:R).push(p); }
+        if(!L.length||!R.length) continue;
+        const w=(L.length/pts.length)*giniOf(L)+(R.length/pts.length)*giniOf(R);
+        if(best==null||w<best.w-1e-9) best={ax,t,w,L,R};
+      }
+    }
+    return best;
+  }
+  function build(pts,d,maxD){
+    let n0=0; for(const p of pts) if(p.c===0) n0++;
+    const node={maj:n0>=pts.length-n0?0:1, n:pts.length, g:giniOf(pts)};
+    if(d>=maxD||pts.length<2||node.g===0) return node;
+    const s=bestSplit(pts); if(!s) return node;
+    node.ax=s.ax; node.t=s.t;
+    node.left=build(s.L,d+1,maxD); node.right=build(s.R,d+1,maxD);
+    return node;
+  }
+  function predict(node,p){ while(node.ax!==undefined){ node=(p[node.ax]<node.t)?node.left:node.right; } return node.maj; }
+  function countLeaves(node){ return node.ax===undefined?1:countLeaves(node.left)+countLeaves(node.right); }
+
+  function fit(hl){ seed(20260706); root=build(PTS,0,depth); draw(hl); drawTree(); stats(); }
+
+  /* วาดเส้นตัด (staircase) ของต้นไม้ลงบน scatter — เส้นชั้นล่าสุด (hl) เรืองแสง */
+  function drawCuts(node,x0,x1,y0,y1,d,hl){
+    if(node.ax===undefined) return;
+    const isHl=(d===hl);
+    ctx.lineWidth=isHl?4:Math.max(1,3-d*0.35);
+    ctx.strokeStyle=isHl?'#7c3aed':'rgba(40,50,80,'+Math.max(0.12,0.5-d*0.06)+')';
+    if(isHl){ ctx.shadowColor='rgba(124,58,237,.65)'; ctx.shadowBlur=10; }
+    ctx.beginPath();
+    if(node.ax==='x'){ const px=mX(node.t); ctx.moveTo(px,mY(y0)); ctx.lineTo(px,mY(y1)); }
+    else { const py=mY(node.t); ctx.moveTo(mX(x0),py); ctx.lineTo(mX(x1),py); }
+    ctx.stroke(); ctx.shadowBlur=0;
+    if(node.ax==='x'){ drawCuts(node.left,x0,node.t,y0,y1,d+1,hl); drawCuts(node.right,node.t,x1,y0,y1,d+1,hl); }
+    else { drawCuts(node.left,x0,x1,y0,node.t,d+1,hl); drawCuts(node.right,x0,x1,node.t,y1,d+1,hl); }
+  }
+
+  function draw(hl){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    /* เขตตัดสินใจ: ระบายกริดตามคำทำนาย */
+    if(root){ const step=5;
+      for(let px=pad; px<W-pad; px+=step) for(let py=pad; py<H-pad; py+=step){
+        const c=predict(root,{x:invX(px+step/2),y:invY(py+step/2)});
+        ctx.fillStyle=FILL[c]; ctx.fillRect(px,py,step,step);
+      }
+    }
+    /* กรอบ */
+    ctx.strokeStyle='rgba(120,130,150,.35)'; ctx.lineWidth=1; ctx.strokeRect(pad,pad,W-2*pad,H-2*pad);
+    /* เส้นตัดของต้นไม้ = ขั้นบันไดที่ค่อย ๆ ก่อตัว */
+    if(root) drawCuts(root,DMIN,DMAX,DMIN,DMAX,0,(hl==null?-1:hl));
+    /* จุด */
+    for(const p of PTS){ ctx.beginPath(); ctx.arc(mX(p.x),mY(p.y),4.5,0,Math.PI*2);
+      ctx.fillStyle=COL[p.c]; ctx.fill(); ctx.lineWidth=1.4; ctx.strokeStyle='#fff'; ctx.stroke(); }
+    ctx.fillStyle='#8a93a8'; ctx.font='600 11px Poppins,Kanit,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('แกน x →', W/2, H-6);
+    ctx.save(); ctx.translate(12,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('แกน y →',0,0); ctx.restore();
+  }
+
+  /* ---- วาดต้นไม้ ---- */
+  function layout(node,d,box){
+    node._d=d;
+    if(node.ax===undefined){ node._x=(box[0]+box[1])/2; return; }
+    const s=leafSpan(node); const mid=box[0]+(box[1]-box[0])*(leafSpan(node.left)/s);
+    layout(node.left,d+1,[box[0],mid]); layout(node.right,d+1,[mid,box[1]]);
+    node._x=(node.left._x+node.right._x)/2;
+  }
+  function leafSpan(node){ return node.ax===undefined?1:leafSpan(node.left)+leafSpan(node.right); }
+  function drawTree(){
+    tctx.clearRect(0,0,TW,TH); tctx.fillStyle='#f7f8fb'; tctx.fillRect(0,0,TW,TH);
+    if(!root){ return; }
+    layout(root,0,[24,TW-24]);
+    const nl=countLeaves(root), rowH=Math.min(78,(TH-40)/(depth+1));
+    const yOf=d=> 26+d*rowH;
+    const small=nl>8;
+    /* เส้น */
+    tctx.strokeStyle='#b9c2d4'; tctx.lineWidth=1.6;
+    (function edges(node){ if(node.ax===undefined) return;
+      [node.left,node.right].forEach(ch=>{ tctx.beginPath();
+        tctx.moveTo(node._x,yOf(node._d)+ (small?7:13)); tctx.lineTo(ch._x,yOf(ch._d)-(small?7:13)); tctx.stroke(); edges(ch); });
+    })(root);
+    /* โหนด */
+    (function nodes(node){
+      const X=node._x, Y=yOf(node._d);
+      if(node.ax===undefined){
+        const r=small?7:11; tctx.beginPath();
+        tctx.fillStyle=node.maj===0?'#e5484d':'#2456e6';
+        tctx.arc(X,Y,r,0,Math.PI*2); tctx.fill();
+        tctx.lineWidth=2; tctx.strokeStyle='#fff'; tctx.stroke();
+        if(!small){ tctx.fillStyle='#fff'; tctx.font='700 10px Poppins,sans-serif'; tctx.textAlign='center'; tctx.textBaseline='middle';
+          tctx.fillText(node.maj===0?'A':'B',X,Y+0.5); tctx.textBaseline='alphabetic'; }
+      } else {
+        const label=(node.ax==='x'?'x':'y')+' < '+node.t.toFixed(1);
+        tctx.font='700 '+(small?9:11)+'px Poppins,Kanit,sans-serif'; tctx.textAlign='center';
+        const tw=tctx.measureText(label).width, bw=tw+16, bh=small?18:24;
+        tctx.fillStyle='#fff'; tctx.strokeStyle='#2456e6'; tctx.lineWidth=2;
+        roundRect(tctx,X-bw/2,Y-bh/2,bw,bh,7); tctx.fill(); tctx.stroke();
+        tctx.fillStyle='#1f2533'; tctx.textBaseline='middle'; tctx.fillText(label,X,Y+0.5); tctx.textBaseline='alphabetic';
+        nodes(node.left); nodes(node.right);
+      }
+    })(root);
+    if(!small){ tctx.fillStyle='#9aa3b8'; tctx.font='600 10px Poppins,sans-serif'; tctx.textAlign='left';
+      tctx.fillText('ซ้าย = "ใช่" (น้อยกว่า) · ขวา = "ไม่"',24,TH-8); }
+  }
+  function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r);
+    c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+  function stats(){
+    document.getElementById('dtLeaves').textContent=countLeaves(root);
+    let ok=0; for(const p of PTS) if(predict(root,p)===p.c) ok++;
+    const acc=PTS.length?ok/PTS.length:0;
+    document.getElementById('dtAcc').textContent=Math.round(acc*100)+'%';
+    document.getElementById('dtAccBar').style.width=(acc*100)+'%';
+  }
+
+  /* ---- controls ---- */
+  const depV=document.getElementById('dtDepthV');
+  document.getElementById('dtDepth').addEventListener('input',e=>{ stopGrow(); depth=+e.target.value; depV.textContent=depth; fit(); });
+  document.getElementById('dtClassSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); addClass=+b.dataset.c; });
+  document.getElementById('dtReseed').addEventListener('click',()=>{ stopGrow(); sd=(Date.now()>>>0)||7; genData(); fit(); });
+  document.getElementById('dtClear').addEventListener('click',()=>{ stopGrow(); PTS=[]; fit(); });
+  cv.addEventListener('click',e=>{ stopGrow(); const r=cv.getBoundingClientRect();
+    const x=invX((e.clientX-r.left)/r.width*W), y=invY((e.clientY-r.top)/r.height*H);
+    if(x<DMIN||x>DMAX||y<DMIN||y>DMAX) return;
+    PTS.push({x:clamp(x),y:clamp(y),c:addClass}); fit(); });
+
+  /* ---- อนิเมชัน "ปลูกต้นไม้": โตทีละชั้น + เส้นตัดใหม่เรืองแสง (setInterval) ---- */
+  const GPLAY='<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ปลูกต้นไม้';
+  const GSTOP='<svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>หยุด';
+  const growBtn=document.getElementById('dtGrow'), dtSlider=document.getElementById('dtDepth');
+  let growTimer=null;
+  function stopGrow(){ if(growTimer){ clearInterval(growTimer); growTimer=null; } if(growBtn) growBtn.innerHTML=GPLAY; }
+  if(growBtn) growBtn.addEventListener('click',function(){
+    if(growTimer){ stopGrow(); if(root) draw(); return; }
+    depth=1; dtSlider.value=1; depV.textContent=1; fit(0); growBtn.innerHTML=GSTOP;
+    growTimer=setInterval(function(){
+      if(depth>=6){ stopGrow(); draw(); return; }
+      depth++; dtSlider.value=depth; depV.textContent=depth; fit(depth-1);
+      setTimeout(function(){ if(growTimer && root) draw(); }, 400);
+    }, 950);
+  });
+
+  seed(42); genData(); fit();
+})();
+</script>
+
+<script>
+/* ======================================================================
+   ส่วนที่ 3 — Gini step: sweep จุดตัดบนข้อมูล 1 มิติ 10 จุด
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('giniCv'); if(!cv) return;
+  const ctx=cv.getContext('2d'); const W=720,H=300, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const COL=['#e5484d','#2456e6'];
+  /* [x, class] class0=แดง class1=น้ำเงิน (ตรงกับที่ verify ด้วย node) */
+  const D=[[1,0],[2,0],[3,1],[4,0],[5,0],[6,1],[7,1],[8,1],[9,1],[10,1]];
+  const N=D.length;
+  const xs=[...new Set(D.map(d=>d[0]))].sort((a,b)=>a-b);
+  const THR=[]; for(let i=0;i<xs.length-1;i++) THR.push((xs[i]+xs[i+1])/2);
+  function gini(c0,c1){ const n=c0+c1; if(!n) return 0; const p0=c0/n,p1=c1/n; return 1-(p0*p0+p1*p1); }
+  function evalT(t){
+    let l0=0,l1=0,r0=0,r1=0;
+    for(const[x,c]of D){ if(x<t){ c?l1++:l0++; } else { c?r1++:r0++; } }
+    const gL=gini(l0,l1), gR=gini(r0,r1), nL=l0+l1, nR=r0+r1;
+    const w=(nL/N)*gL+(nR/N)*gR;
+    return {l0,l1,r0,r1,gL,gR,nL,nR,w};
+  }
+  const RES=THR.map(evalT);
+  let bestI=0; RES.forEach((r,i)=>{ if(r.w<RES[bestI].w) bestI=i; });
+  const parentG=gini(D.filter(d=>d[1]===0).length, D.filter(d=>d[1]===1).length);
+
+  const padL=40,padR=20, y0=54, y1=150;
+  const mX=x=> padL + (x-0.3)/(10.7-0.3)*(W-padL-padR);
+  let cur=4;
+
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    const t=THR[cur], r=RES[cur], isBest=(cur===bestI);
+    /* แถบพื้นหลังซ้าย/ขวา */
+    ctx.fillStyle='rgba(229,72,77,.06)'; ctx.fillRect(mX(0.3),y0-24,mX(t)-mX(0.3),y1-y0+40);
+    ctx.fillStyle='rgba(36,86,230,.06)'; ctx.fillRect(mX(t),y0-24,mX(10.7)-mX(t),y1-y0+40);
+    /* เส้นแกน */
+    ctx.strokeStyle='rgba(120,130,150,.35)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(mX(0.3),y1); ctx.lineTo(mX(10.7),y1); ctx.stroke();
+    /* label ซ้าย/ขวา */
+    ctx.font='700 12px Kanit,sans-serif'; ctx.textAlign='center';
+    ctx.fillStyle='#b03539'; ctx.fillText('กลุ่มซ้าย ('+r.nL+' จุด)', (mX(0.3)+mX(t))/2, y0-8);
+    ctx.fillStyle='#2456e6'; ctx.fillText('กลุ่มขวา ('+r.nR+' จุด)', (mX(t)+mX(10.7))/2, y0-8);
+    /* จุด */
+    for(const[x,c]of D){ const X=mX(x);
+      ctx.beginPath(); ctx.arc(X,y1-26,9,0,Math.PI*2); ctx.fillStyle=COL[c]; ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle='#fff'; ctx.stroke();
+      ctx.fillStyle='#8a93a8'; ctx.font='600 10px Poppins,sans-serif'; ctx.textAlign='center'; ctx.fillText(x,X,y1+15);
+    }
+    /* เส้นตัด */
+    ctx.strokeStyle=isBest?'#12a150':'#7c3aed'; ctx.lineWidth=3; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(mX(t),y0-24); ctx.lineTo(mX(t),y1+2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=isBest?'#12a150':'#7c3aed'; ctx.font='700 12px Poppins,Kanit,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('ตัดที่ x = '+t, mX(t), y0-30);
+
+    /* แถบคะแนน weighted gini ของทุกเส้นตัด (ล่าง) */
+    const by0=200, by1=272, bw=(W-padL-padR)/THR.length*0.62;
+    ctx.fillStyle='#5b6475'; ctx.font='700 11px Kanit,sans-serif'; ctx.textAlign='center';
+    ctx.fillText('คะแนน Gini รวมของแต่ละเส้นตัด (เตี้ย = ดี)', W/2, by0-10);
+    const maxW=Math.max(...RES.map(r=>r.w));
+    RES.forEach((rr,i)=>{
+      const X=mX(THR[i]), h=Math.max(3,(by1-by0)*(rr.w/maxW));
+      const on=(i===cur), best=(i===bestI);
+      ctx.fillStyle=best?'#12a150':(on?'#7c3aed':'#cfd5e0');
+      ctx.fillRect(X-bw/2, by1-h, bw, h);
+      ctx.fillStyle=best?'#0e7a4f':(on?'#5b3aa8':'#8a93a8'); ctx.font='700 10px Poppins,sans-serif';
+      ctx.fillText(rr.w.toFixed(2), X, by1-h-4);
+      if(best){ ctx.fillStyle='#12a150'; ctx.font='700 9.5px Kanit,sans-serif'; ctx.fillText('ดีสุด', X, by1+13); }
+    });
+    ctx.strokeStyle='rgba(120,130,150,.3)'; ctx.beginPath(); ctx.moveTo(padL,by1); ctx.lineTo(W-padR,by1); ctx.stroke();
+
+    panel(t,r,isBest);
+    document.getElementById('giniRng').value=cur;
+  }
+
+  function fmt(n){ return n.toFixed(3).replace(/0+$/,'').replace(/\.$/,''); }
+  function panel(t,r,isBest){
+    const el=document.getElementById('giniPanel');
+    const gLcalc = r.nL? '1 − ('+fmt(r.l0/r.nL)+'² + '+fmt(r.l1/r.nL)+'²) = <b>'+r.gL.toFixed(3)+'</b>' : '—';
+    const gRcalc = r.nR? '1 − ('+fmt(r.r0/r.nR)+'² + '+fmt(r.r1/r.nR)+'²) = <b>'+r.gR.toFixed(3)+'</b>' : '—';
+    el.innerHTML =
+      '<div class="row"><span>เส้นตัดที่ <b>x = '+t+'</b> (โหนดตั้งต้น Gini = '+parentG.toFixed(3)+')</span>'+
+      (isBest?'<span class="best-tag"><svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><path d="M20 6L9 17l-5-5"/></svg>จุดตัดที่ดีที่สุด</span>':'')+'</div>'+
+      '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">'+
+      '<div class="gcalc"><b class="red">กลุ่มซ้าย</b> ('+r.nL+' จุด): แดง '+r.l0+', น้ำเงิน '+r.l1+' → G<sub>ซ้าย</sub> = '+gLcalc+'</div>'+
+      '<div class="gcalc"><b class="blue">กลุ่มขวา</b> ('+r.nR+' จุด): แดง '+r.r0+', น้ำเงิน '+r.r1+' → G<sub>ขวา</sub> = '+gRcalc+'</div>'+
+      '<hr style="border:none;border-top:1px solid var(--border);margin:8px 0">'+
+      '<div class="gcalc"><b>คะแนนรวม (ถ่วงน้ำหนัก)</b> = ('+r.nL+'/'+N+')·'+r.gL.toFixed(3)+' + ('+r.nR+'/'+N+')·'+r.gR.toFixed(3)+
+        ' = <b style="color:'+(isBest?'#12a150':'#7c3aed')+';font-size:1.1em">'+r.w.toFixed(3)+'</b></div>';
+  }
+
+  document.getElementById('giniPrev').addEventListener('click',()=>{ cur=(cur-1+THR.length)%THR.length; draw(); });
+  document.getElementById('giniNext').addEventListener('click',()=>{ cur=(cur+1)%THR.length; draw(); });
+  document.getElementById('giniBest').addEventListener('click',()=>{ cur=bestI; draw(); });
+  document.getElementById('giniRng').addEventListener('input',e=>{ cur=+e.target.value; draw(); });
+  draw();
+})();
+</script>
+
+<script>
+/* ======================================================================
+   ส่วนที่ 6 — Single Tree vs Random Forest (moons + noise)
+   ====================================================================== */
+(function(){
+  const cv=document.getElementById('rfCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const W=460,H=460, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  const COL=['#e5484d','#2456e6'], FILL=['rgba(229,72,77,.16)','rgba(36,86,230,.14)'];
+  const pad=24;
+  const mX=x=> pad + x/10*(W-2*pad);
+  const mY=y=> (H-pad) - y/10*(H-2*pad);
+  const invX=px=> (px-pad)/(W-2*pad)*10;
+  const invY=py=> ((H-pad)-py)/(H-2*pad)*10;
+
+  let sd=5; const rnd=()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; };
+  let TRAIN=[], TEST=[], mode='tree', depth=10, nTrees=25, model=null, imp={x:0,y:0};
+
+  function makeMoons(n,noise,cls){
+    const out=[];
+    for(let i=0;i<n;i++){
+      const t=Math.PI*rnd();
+      let x,y,c;
+      if(rnd()<0.5){ x=Math.cos(t); y=Math.sin(t); c=0; }
+      else { x=1-Math.cos(t); y=0.5-Math.sin(t); c=1; }
+      x+= (rnd()*2-1)*noise; y+= (rnd()*2-1)*noise;
+      /* map to 0..10 */
+      const X=(x+1.2)/3.4*10, Y=(y+1.4)/3.2*10;
+      out.push({x:Math.max(0.2,Math.min(9.8,X)), y:Math.max(0.2,Math.min(9.8,Y)), c});
+    }
+    return out;
+  }
+  function gen(){ TRAIN=makeMoons(110,0.34); TEST=makeMoons(110,0.34); }
+
+  /* ---- CART พร้อมเก็บ feature importance ---- */
+  function giniOf(pts){ if(!pts.length) return 0; let n0=0; for(const p of pts) if(p.c===0) n0++;
+    const p0=n0/pts.length,p1=1-p0; return 1-(p0*p0+p1*p1); }
+  function bestSplit(pts,feats){
+    let best=null;
+    for(const ax of feats){
+      const vals=[...new Set(pts.map(p=>p[ax]))].sort((a,b)=>a-b);
+      for(let i=0;i<vals.length-1;i++){ const t=(vals[i]+vals[i+1])/2;
+        const L=[],R=[]; for(const p of pts){ (p[ax]<t?L:R).push(p); }
+        if(!L.length||!R.length) continue;
+        const w=(L.length/pts.length)*giniOf(L)+(R.length/pts.length)*giniOf(R);
+        if(best==null||w<best.w-1e-9) best={ax,t,w,L,R};
+      }
+    }
+    return best;
+  }
+  function build(pts,d,maxD,rndFeat,total,acc){
+    let n0=0; for(const p of pts) if(p.c===0) n0++;
+    const node={maj:n0>=pts.length-n0?0:1,n:pts.length,g:giniOf(pts)};
+    if(d>=maxD||pts.length<3||node.g===0) return node;
+    const feats = rndFeat ? (rnd()<0.5?['x']:['y']) : ['x','y'];  /* ป่า: สุ่มฟีเจอร์ที่ split */
+    const s=bestSplit(pts,feats.length?feats:['x','y']); if(!s) return node;
+    node.ax=s.ax; node.t=s.t;
+    if(acc) acc[s.ax]+= (pts.length/total)*(node.g - s.w);
+    node.left=build(s.L,d+1,maxD,rndFeat,total,acc);
+    node.right=build(s.R,d+1,maxD,rndFeat,total,acc);
+    return node;
+  }
+  function predTree(node,p){ while(node.ax!==undefined){ node=(p[node.ax]<node.t)?node.left:node.right; } return node.maj; }
+  function bootstrap(pts){ const o=[]; for(let i=0;i<pts.length;i++) o.push(pts[Math.floor(rnd()*pts.length)]); return o; }
+
+  function fit(){
+    imp={x:0,y:0};
+    if(mode==='tree'){
+      model={type:'tree', root:build(TRAIN,0,depth,false,TRAIN.length,imp)};
+    } else {
+      sd=7; const trees=[];
+      for(let i=0;i<nTrees;i++) trees.push(build(bootstrap(TRAIN),0,10,true,TRAIN.length,imp));
+      model={type:'forest', trees};
+    }
+    draw(); stats(); showImp();
+  }
+  function predict(p){
+    if(model.type==='tree') return predTree(model.root,p);
+    let v0=0,v1=0; for(const tr of model.trees){ (predTree(tr,p)===0?v0++:v1++); } return v0>=v1?0:1;
+  }
+  function votes(p){ let v0=0,v1=0;
+    if(model.type==='tree'){ (predTree(model.root,p)===0?v0++:v1++); }
+    else for(const tr of model.trees){ (predTree(tr,p)===0?v0++:v1++); }
+    return [v0,v1];
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    const step=5;
+    for(let px=pad; px<W-pad; px+=step) for(let py=pad; py<H-pad; py+=step){
+      const c=predict({x:invX(px+step/2),y:invY(py+step/2)});
+      ctx.fillStyle=FILL[c]; ctx.fillRect(px,py,step,step);
+    }
+    ctx.strokeStyle='rgba(120,130,150,.35)'; ctx.lineWidth=1; ctx.strokeRect(pad,pad,W-2*pad,H-2*pad);
+    for(const p of TRAIN){ ctx.beginPath(); ctx.arc(mX(p.x),mY(p.y),4,0,Math.PI*2);
+      ctx.fillStyle=COL[p.c]; ctx.fill(); ctx.lineWidth=1.2; ctx.strokeStyle='#fff'; ctx.stroke(); }
+  }
+  function stats(){
+    let tr=0; for(const p of TRAIN) if(predict(p)===p.c) tr++;
+    let te=0; for(const p of TEST) if(predict(p)===p.c) te++;
+    const a=tr/TRAIN.length, b=te/TEST.length;
+    document.getElementById('rfTrain').textContent=Math.round(a*100)+'%';
+    document.getElementById('rfTest').textContent=Math.round(b*100)+'%';
+    document.getElementById('rfTrainBar').style.width=(a*100)+'%';
+    document.getElementById('rfTestBar').style.width=(b*100)+'%';
+  }
+  function showImp(){
+    const tot=imp.x+imp.y||1; const px=imp.x/tot*100, py=imp.y/tot*100;
+    document.getElementById('fiX').style.width=px+'%'; document.getElementById('fiY').style.width=py+'%';
+    document.getElementById('fiXv').textContent=Math.round(px)+'%';
+    document.getElementById('fiYv').textContent=Math.round(py)+'%';
+  }
+
+  /* ---- controls ---- */
+  const treeCtl=document.getElementById('rfTreeCtl'), forestCtl=document.getElementById('rfForestCtl');
+  document.getElementById('rfModeSeg').addEventListener('click',e=>{ stopPlant(); if(plantMsg)plantMsg.textContent=''; const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); mode=b.dataset.m;
+    treeCtl.style.display=mode==='tree'?'flex':'none'; forestCtl.style.display=mode==='forest'?'flex':'none'; fit(); });
+  document.getElementById('rfDepth').addEventListener('input',e=>{ depth=+e.target.value; document.getElementById('rfDepthV').textContent=depth; fit(); });
+  document.getElementById('rfTrees').addEventListener('input',e=>{ stopPlant(); nTrees=+e.target.value; document.getElementById('rfTreesV').textContent=nTrees; fit(); });
+  document.getElementById('rfReseed').addEventListener('click',()=>{ stopPlant(); if(plantMsg)plantMsg.textContent=''; sd=(Date.now()>>>0)||9; gen(); fit(); });
+
+  cv.addEventListener('click',e=>{ stopPlant(); const r=cv.getBoundingClientRect();
+    const p={x:invX((e.clientX-r.left)/r.width*W), y:invY((e.clientY-r.top)/r.height*H)};
+    if(p.x<0||p.x>10||p.y<0||p.y>10) return;
+    const [v0,v1]=votes(p); const tot=v0+v1, win=v0>=v1?0:1;
+    const bar=document.getElementById('rfVoteBar');
+    bar.innerHTML='<div class="vb" style="width:'+(v0/tot*100)+'%;background:#e5484d">'+(v0>0?v0+' แดง':'')+'</div>'+
+                  '<div class="vb" style="width:'+(v1/tot*100)+'%;background:#2456e6">'+(v1>0?v1+' น้ำเงิน':'')+'</div>';
+    document.getElementById('rfVoteMsg').innerHTML= model.type==='tree'
+      ? 'ต้นไม้ต้นเดียวทายจุดนี้เป็น <b style="color:'+COL[win]+'">'+(win===0?'แดง':'น้ำเงิน')+'</b>'
+      : 'จาก '+tot+' ต้น โหวต <b style="color:#e5484d">แดง '+v0+'</b> : <b style="color:#2456e6">น้ำเงิน '+v1+'</b> → เสียงข้างมากชนะ = <b style="color:'+COL[win]+'">'+(win===0?'แดง':'น้ำเงิน')+'</b>';
+    /* วาดหมุด query */
+    draw();
+    ctx.beginPath(); ctx.arc(mX(p.x),mY(p.y),8,0,Math.PI*2); ctx.strokeStyle='#111'; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(mX(p.x),mY(p.y),3,0,Math.PI*2); ctx.fillStyle='#111'; ctx.fill();
+  });
+
+  /* ---- อนิเมชัน "ปลูกทั้งป่า": ต้นทีละต้น เส้นรก ๆ → เนียนขึ้นต่อหน้า (setInterval) ---- */
+  const PPLAY='<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>ปลูกทั้งป่าทีละต้น';
+  const PSTOP='<svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>หยุด';
+  const plantBtn=document.getElementById('rfPlant'), plantMsg=document.getElementById('rfPlantMsg');
+  let plantTimer=null;
+  function stopPlant(){ if(plantTimer){ clearInterval(plantTimer); plantTimer=null; } if(plantBtn) plantBtn.innerHTML=PPLAY; }
+  if(plantBtn) plantBtn.addEventListener('click',function(){
+    if(plantTimer){ stopPlant(); return; }
+    if(mode!=='forest') return;
+    imp={x:0,y:0}; sd=7; const trees=[]; let k=0; model={type:'forest',trees};
+    plantBtn.innerHTML=PSTOP;
+    plantTimer=setInterval(function(){
+      if(k>=nTrees){ stopPlant(); plantMsg.innerHTML='ครบ <b>'+nTrees+'</b> ต้น — เส้นเนียนขึ้นชัด (test มักแม่นกว่าต้นเดียว)'; return; }
+      trees.push(build(bootstrap(TRAIN),0,10,true,TRAIN.length,imp)); k++;
+      model={type:'forest',trees}; draw(); stats(); showImp();
+      plantMsg.innerHTML='กำลังปลูก… ต้นที่ <b>'+k+'</b> / '+nTrees;
+    }, 170);
+  });
+
+  sd=5; gen(); fit();
+})();
+</script>
+
+<script>
+/* ---- ปุ่มคัดลอกโค้ด (navigator.clipboard + textarea fallback) ---- */
+(function(){
+  const btn=document.getElementById('codeCopy'); if(!btn) return;
+  const lbl=document.getElementById('codeCopyLbl');
+  btn.addEventListener('click',function(){
+    const txt=document.getElementById('codeSrc').innerText;
+    const done=()=>{ lbl.textContent='คัดลอกแล้ว ✓'; setTimeout(()=>lbl.textContent='คัดลอก',1600); };
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(fallback); }
+    else fallback();
+    function fallback(){ const ta=document.createElement('textarea'); ta.value=txt; document.body.appendChild(ta);
+      ta.select(); try{document.execCommand('copy');}catch(_){} document.body.removeChild(ta); done(); }
+  });
+})();
+</script>
+
+<!-- ============ StatQuest Random Forest library (ส่วนที่ 7-6) ============ -->
+<script>
+/* ไลบรารีป่าสุ่มร่วม: CART (Gini) + bootstrap + สุ่มฟีเจอร์ + OOB + proximity + MDS
+   คำนวณสดทุกตัวเลข ยึด seeded LCG ให้ผลนิ่ง (ตรงกับที่ verify ด้วย Node) */
+window.SQ = (function(){
+  const RAW=[[1,1,1,8,1],[1,1,0,6,1],[0,1,1,5,1],[1,0,1,4,0],[0,0,0,2,0],[1,1,1,3,1],
+             [0,0,1,7,0],[1,0,0,1,0],[0,1,0,9,0],[1,1,1,11,1],[0,0,1,6,0],[1,0,1,10,1]];
+  const SNAME=RAW.map((_,i)=>'S'+(i+1));
+  const FEATS=['att','hw','sleep','hours'];
+  const NUM={att:0,hw:0,sleep:0,hours:1};
+  const FTH={att:'เข้าเรียน',hw:'ส่งการบ้าน',sleep:'นอนพอ',hours:'ชั่วโมงติว'};
+  const SEED=7, T=21, MD=2, MTRY=2, MINL=3;
+
+  function baseRows(){ return RAW.map((r,i)=>({i,att:r[0],hw:r[1],sleep:r[2],hours:r[3],y:r[4]})); }
+  function makeRnd(seed){ let sd=seed>>>0; return ()=>{ sd=(sd*1664525+1013904223)>>>0; return sd/4294967296; }; }
+
+  function gini(pts){ if(!pts.length) return 0; let n1=0; for(const p of pts) if(p.y===1) n1++;
+    const p1=n1/pts.length, p0=1-p1; return 1-(p0*p0+p1*p1); }
+  function candSplits(pts,f){ if(NUM[f]){ const v=[...new Set(pts.map(p=>p[f]))].sort((a,b)=>a-b), o=[];
+      for(let i=0;i<v.length-1;i++) o.push((v[i]+v[i+1])/2); return o; } return [0.5]; }
+  function bestSplit(pts,feats){ let best=null;
+    for(const f of feats) for(const t of candSplits(pts,f)){
+      const L=[],R=[]; for(const p of pts){ (p[f]<t?L:R).push(p); }
+      if(!L.length||!R.length) continue;
+      const w=(L.length/pts.length)*gini(L)+(R.length/pts.length)*gini(R);
+      if(best==null||w<best.w-1e-9) best={f,t,w,L,R};
+    } return best; }
+  let LEAFID=0;
+  function pickFeats(rnd,mtry){ const pool=FEATS.slice(), out=[];
+    for(let k=0;k<mtry&&pool.length;k++) out.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]); return out; }
+  function build(pts,d,maxD,rnd,mtry,minl,imp){
+    let n1=0; for(const p of pts) if(p.y===1) n1++;
+    const node={maj:n1*2>=pts.length?1:0, n:pts.length};
+    if(d>=maxD||pts.length<minl||gini(pts)===0){ node.leaf=LEAFID++; return node; }
+    const s=bestSplit(pts,pickFeats(rnd,mtry)); if(!s){ node.leaf=LEAFID++; return node; }
+    node.f=s.f; node.t=s.t;
+    if(imp) imp[s.f]+= pts.length*(gini(pts)-s.w);
+    node.left=build(s.L,d+1,maxD,rnd,mtry,minl,imp);
+    node.right=build(s.R,d+1,maxD,rnd,mtry,minl,imp);
+    return node; }
+  function leafOf(node,p){ while(node.f!==undefined){ node=(p[node.f]<node.t)?node.left:node.right; } return node; }
+  function predTree(node,p){ return leafOf(node,p).maj; }
+
+  function buildForest(data,seed,Tn,maxD,mtry,minl,imp){
+    LEAFID=0; const rnd=makeRnd(seed), trees=[];
+    for(let t=0;t<Tn;t++){
+      const idx=[], inbag=new Set();
+      for(let i=0;i<data.length;i++){ const j=Math.floor(rnd()*data.length); idx.push(j); inbag.add(j); }
+      const boot=idx.map(j=>data[j]);
+      const root=build(boot,0,maxD,rnd,mtry,minl,imp);
+      trees.push({root,inbag,idx});
+    }
+    return trees;
+  }
+  function forestVotes(trees,p){ let v0=0,v1=0; for(const tr of trees){ predTree(tr.root,p)===1?v1++:v0++; } return [v0,v1]; }
+  function oobError(trees,data){ let wrong=0,counted=0,wrongRows=[];
+    for(let i=0;i<data.length;i++){ let v0=0,v1=0;
+      for(const tr of trees){ if(tr.inbag.has(i)) continue; predTree(tr.root,data[i])===1?v1++:v0++; }
+      if(v0+v1===0) continue; counted++; const pred=v1>=v0?1:0;
+      if(pred!==data[i].y){ wrong++; wrongRows.push(SNAME[i]); } }
+    return {err:counted?wrong/counted:0, wrong, counted, wrongRows}; }
+  function proximity(trees,data){ const n=data.length;
+    const P=Array.from({length:n},()=>new Array(n).fill(0));
+    for(const tr of trees){ const lv=data.map(p=>leafOf(tr.root,p).leaf);
+      for(let i=0;i<n;i++) for(let j=0;j<n;j++) if(lv[i]===lv[j]) P[i][j]++; }
+    for(let i=0;i<n;i++) for(let j=0;j<n;j++) P[i][j]/=trees.length;
+    for(let i=0;i<n;i++) P[i][i]=1; return P; }
+  function mds(P){ const n=P.length;
+    const D2=P.map(row=>row.map(v=>{ const d=1-v; return d*d; }));
+    const rowM=D2.map(r=>r.reduce((a,b)=>a+b,0)/n);
+    const grand=rowM.reduce((a,b)=>a+b,0)/n;
+    const B=D2.map((r,i)=>r.map((v,j)=>-0.5*(v-rowM[i]-rowM[j]+grand)));
+    function powIt(B){ let v=B.map((_,i)=>Math.sin(i*1.3)+0.1);
+      for(let it=0;it<400;it++){ const w=B.map(r=>r.reduce((a,x,j)=>a+x*v[j],0));
+        const nrm=Math.sqrt(w.reduce((a,x)=>a+x*x,0))||1; v=w.map(x=>x/nrm); }
+      const lam=B.map(r=>r.reduce((a,x,j)=>a+x*v[j],0)).reduce((a,x,i)=>a+x*v[i],0);
+      return {v,lam}; }
+    const e1=powIt(B);
+    const B2=B.map((r,i)=>r.map((x,j)=>x-e1.lam*e1.v[i]*e1.v[j]));
+    const e2=powIt(B2);
+    return { c1:e1.v.map(x=>x*Math.sqrt(Math.max(0,e1.lam))),
+             c2:e2.v.map(x=>x*Math.sqrt(Math.max(0,e2.lam))) }; }
+  function median(a){ a=a.slice().sort((x,y)=>x-y); const m=a.length>>1; return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+  function mode(a){ let c0=0,c1=0; for(const v of a) v?c1++:c0++; return c1>=c0?1:0; }
+
+  return { RAW, SNAME, FEATS, NUM, FTH, SEED, T, MD, MTRY, MINL,
+           baseRows, makeRnd, gini, candSplits, bestSplit, buildForest, predTree, leafOf,
+           forestVotes, oobError, proximity, mds, median, mode };
+})();
+</script>
+
+<!-- Widget 1: Bootstrap + OOB -->
+<script>
+(function(){
+  const SQ=window.SQ; const tbl=document.getElementById('sqBootTbl'); if(!tbl) return;
+  const rows=SQ.baseRows();
+  function head(){ return '<tr><th>นศ.</th><th>att</th><th>hw</th><th>sleep</th><th>hours</th><th>ผล</th><th>×ครั้ง</th></tr>'; }
+  function yn(v){ return v? '<span class="sqf-yes">✓</span>':'<span class="sqf-no">✗</span>'; }
+  function render(counts,finished){
+    let h=head();
+    for(let i=0;i<12;i++){ const c=counts[i];
+      const cls = finished ? (c>0?'pick':'oob') : '';
+      h+='<tr id="sqBRow'+i+'" class="'+cls+'"><td class="sid">'+SQ.SNAME[i]+'</td>'+
+         '<td>'+yn(rows[i].att)+'</td><td>'+yn(rows[i].hw)+'</td><td>'+yn(rows[i].sleep)+'</td>'+
+         '<td>'+rows[i].hours+'</td><td>'+(rows[i].y?'<span class="sqf-pass">ผ่าน</span>':'<span class="sqf-fail">ตก</span>')+'</td>'+
+         '<td><span class="sqf-cnt'+(finished&&c===0?' z':'')+'" id="sqBCnt'+i+'">'+(c>0?'×'+c:(finished?'OOB':'—'))+'</span></td></tr>';
+    }
+    tbl.innerHTML=h;
+  }
+  render(new Array(12).fill(0),false);
+  const btn=document.getElementById('sqBootRun'), msg=document.getElementById('sqBootMsg');
+  let timer=null;
+  btn.addEventListener('click',function(){
+    if(timer){ clearInterval(timer); timer=null; }
+    const rnd=SQ.makeRnd((Date.now()>>>0)||3);
+    const counts=new Array(12).fill(0); render(counts,false);
+    let k=0; const seq=[];
+    msg.textContent='กำลังหยิบ…';
+    timer=setInterval(function(){
+      if(k>=12){ clearInterval(timer); timer=null;
+        render(counts,true);
+        let picked=0,oob=[]; for(let i=0;i<12;i++){ if(counts[i]>0) picked++; else oob.push(SQ.SNAME[i]); }
+        msg.innerHTML='ลำดับหยิบ: '+seq.join(' → ')+' &nbsp;·&nbsp; <b style="color:#2456e6">ถูกเลือก '+picked+' แถว</b>, <b style="color:#e8590c">OOB '+oob.length+' แถว ('+oob.join(',')+')</b>';
+        return;
+      }
+      const j=Math.floor(rnd()*12); counts[j]++; seq.push(SQ.SNAME[j]);
+      const cell=document.getElementById('sqBCnt'+j); if(cell) cell.textContent='×'+counts[j];
+      const row=document.getElementById('sqBRow'+j);
+      if(row){ row.classList.add('flash'); setTimeout(()=>row&&row.classList.remove('flash'),160); }
+      k++;
+    },180);
+  });
+})();
+</script>
+
+<!-- Widget 2: random feature at node -->
+<script>
+(function(){
+  const SQ=window.SQ; const wrap=document.getElementById('sqFeatChips'); if(!wrap) return;
+  const rows=SQ.baseRows();
+  function render(state){ // state: {cand:[],win:null} or null
+    wrap.innerHTML=SQ.FEATS.map(f=>{
+      let cls='sqf-chip';
+      if(state){ if(state.win===f) cls+=' win'; else if(state.cand&&state.cand.includes(f)) cls+=' cand'; else cls+=' out'; }
+      const icon=state&&state.win===f?'<svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><path d="M20 6L9 17l-5-5"/></svg>':'';
+      return '<span class="'+cls+'">'+icon+SQ.FTH[f]+' <small style="opacity:.7">('+f+')</small></span>';
+    }).join('');
+  }
+  render(null);
+  const btn=document.getElementById('sqFeatRun'), msg=document.getElementById('sqFeatMsg');
+  btn.addEventListener('click',function(){
+    const rnd=SQ.makeRnd((Date.now()>>>0)||5);
+    const pool=SQ.FEATS.slice(), cand=[];
+    for(let k=0;k<2&&pool.length;k++) cand.push(pool.splice(Math.floor(rnd()*pool.length),1)[0]);
+    render({cand,win:null});
+    msg.innerHTML='ผู้เข้าชิงครั้งนี้: <b style="color:#2456e6">'+cand.map(f=>SQ.FTH[f]).join(' , ')+'</b> — กำลังวัด Gini…';
+    setTimeout(function(){
+      const s=SQ.bestSplit(rows,cand);
+      const win=s?s.f:cand[0];
+      render({cand,win});
+      const g0=SQ.gini(rows).toFixed(3);
+      msg.innerHTML='เลือก <b style="color:#12a150">'+SQ.FTH[win]+'</b> — ลด Gini ได้มากสุดใน 2 ตัวนี้ (จาก '+g0+' → '+(s?s.w.toFixed(3):'—')+') · ถ้าครั้งหน้าสุ่มได้คู่อื่น ต้นไม้ก็จะถามคนละคำถาม → ต่างมุมกัน';
+    },650);
+  });
+})();
+</script>
+
+<!-- Widget 3: Bagging vote (uses default forest) -->
+<script>
+(function(){
+  const SQ=window.SQ; const bar=document.getElementById('sqVoteBar'); if(!bar) return;
+  const F=SQ.buildForest(SQ.baseRows(),SQ.SEED,SQ.T,SQ.MD,SQ.MTRY,SQ.MINL,null);
+  const q={att:1,hw:1,sleep:1,hours:7};
+  function seg(id,key){ document.getElementById(id).addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); q[key]=+b.dataset.v; }); }
+  seg('sqAtt','att'); seg('sqHw','hw'); seg('sqSleep','sleep');
+  const hv=document.getElementById('sqHoursV');
+  document.getElementById('sqHours').addEventListener('input',e=>{ q.hours=+e.target.value; hv.textContent=q.hours; });
+  const msg=document.getElementById('sqVoteMsg'), btn=document.getElementById('sqVoteRun');
+  let timer=null;
+  btn.addEventListener('click',function(){
+    if(timer){ clearInterval(timer); timer=null; }
+    let v0=0,v1=0,k=0;
+    const preds=F.map(tr=>SQ.predTree(tr.root,q));
+    msg.textContent='กำลังส่งลงต้นไม้ทีละต้น…';
+    function paint(){ const tot=v0+v1||1;
+      bar.innerHTML='<div class="vb" style="width:'+(v1/tot*100)+'%;background:#12a150">'+(v1>0?v1+' ผ่าน':'')+'</div>'+
+                    '<div class="vb" style="width:'+(v0/tot*100)+'%;background:#e5484d">'+(v0>0?v0+' ตก':'')+'</div>'; }
+    timer=setInterval(function(){
+      if(k>=preds.length){ clearInterval(timer); timer=null;
+        const win=v1>=v0?1:0;
+        msg.innerHTML='โหวตจบ: <b class="sqf-pass">ผ่าน '+v1+'</b> : <b class="sqf-fail">ตก '+v0+'</b> → เสียงข้างมากชนะ = <b style="color:'+(win?'#12a150':'#e5484d')+'">'+(win?'ผ่าน':'ตก')+'</b>';
+        return; }
+      preds[k]===1?v1++:v0++; k++; paint();
+      msg.textContent='ต้นที่ '+k+'/'+preds.length+' โหวตแล้ว';
+    },70);
+  });
+})();
+</script>
+
+<!-- Widget 4: OOB error + tuning + importance -->
+<script>
+(function(){
+  const SQ=window.SQ; const numEl=document.getElementById('sqOobNum'); if(!numEl) return;
+  const data=SQ.baseRows();
+  function refresh(){
+    const mtry=+document.getElementById('sqMtry').value;
+    const Tn=+document.getElementById('sqTrees').value;
+    const imp={att:0,hw:0,sleep:0,hours:0};
+    const F=SQ.buildForest(data,SQ.SEED,Tn,SQ.MD,mtry,SQ.MINL,imp);
+    const o=SQ.oobError(F,data);
+    const pct=Math.round(o.err*100);
+    numEl.textContent=pct+'%';
+    document.getElementById('sqOobBar').style.width=pct+'%';
+    document.getElementById('sqOobDetail').innerHTML='ทายผิด <b>'+o.wrong+'</b> จาก '+o.counted+' แถว (แม่น '+(100-Math.round(o.wrong/o.counted*100))+'%)';
+    document.getElementById('sqOobWrong').textContent=o.wrongRows.length?o.wrongRows.join(', '):'— ไม่มี —';
+    const tot=imp.att+imp.hw+imp.sleep+imp.hours||1;
+    const set=(bid,vid,val)=>{ const p=Math.round(val/tot*100); document.getElementById(bid).style.width=p+'%'; document.getElementById(vid).textContent=p+'%'; };
+    set('sqFiHours','sqFiHoursV',imp.hours); set('sqFiHw','sqFiHwV',imp.hw);
+    set('sqFiAtt','sqFiAttV',imp.att); set('sqFiSleep','sqFiSleepV',imp.sleep);
+  }
+  document.getElementById('sqMtry').addEventListener('input',e=>{ document.getElementById('sqMtryV').textContent=e.target.value; refresh(); });
+  document.getElementById('sqTrees').addEventListener('input',e=>{ document.getElementById('sqTreesV').textContent=e.target.value; refresh(); });
+  refresh();
+})();
+</script>
+
+<!-- Widget 5: impute missing value (training) -->
+<script>
+(function(){
+  const SQ=window.SQ; const panel=document.getElementById('sqMissPanel'); if(!panel) return;
+  let target=0, round=-1, fill=null, prev=null, converged=false;
+  function initGuess(ti){
+    const data=SQ.baseRows(); const tv=data[ti].y;
+    const same=data.filter((d,i)=>i!==ti && d.y===tv).map(d=>d.hours);
+    return { g:SQ.median(same), same, tv, trueVal:data[ti].hours };
+  }
+  function reset(){ round=-1; fill=null; prev=null; converged=false; draw(); }
+  function stepOnce(){
+    const info=initGuess(target);
+    if(round<0){ round=0; fill=info.g; prev=null; draw(info); return; }
+    if(converged){ draw(info); return; }
+    // rebuild forest with current fill, refine by proximity-weighted average
+    const data=SQ.baseRows(); data[target].hours=fill;
+    const F=SQ.buildForest(data,SQ.SEED,SQ.T,SQ.MD,SQ.MTRY,SQ.MINL,null);
+    const P=SQ.proximity(F,data);
+    let num=0,den=0;
+    for(let j=0;j<12;j++){ if(j===target) continue; const w=P[target][j]; num+=w*data[j].hours; den+=w; }
+    prev=fill; const nf=den? num/den : fill; round++;
+    if(Math.abs(nf-fill)<0.01){ converged=true; }
+    fill=nf; draw(info);
+  }
+  function draw(info){
+    info=info||initGuess(target);
+    const nm=SQ.SNAME[target];
+    let h='<b>ซ่อนค่า hours ของ '+nm+'</b> (ค่าจริงที่ซ่อนไว้ = <b>'+info.trueVal+'</b> ชม.) · ป้าย = '+(info.tv?'<span class="sqf-pass">ผ่าน</span>':'<span class="sqf-fail">ตก</span>')+'<br>';
+    if(round<0){ h+='<span style="color:var(--muted)">กด "ปรับค่า" เพื่อเริ่มจากการเดาหยาบ</span>'; panel.innerHTML=h; return; }
+    if(round===0){
+      h+='<b>รอบ 0 — เดาหยาบ:</b> median ของ hours จากคน<b>ป้ายเดียวกัน</b> {'+info.same.slice().sort((a,b)=>a-b).join(', ')+'} = <span class="sqf-num">'+info.g+'</span> ชม.';
+    } else {
+      h+='<b>รอบ '+round+' — ปรับด้วย proximity:</b> เฉลี่ย hours ของคนอื่น ๆ <b>ถ่วงน้ำหนักตามความคล้าย</b> → hours ≈ <span class="sqf-num">'+fill.toFixed(2)+'</span> ชม.'+
+         (prev!=null?' <span style="color:var(--muted)">(รอบก่อน '+prev.toFixed(2)+')</span>':'');
+      if(converged) h+='<br><b style="color:#12a150"><svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><path d="M20 6L9 17l-5-5"/></svg>ค่านิ่งแล้ว (converged)</b> — ป่าเดาว่า '+nm+' น่าจะติวราว '+fill.toFixed(1)+' ชม. อิงจากคนที่คล้ายกัน';
+    }
+    panel.innerHTML=h;
+  }
+  document.getElementById('sqMissWho').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    [...e.currentTarget.children].forEach(x=>x.classList.remove('on')); b.classList.add('on'); target=+b.dataset.i; reset(); });
+  document.getElementById('sqMissStep').addEventListener('click',stepOnce);
+  document.getElementById('sqMissReset').addEventListener('click',reset);
+  reset();
+})();
+</script>
+
+<!-- Widget 6: proximity heatmap + reorder + scatter -->
+<script>
+(function(){
+  const SQ=window.SQ; const hc=document.getElementById('sqProxCv'); if(!hc) return;
+  const data=SQ.baseRows();
+  const F=SQ.buildForest(data,SQ.SEED,SQ.T,SQ.MD,SQ.MTRY,SQ.MINL,null);
+  const P=SQ.proximity(F,data);
+  const M=SQ.mds(P);
+  const idOrig=[...Array(12).keys()];
+  const idSorted=[...Array(12).keys()].sort((a,b)=>M.c1[a]-M.c1[b]);
+  let order=idOrig.slice();
+
+  const hctx=hc.getContext('2d'); const HW=360,HH=360, dpr=Math.min(2,window.devicePixelRatio||1);
+  hc.width=HW*dpr; hc.height=HH*dpr; hctx.setTransform(dpr,0,0,dpr,0,0);
+  const sc=document.getElementById('sqScatterCv'); const sctx=sc.getContext('2d'); const SW=360,SH=360;
+  sc.width=SW*dpr; sc.height=SH*dpr; sctx.setTransform(dpr,0,0,dpr,0,0);
+  const COL=['#e5484d','#12a150']; // 0=ตก แดง, 1=ผ่าน เขียว
+
+  function heatColor(v){ // v 0..1 : light -> dark teal/blue
+    const r=Math.round(247-(247-27)*v), g=Math.round(248-(248-70)*v), b=Math.round(251-(251-120)*v);
+    return 'rgb('+r+','+g+','+b+')';
+  }
+  function drawHeat(){
+    hctx.clearRect(0,0,HW,HH); hctx.fillStyle='#f7f8fb'; hctx.fillRect(0,0,HW,HH);
+    const pad=34, gw=(HW-pad-8)/12, gh=(HH-pad-8)/12;
+    for(let a=0;a<12;a++) for(let b=0;b<12;b++){
+      const i=order[a], j=order[b], v=P[i][j];
+      hctx.fillStyle=heatColor(v);
+      hctx.fillRect(pad+b*gw, pad+a*gh, gw-1, gh-1);
+    }
+    // labels
+    hctx.font='600 8.5px Poppins,sans-serif'; hctx.textBaseline='middle';
+    for(let a=0;a<12;a++){ const i=order[a];
+      hctx.fillStyle=COL[data[i].y]; hctx.textAlign='right';
+      hctx.fillText(SQ.SNAME[i], pad-3, pad+a*gh+gh/2);
+      hctx.textAlign='center'; hctx.save(); hctx.translate(pad+a*gw+gw/2, pad-4); hctx.rotate(-Math.PI/2);
+      hctx.fillText(SQ.SNAME[i],0,0); hctx.restore();
+    }
+    hctx.textBaseline='alphabetic';
+  }
+  function drawScatter(){
+    sctx.clearRect(0,0,SW,SH); sctx.fillStyle='#f7f8fb'; sctx.fillRect(0,0,SW,SH);
+    const xs=M.c1, ys=M.c2;
+    let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    const pad=30; const sx=v=>pad+(v-x0)/((x1-x0)||1)*(SW-2*pad);
+    const sy=v=>SH-pad-(v-y0)/((y1-y0)||1)*(SH-2*pad);
+    sctx.strokeStyle='rgba(120,130,150,.25)'; sctx.lineWidth=1; sctx.strokeRect(pad,pad,SW-2*pad,SH-2*pad);
+    for(let i=0;i<12;i++){ const X=sx(xs[i]),Y=sy(ys[i]);
+      sctx.beginPath(); sctx.arc(X,Y,9,0,Math.PI*2); sctx.fillStyle=COL[data[i].y]; sctx.fill();
+      sctx.lineWidth=2; sctx.strokeStyle='#fff'; sctx.stroke();
+      sctx.fillStyle='#fff'; sctx.font='700 8.5px Poppins,sans-serif'; sctx.textAlign='center'; sctx.textBaseline='middle';
+      sctx.fillText((i+1),X,Y+0.5); }
+    sctx.textBaseline='alphabetic';
+    sctx.fillStyle='#8a93a8'; sctx.font='600 10px Kanit,sans-serif'; sctx.textAlign='left';
+    sctx.fillText('ยิ่งใกล้ = ยิ่งคล้าย (ป่าจับเข้ากลุ่มเดียวกันบ่อย)',pad,SH-8);
+  }
+  function redraw(){ drawHeat(); drawScatter(); }
+  redraw();
+  // animate reorder by interpolating order swaps -> simple: set then redraw
+  document.getElementById('sqProxReorder').addEventListener('click',()=>{ order=idSorted.slice(); redraw(); });
+  document.getElementById('sqProxOrig').addEventListener('click',()=>{ order=idOrig.slice(); redraw(); });
+})();
+</script>
+
+<!-- Widget 7: classify new sample with missing value -->
+<script>
+(function(){
+  const SQ=window.SQ; const box=document.getElementById('sqNewBox'); if(!box) return;
+  const data=SQ.baseRows();
+  const F=SQ.buildForest(data,SQ.SEED,SQ.T,SQ.MD,SQ.MTRY,SQ.MINL,null);
+  function medBy(lab){ return SQ.median(data.filter(d=>d.y===lab).map(d=>d.hours)); }
+  const btn=document.getElementById('sqNewRun'), msg=document.getElementById('sqNewMsg');
+  btn.addEventListener('click',function(){
+    const base={att:1,hw:1,sleep:1};
+    const labs=[{lab:1,name:'ผ่าน',col:'#12a150'},{lab:0,name:'ตก',col:'#e5484d'}];
+    let html='';
+    let winner=null;
+    for(const L of labs){
+      const hoursFill=medBy(L.lab);
+      const s={att:1,hw:1,sleep:1,hours:hoursFill};
+      const [v0,v1]=SQ.forestVotes(F,s); const pred=v1>=v0?1:0;
+      const self=(pred===L.lab);
+      if(self) winner=L;
+      html+='<div class="sqf-copy'+(self?' self':'')+'"><h6><span class="cdot" style="background:'+L.col+'"></span>สำเนา "สมมติว่า'+L.name+'"'+
+        (self?' <span class="sqf-badge-self"><svg class="ico ico-btn" viewBox="0 0 24 24" style="margin:0"><path d="M20 6L9 17l-5-5"/></svg>สอดคล้อง</span>':'')+'</h6>'+
+        '<div style="font-size:.86rem; line-height:1.7">เติม hours = median กลุ่ม'+L.name+' = <b>'+hoursFill+'</b> ชม.<br>'+
+        'ป่าโหวต <b class="sqf-pass">ผ่าน '+v1+'</b> : <b class="sqf-fail">ตก '+v0+'</b> → ป่าทายว่า <b style="color:'+(pred?'#12a150':'#e5484d')+'">'+(pred?'ผ่าน':'ตก')+'</b><br>'+
+        (self?'<b style="color:#12a150">ตรงกับป้ายที่สมมติ ✓</b>':'<span style="color:var(--muted)">ไม่ตรงกับป้ายที่สมมติ ✗</span>')+'</div></div>';
+    }
+    box.innerHTML=html;
+    msg.innerHTML= winner? 'สำเนาที่ "สอดคล้องกับตัวเอง" คือ <b style="color:'+winner.col+'">'+winner.name+'</b> → ทำนายว่านักศึกษาคนนี้ <b style="color:'+winner.col+'">'+winner.name+'</b>'
+                          : 'ผลก้ำกึ่ง (ทั้งสองสำเนาสอดคล้องกับตัวเอง) — ต้องดูน้ำหนักโหวตประกอบ';
+  });
+})();
+</script>
+
+<!-- ============ StatQuest Decision Tree (ส่วนที่ 4-5) — สร้างต้นไม้เดียวจากตาราง ============ -->
+<script>
+(function(){
+  const SQ=window.SQ; if(!SQ) return;
+  const DATA=SQ.baseRows();
+  const FEATS=SQ.FEATS;                 // ['att','hw','sleep','hours']
+  const NUM={att:0,hw:0,sleep:0,hours:1};
+
+  /* ---------- อัลกอริทึม CART (ใช้ SQ.gini / SQ.candSplits ให้เลขตรงกับป่า) ---------- */
+  function featSplit(rows,f){
+    let best=null;
+    for(const t of SQ.candSplits(rows,f)){
+      const L=[],R=[]; for(const p of rows)(p[f]<t?L:R).push(p);
+      if(!L.length||!R.length) continue;
+      const n=rows.length, gL=SQ.gini(L), gR=SQ.gini(R);
+      const w=(L.length/n)*gL+(R.length/n)*gR;
+      if(best==null||w<best.w-1e-9) best={f,t,L,R,gL,gR,w};
+    }
+    return best;
+  }
+  function majority(rows){ let n1=0; for(const p of rows) if(p.y===1) n1++; return n1*2>=rows.length?1:0; }
+  function bestOf(rows){ let b=null; for(const f of FEATS){ const s=featSplit(rows,f); if(s&&(b==null||s.w<b.w-1e-9)) b=s; } return b; }
+  function buildTree(rows,minSplit){
+    const node={rows,n:rows.length,g:SQ.gini(rows),maj:majority(rows)};
+    if(rows.length<minSplit||node.g===0){ node.leaf=true; return node; }
+    const s=bestOf(rows); if(!s){ node.leaf=true; return node; }
+    node.leaf=false; node.f=s.f; node.t=s.t;
+    node.left=buildTree(s.L,minSplit); node.right=buildTree(s.R,minSplit);
+    return node;
+  }
+  function qText(f,t){ return NUM[f] ? ('ติว ≥ '+t+' ชม.?') : ({att:'เข้าเรียน?',hw:'ส่งการบ้าน?',sleep:'นอนพอ?'}[f]); }
+  function pathSet(root,p){ const s=new Set(); let n=root; while(true){ s.add(n); if(n.leaf) break; n=(p[n.f]<n.t)?n.left:n.right; } return s; }
+  function walk(root,p){ const steps=[]; let n=root; while(!n.leaf){ const gl=p[n.f]<n.t; steps.push({q:qText(n.f,n.t), ans: gl?'ไม่':'ใช่'}); n=gl?n.left:n.right; } return {steps,leaf:n}; }
+
+  /* ---------- วาดต้นไม้บน canvas (พื้นสว่าง + dpr) ---------- */
+  function layout(root){
+    let leaf=0, maxd=0;
+    (function rec(n,d){ n._d=d; if(d>maxd)maxd=d;
+      if(n.leaf){ n._gx=leaf++; return; }
+      rec(n.left,d+1); rec(n.right,d+1); n._gx=(n.left._gx+n.right._gx)/2;
+    })(root,0);
+    let ord=0; const q=[root]; while(q.length){ const n=q.shift(); n._ord=ord++; if(!n.leaf){ q.push(n.left); q.push(n.right); } }
+    root._leaves=leaf; root._maxd=maxd; root._count=ord; return root;
+  }
+  function rr(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function drawTree(cv,root,W,H,opts){
+    opts=opts||{}; const reveal=opts.reveal==null?1e9:opts.reveal; const path=opts.path||null;
+    const dpr=window.devicePixelRatio||1;
+    cv.width=W*dpr; cv.height=H*dpr; const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+    if(!root) return; layout(root);
+    const padX=64, padTop=32, padBot=28, leaves=root._leaves, maxd=root._maxd;
+    const px=n=> leaves>1 ? padX + n._gx/(leaves-1)*(W-2*padX) : W/2;
+    const py=n=> maxd>0 ? padTop + n._d/maxd*(H-padTop-padBot) : padTop;
+    /* เส้นกิ่ง + ป้าย ใช่/ไม่ */
+    ctx.font='600 12px Poppins,Kanit,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    (function edges(n){
+      if(n.leaf) return;
+      for(const pair of [[n.left,'ไม่'],[n.right,'ใช่']]){
+        const c=pair[0], lab=pair[1];
+        if(c._ord<reveal && n._ord<reveal){
+          const x1=px(n),y1=py(n)+17,x2=px(c),y2=py(c)-17;
+          const hot=path&&path.has(n)&&path.has(c);
+          ctx.strokeStyle=hot?'#2456e6':'#c2c9d6'; ctx.lineWidth=hot?3:2;
+          ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+          const mx=(x1+x2)/2, my=(y1+y2)/2, lw=ctx.measureText(lab).width+10;
+          ctx.fillStyle='#f7f8fb'; ctx.fillRect(mx-lw/2,my-9,lw,17);
+          ctx.fillStyle=hot?'#2456e6':'#8a93a8'; ctx.fillText(lab,mx,my);
+        }
+        edges(c);
+      }
+    })(root);
+    /* โหนด */
+    (function nodes(n){
+      if(n._ord<reveal){
+        const x=px(n),y=py(n), hot=path&&path.has(n);
+        if(n.leaf){
+          const b=n.maj?'#12a150':'#e5484d', f=n.maj?'rgba(18,161,80,.16)':'rgba(229,72,77,.15)';
+          rr(ctx,x-42,y-17,84,34,10); ctx.fillStyle=f; ctx.fill();
+          ctx.lineWidth=hot?3.5:2; ctx.strokeStyle=b; ctx.stroke();
+          ctx.fillStyle=b; ctx.font='700 13px Poppins,Kanit,sans-serif';
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText((n.maj?'ผ่าน':'ตก')+' ('+n.n+')',x,y);
+        } else {
+          const txt=qText(n.f,n.t); ctx.font='600 12.5px Poppins,Kanit,sans-serif';
+          const tw=Math.max(98,ctx.measureText(txt).width+18);
+          rr(ctx,x-tw/2,y-17,tw,34,10); ctx.fillStyle=hot?'rgba(36,86,230,.14)':'#ffffff'; ctx.fill();
+          ctx.lineWidth=hot?3.5:2; ctx.strokeStyle='#2456e6'; ctx.stroke();
+          ctx.fillStyle='#1f2533'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(txt,x,y);
+        }
+      }
+      if(!n.leaf){ nodes(n.left); nodes(n.right); }
+    })(root);
+  }
+
+  /* ---------- helper: seg toggle ---------- */
+  function segInit(id,cb){ const el=document.getElementById(id); if(!el) return ()=>({});
+    el.querySelectorAll('button').forEach(b=>b.addEventListener('click',function(){
+      el.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); if(cb) cb(b.dataset);
+    }));
+    return ()=>{ const on=el.querySelector('.on'); return on?on.dataset:{}; };
+  }
+  function yn(v){ return v?'<span class="sqf-yes">✓</span>':'<span class="sqf-no">✗</span>'; }
+  const fmt=x=>x.toFixed(3);
+
+  /* ================= Widget 1 — เลือก root: แข่ง Gini ================= */
+  (function(){
+    const tbl=document.getElementById('dtsqRootTbl'); if(!tbl) return;
+    const ORDER=['att','hw','sleep','hours'];
+    const S={}; for(const f of ORDER) S[f]=featSplit(DATA,f);
+    const suf={att:'Att',hw:'Hw',sleep:'Sleep',hours:'Hours'};
+    const calc=document.getElementById('dtsqRootCalc');
+    const note=document.getElementById('dtsqRootNote');
+    const nextBtn=document.getElementById('dtsqRootNext'), resetBtn=document.getElementById('dtsqRootReset');
+    let idx=-1;                                    // -1=ยังไม่เริ่ม, 0..3=ฟีเจอร์ที่กำลังดู, 4=สรุปผู้ชนะ
+    const winner=ORDER.reduce((a,b)=>S[b].w<S[a].w?b:a);   // = hw
+
+    function renderTbl(curF){
+      const t=curF?S[curF].t:null;
+      let h='<tr><th>นศ.</th>';
+      for(const f of ORDER) h+='<th'+(f===curF?' style="background:rgba(124,58,237,.16);color:#7c3aed"':'')+'>'+f+'</th>';
+      h+='<th>ผล</th></tr>';
+      for(let i=0;i<12;i++){ const r=DATA[i];
+        const tint = curF ? (r[curF]<t?'background:rgba(36,86,230,.12)':'background:rgba(232,89,12,.11)') : '';
+        h+='<tr style="'+tint+'"><td class="sid">'+SQ.SNAME[i]+'</td>';
+        for(const f of ORDER) h+='<td>'+(f==='hours'?r.hours:yn(r[f]))+'</td>';
+        h+='<td>'+(r.y?'<span class="sqf-pass">ผ่าน</span>':'<span class="sqf-fail">ตก</span>')+'</td></tr>';
+      }
+      tbl.innerHTML=h;
+    }
+    function setBar(f,win){
+      const s=S[f], el=document.getElementById('dtsqBar'+suf[f]);
+      el.style.width=(s.w/0.5*100).toFixed(1)+'%';
+      el.style.background=win?'linear-gradient(90deg,#12a150,#0ea371)':'linear-gradient(90deg,#e5484d,#e8590c)';
+      const v=document.getElementById('dtsqBar'+suf[f]+'V'); v.textContent=fmt(s.w); if(win) v.style.color='#12a150';
+    }
+    function clearBars(){ for(const f of ORDER){ const el=document.getElementById('dtsqBar'+suf[f]); el.style.width='0';
+      el.style.background='linear-gradient(90deg,#e5484d,#e8590c)'; const v=document.getElementById('dtsqBar'+suf[f]+'V'); v.textContent='—'; v.style.color=''; } }
+    function renderCalc(f){
+      const s=S[f], n=12;
+      const L={n:s.L.length, p:s.L.filter(r=>r.y===1).length}; L.f=L.n-L.p;
+      const R={n:s.R.length, p:s.R.filter(r=>r.y===1).length}; R.f=R.n-R.p;
+      const lname=NUM[f]?('ติว &lt; '+s.t):(f+' = ไม่'), rname=NUM[f]?('ติว ≥ '+s.t):(f+' = ใช่');
+      calc.innerHTML=
+        '<div style="font-weight:700;margin-bottom:6px">ลองถาม: <span style="color:#7c3aed">'+qText(f,s.t)+'</span>'+(NUM[f]?' <span style="font-weight:400;color:var(--muted)">(จุดตัดที่ดีที่สุดของชั่วโมงติว)</span>':'')+'</div>'+
+        '<div class="row gcalc"><span><b class="blue">กิ่งซ้าย ('+lname+')</b> — ผ่าน '+L.p+' ตก '+L.f+' (n='+L.n+')</span><span>G<sub>ซ้าย</sub> = 1 − (('+L.p+'/'+L.n+')² + ('+L.f+'/'+L.n+')²) = <b>'+fmt(s.gL)+'</b></span></div>'+
+        '<div class="row gcalc"><span><b class="red">กิ่งขวา ('+rname+')</b> — ผ่าน '+R.p+' ตก '+R.f+' (n='+R.n+')</span><span>G<sub>ขวา</sub> = 1 − (('+R.p+'/'+R.n+')² + ('+R.f+'/'+R.n+')²) = <b>'+fmt(s.gR)+'</b></span></div>'+
+        '<div class="gcalc" style="margin-top:6px;border-top:1px dashed var(--border);padding-top:6px">Gini ถ่วงน้ำหนัก = ('+L.n+'/'+n+')·'+fmt(s.gL)+' + ('+R.n+'/'+n+')·'+fmt(s.gR)+' = <span class="best-tag" style="background:linear-gradient(135deg,#7c3aed,#2456e6)">'+fmt(s.w)+'</span></div>';
+    }
+    function step(){
+      if(idx<0){ clearBars(); }
+      idx++;
+      if(idx<=3){ const f=ORDER[idx]; renderTbl(f); renderCalc(f); setBar(f,false);
+        note.innerHTML='<svg class="ico" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>ดูฟีเจอร์ <b>'+f+'</b> แล้ว ('+(idx+1)+'/4) · กด "ถัดไป" เทียบตัวถัดไป';
+      } else if(idx===4){ renderTbl(null); setBar(winner,true);
+        calc.innerHTML='<div style="font-weight:700">เทียบครบทั้ง 4 ฟีเจอร์แล้ว → เลือกอันที่ Gini ถ่วงน้ำหนัก<b>ต่ำสุด</b></div>'+
+          '<div class="gcalc" style="margin-top:6px"><b class="blue">hw '+fmt(S.hw.w)+'</b> &lt; att '+fmt(S.att.w)+' &lt; hours '+fmt(S.hours.w)+' &lt; sleep '+fmt(S.sleep.w)+'</div>'+
+          '<div style="margin-top:8px"><span class="best-tag">คำถามแรก (root) = ส่งการบ้านครบ?</span></div>';
+        note.innerHTML='<svg class="ico" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg><b>ส่งการบ้าน (hw)</b> ชนะ — แบ่งแล้วได้ 2 กลุ่มบริสุทธิ์ที่สุด (ผ่าน 5/6 ฝั่งส่ง, ตก 5/6 ฝั่งไม่ส่ง) · นี่คือคำถามบนสุดของต้นไม้';
+        nextBtn.disabled=true; nextBtn.style.opacity=.5;
+      }
+    }
+    function reset(){ idx=-1; nextBtn.disabled=false; nextBtn.style.opacity=1; renderTbl(null); clearBars();
+      calc.innerHTML='— กด "ถัดไป" เพื่อเริ่มวัดฟีเจอร์แรก —';
+      note.innerHTML='<svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>Gini รวมก่อนแบ่ง = 0.5 (ผ่าน 6 ตก 6 ครึ่งต่อครึ่ง) · เป้าหมายคือหาคำถามที่<b>ลด Gini</b>ได้มากที่สุด'; }
+    nextBtn.addEventListener('click',step); resetBtn.addEventListener('click',reset);
+    renderTbl(null);
+  })();
+
+  /* ================= Widget 2 — สร้างต้นไม้ทีละโหนด + ส่ง query ================= */
+  (function(){
+    const cv=document.getElementById('dtsqTreeCv'); if(!cv) return;
+    const root=layout(buildTree(DATA,2)), total=root._count;
+    const msg=document.getElementById('dtsqBuildMsg');
+    const runBtn=document.getElementById('dtsqBuildRun'), resetBtn=document.getElementById('dtsqBuildReset');
+    const panel=document.getElementById('dtsqQPanel');
+    let reveal=1, timer=null, qPath=null;
+    function draw(){ drawTree(cv,root,680,420,{reveal:reveal, path:qPath}); }
+    function stop(){ if(timer){ clearInterval(timer); timer=null; } }
+    draw();
+    runBtn.addEventListener('click',function(){ stop(); qPath=null; reveal=1; draw(); msg.textContent='กำลังงอก…';
+      timer=setInterval(function(){ reveal++; draw();
+        if(reveal>=total){ stop(); msg.innerHTML='ต้นไม้เสร็จ — <b style="color:#12a150">ทายข้อมูลฝึกถูก 12/12</b> (ทุกใบบริสุทธิ์)'; } },650); });
+    resetBtn.addEventListener('click',function(){ stop(); qPath=null; reveal=1; draw(); msg.textContent='— กดเพื่อปลูก —';
+      panel.textContent='สร้างต้นไม้ก่อน แล้วปรับโปรไฟล์ กด "ส่งลงต้นไม้" เพื่อดูมันไหลลงไปหยุดที่ใบไหน'; });
+    const gAtt=segInit('dtsqQAtt'), gHw=segInit('dtsqQHw'), gSleep=segInit('dtsqQSleep');
+    const hr=document.getElementById('dtsqQHours'), hrv=document.getElementById('dtsqQHoursV');
+    hr.addEventListener('input',()=>hrv.textContent=hr.value);
+    document.getElementById('dtsqQRun').addEventListener('click',function(){
+      stop(); reveal=total;
+      const p={att:+gAtt().v, hw:+gHw().v, sleep:+gSleep().v, hours:+hr.value};
+      const w=walk(root,p); qPath=pathSet(root,p); draw();
+      let h='<b>เส้นทางของนักศึกษาคนนี้:</b><br>';
+      w.steps.forEach((s,k)=>{ h+='<span style="color:#2456e6">'+(k+1)+'.</span> '+s.q+' → <b>'+s.ans+'</b><br>'; });
+      h+='ไปหยุดที่ใบ → <b style="color:'+(w.leaf.maj?'#12a150':'#e5484d')+'">ทายว่า '+(w.leaf.maj?'ผ่าน':'ตก')+'</b>';
+      panel.innerHTML=h;
+    });
+  })();
+
+  /* ================= Widget 3 — ตัดกิ่ง (min samples) ================= */
+  (function(){
+    const cv=document.getElementById('dtsqPruneCv'); if(!cv) return;
+    const sl=document.getElementById('dtsqMinS'), slv=document.getElementById('dtsqMinSV');
+    const leafN=document.getElementById('dtsqLeafN'), trainN=document.getElementById('dtsqTrainN'),
+          trainBar=document.getElementById('dtsqTrainBar'), s9N=document.getElementById('dtsqS9N'),
+          note=document.getElementById('dtsqPruneNote');
+    function update(){
+      const ms=+sl.value; slv.textContent=ms;
+      const root=layout(buildTree(DATA,ms));
+      let correct=0; for(const p of DATA){ let n=root; while(!n.leaf) n=(p[n.f]<n.t)?n.left:n.right; if(n.maj===p.y) correct++; }
+      let s9=root; while(!s9.leaf) s9=(DATA[8][s9.f]<s9.t)?s9.left:s9.right;
+      const chased=(s9.maj===DATA[8].y);
+      leafN.textContent=root._leaves;
+      trainN.textContent=correct+'/12'; trainBar.style.width=(correct/12*100)+'%';
+      s9N.innerHTML= chased? '<span style="color:#e5484d">ใช่ (ใบ n='+s9.n+')</span>' : '<span style="color:#12a150">ไม่ (ตัดแล้ว)</span>';
+      drawTree(cv,root,680,380,{reveal:1e9, path:pathSet(root,DATA[8])});
+      const ic='<svg class="ico" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.9.7 1.5 1.3 1.5 2.1h4c0-.8.6-1.4 1.5-2.1A6 6 0 0 0 12 3z"/></svg>';
+      if(ms<=2) note.innerHTML=ic+'ขั้นต่ำ = 2: ต้นไม้ยอมสร้าง<b>ใบเดี่ยว</b>ห่อ S9 (เส้นน้ำเงิน) → train 12/12 แต่กฎเปราะ = <b>จำ noise</b> (overfit)';
+      else if(root._leaves>=3) note.innerHTML=ic+'ตัดกิ่งแล้ว: ต้นไม้<b>เลิกไล่จับ S9</b> ใบเหลือ '+root._leaves+' → เสีย train 1 คน (S9 ทายผิด) แต่กฎเรียบง่าย <b>ทั่วไป (generalize) ดีกว่า</b>เมื่อเจอข้อมูลใหม่';
+      else note.innerHTML=ic+'ตัดแรงมาก (ใบเหลือ '+root._leaves+'): ต้นไม้<b>เตี้ยเกินไป</b> เริ่ม <b>underfit</b> — พลาดรูปแบบจริงบางส่วน (train ตกลง)';
+    }
+    sl.addEventListener('input',update); update();
+  })();
+
+  /* ================= Widget 4 — ข้อมูลหาย (เติม median/mode แล้วเดินต้นไม้) ================= */
+  (function(){
+    const panel=document.getElementById('dtsqMissPanel'); if(!panel) return;
+    const root=buildTree(DATA,2);
+    function colMedian(f){ return SQ.median(DATA.map(d=>d[f])); }
+    function colMode(f){ let c0=0,c1=0; for(const d of DATA) d[f]?c1++:c0++; return {v:c1>=c0?1:0,c0,c1}; }
+    const CFG={
+      hours:{ base:{att:0,hw:0,sleep:1}, type:'ตัวเลข', label:'ชั่วโมงติว' },
+      sleep:{ base:{att:0,hw:1,hours:7}, type:'ใช่/ไม่', label:'นอนพอ' }
+    };
+    let missF='hours', step=0;
+    const getWhich=segInit('dtsqMissWhich',d=>{ missF=d.f; step=0; render(); });
+    const nextBtn=document.getElementById('dtsqMissNext'), resetBtn=document.getElementById('dtsqMissReset');
+    function profileLine(cfg,fillVal){
+      const p=Object.assign({},cfg.base); const parts=[];
+      for(const f of FEATS){
+        if(f===missF){ parts.push('<b>'+cfg.label+' = '+(fillVal==null?'<span style="color:#e5484d">? (หาย)</span>':(NUM[f]?fillVal+' ชม.':(fillVal?'✓':'✗'))+' <span style="color:#12a150">(เติมแล้ว)</span>')+'</b>'); }
+        else { const v=p[f]; parts.push(({att:'เข้าเรียน',hw:'ส่งการบ้าน',sleep:'นอนพอ',hours:'ติว'}[f])+' '+(f==='hours'?v+' ชม.':(v?'✓':'✗'))); }
+      }
+      return parts.join(' · ');
+    }
+    function render(){
+      const cfg=CFG[missF];
+      let fillVal=null, extra='';
+      if(missF==='hours'){ fillVal=colMedian('hours');
+        extra='เรียงชั่วโมงติวทั้ง 12 คน: 1,2,3,4,5,6,6,7,8,9,10,11 → ค่ากลาง (median) = <b>'+fillVal+'</b> ชม.'; }
+      else { const m=colMode('sleep'); fillVal=m.v;
+        extra='นับคอลัมน์ "นอนพอ": ✓ = '+m.c1+' คน, ✗ = '+m.c0+' คน → ค่าที่พบบ่อยสุด (mode) = <b>'+(m.v?'✓ นอนพอ':'✗ อดนอน')+'</b>'; }
+      const pFilled=Object.assign({},cfg.base); pFilled[missF]=fillVal;
+      const w=walk(root,pFilled);
+      let h='<div style="font-weight:700;margin-bottom:4px">นักศึกษาคนใหม่ (กรอกไม่ครบ):</div>'+
+            '<div style="font-size:.9rem;margin-bottom:8px">'+profileLine(cfg, step>=2?fillVal:null)+'</div>';
+      if(step>=1) h+='<div style="border-top:1px dashed var(--border);padding-top:7px"><b style="color:#2456e6">ขั้น 1 — ตรวจพบช่องหาย:</b> ช่อง "<b>'+cfg.label+'</b>" หาย · เป็นชนิด <b>'+cfg.type+'</b></div>';
+      if(step>=2) h+='<div style="margin-top:6px"><b style="color:#7c3aed">ขั้น 2 — เติมค่า:</b> '+(missF==='hours'?'ตัวเลข → ใช้ <b>median</b> ของคอลัมน์':'ใช่/ไม่ → ใช้ <b>mode</b> (ค่าที่พบบ่อยสุด) ของคอลัมน์')+'<br><span style="font-size:.88rem;color:var(--muted)">'+extra+'</span></div>';
+      if(step>=3){ h+='<div style="margin-top:6px"><b style="color:#12a150">ขั้น 3 — เดินต้นไม้ (ที่สร้างในส่วนที่ 4):</b><br>';
+        w.steps.forEach((s,k)=>{ h+='<span style="color:#2456e6">'+(k+1)+'.</span> '+s.q+' → <b>'+s.ans+'</b><br>'; });
+        h+='ผลทำนาย → <b style="color:'+(w.leaf.maj?'#12a150':'#e5484d')+';font-size:1.05em">'+(w.leaf.maj?'ผ่าน':'ตก')+'</b>';
+        const flip = missF==='hours' ? 'ถ้าเติม hours ได้ ≥ 8.5 คำตอบจะพลิกเป็น "ผ่าน" — ค่าที่เติมจึงมีผลต่อการทายจริง'
+                                      : 'ถ้าเติม "นอนพอ = ✗" คำตอบจะพลิกเป็น "ตก" (ตกไปกอง S9) — ค่าที่เติมจึงสำคัญ';
+        h+='<div style="margin-top:6px;font-size:.85rem;color:var(--muted)"><svg class="ico" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>'+flip+'</div></div>'; }
+      if(step===0) h+='<div style="color:var(--muted);font-size:.88rem;margin-top:4px">กด "ถัดไป" เพื่อไล่ทีละขั้น</div>';
+      panel.innerHTML=h;
+    }
+    nextBtn.addEventListener('click',()=>{ if(step<3){ step++; render(); } });
+    resetBtn.addEventListener('click',()=>{ step=0; render(); });
+    render();
+  })();
+
+})();
+</script>
+
+<!-- ═══════════ 3D Decision Tree (botanical) ═══════════ -->
+<script>
+(function(){
+  const cv=document.getElementById('d3tCanvas'); const SQ=window.SQ; if(!cv||!SQ) return;
+  const ctx=cv.getContext('2d'); const W=720,H=470, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  /* สร้างต้นไม้จริงจากตาราง 12 คน (ใช้ทุกฟีเจอร์ ลึกพอให้เป็นพุ่ม) */
+  function build(pts,d,maxD){
+    let n1=0; for(const p of pts) if(p.y===1) n1++;
+    const node={maj:n1*2>=pts.length?1:0, n:pts.length, depth:d};
+    if(d>=maxD || SQ.gini(pts)===0 || pts.length<2){ node.leaf=true; return node; }
+    const s=SQ.bestSplit(pts, SQ.FEATS); if(!s){ node.leaf=true; return node; }
+    node.f=s.f; node.t=s.t; node.left=build(s.L,d+1,maxD); node.right=build(s.R,d+1,maxD);
+    return node;
+  }
+  const root=build(SQ.baseRows(),0,4);
+
+  /* วางพิกัด 3 มิติ: รากล่าง (0,0,0) โต +Y · สลับระนาบแตกกิ่งตามชั้น (คู่=กาง X, คี่=กาง Z) */
+  const segs=[], puffs=[];
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+  const scl=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
+  function rot(v,axis,a){ const c=Math.cos(a), s=Math.sin(a);
+    if(axis==='z') return [v[0]*c - v[1]*s, v[0]*s + v[1]*c, v[2]];
+    return [v[0], v[1]*c - v[2]*s, v[1]*s + v[2]*c]; }   /* axis 'x' */
+  const hsh=n=>{ const v=Math.sin(n*127.1+31.7)*43758.5453; return v-Math.floor(v); };
+  let leafSeq=0;
+  function sproutFoliage(pos, maj, depth){
+    const li=leafSeq++; const greens=['#12a150','#1aa55a','#0ea371','#37b06b','#2bbd77'];
+    const reds=['#e5484d','#d93a3f','#f06a63','#c73338','#ef7d72'];
+    const pal = maj? greens : reds;
+    for(let k=0;k<12;k++){
+      const a=hsh(li*9+k)*6.2832, b=(hsh(li*5+k+3)-0.5)*3.14;
+      const rad=0.24+hsh(li*7+k+1)*0.30;
+      const off=[Math.cos(a)*Math.cos(b)*rad, Math.sin(b)*rad*0.9+0.15, Math.sin(a)*Math.cos(b)*rad];
+      puffs.push({pos:add(pos,off), r:5+hsh(li+k)*4.5, col:pal[k%pal.length], depth});
+    }
+  }
+  function layout(node, pos, dir, len, thick){
+    node.pos=pos;
+    if(node.leaf){ sproutFoliage(pos, node.maj, node.depth); return; }
+    const axis=(node.depth%2===0)?'z':'x', ang=0.66-node.depth*0.05;
+    [[node.left,-1],[node.right,1]].forEach(([ch,sgn])=>{
+      const nd=rot(dir,axis,ang*sgn);
+      const cpos=add(pos, scl(nd,len));
+      segs.push({a:pos, b:cpos, t0:thick, t1:thick*0.62, cd:node.depth+1});
+      /* ก้านประดับให้พุ่มดูฟู */
+      if(ch.leaf){ const tw=rot(nd,axis==='z'?'x':'z',0.5*sgn);
+        segs.push({a:cpos, b:add(cpos,scl(tw,len*0.32)), t0:thick*0.5, t1:1.5, cd:node.depth+1}); }
+      layout(ch, cpos, nd, len*0.74, thick*0.66);
+    });
+  }
+  const rootPos=[0,1.3,0];
+  segs.push({a:[0,0,0], b:rootPos, t0:13, t1:11, cd:0});     /* ลำต้น */
+  layout(root, rootPos, [0,1,0], 1.5, 11);
+  let maxCD=0; for(const s of segs) if(s.cd>maxCD) maxCD=s.cd; const GEND=maxCD+1;
+
+  const S={yaw:-0.5, pitch:0.22, G:GEND, spin:true, growing:false};
+  const SCALE=66, FOV=9, GY=H*0.95;
+  function proj(p){ const cy=Math.cos(S.yaw),sy=Math.sin(S.yaw);
+    const rx=p[0]*cy - p[2]*sy, rz=p[0]*sy + p[2]*cy;
+    const cp=Math.cos(S.pitch),sp=Math.sin(S.pitch);
+    const uy=p[1]*cp - rz*sp, dz=p[1]*sp + rz*cp, f=FOV/(FOV+dz);
+    return {x:W/2+rx*SCALE*f, y:GY-uy*SCALE*f, z:dz, f}; }
+
+  /* ลากหมุน + ปุ่ม */
+  const stage=document.getElementById('d3tStage'); let drag=null;
+  cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch};
+    try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
+  cv.addEventListener('pointermove',e=>{ if(!drag) return;
+    S.yaw=drag.yaw+(e.clientX-drag.x)*0.008;
+    S.pitch=Math.max(-0.15,Math.min(0.85, drag.pitch+(e.clientY-drag.y)*0.006)); });
+  const endDrag=()=>drag=null; cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+  document.getElementById('d3tGrow').addEventListener('click',()=>{ S.G=0; S.growing=true; S.growStart=Date.now(); });
+  const spinBtn=document.getElementById('d3tSpin');
+  spinBtn.addEventListener('click',()=>{ S.spin=!S.spin; });
+
+  function frame(){
+    if(S.growing){ S.G=Math.min(GEND,(Date.now()-S.growStart)/2600*GEND); if(S.G>=GEND){ S.G=GEND; S.growing=false; } }
+    if(S.spin && !drag) S.yaw+=0.010;
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+
+    /* เงาพื้นใต้ต้น */
+    const b0=proj([0,0,0]);
+    ctx.save(); ctx.beginPath(); ctx.ellipse(b0.x, b0.y+6, 90, 20, 0, 0, 6.2832);
+    ctx.fillStyle='rgba(60,80,120,.10)'; ctx.fill(); ctx.restore();
+
+    const items=[];
+    /* กิ่ง (โผล่ตามการงอก) */
+    for(const s of segs){ let frac; if(S.G>=s.cd+1) frac=1; else if(S.G>s.cd) frac=S.G-s.cd; else continue;
+      const bb=[s.a[0]+(s.b[0]-s.a[0])*frac, s.a[1]+(s.b[1]-s.a[1])*frac, s.a[2]+(s.b[2]-s.a[2])*frac];
+      const pa=proj(s.a), pb=proj(bb);
+      items.push({z:(pa.z+pb.z)/2, kind:'seg', pa,pb, t0:s.t0, t1:s.t1}); }
+    /* พุ่มใบ (สเกลตามการงอก) */
+    for(const pf of puffs){ const sc=Math.max(0,Math.min(1,S.G-pf.depth)); if(sc<=0.02) continue;
+      const p=proj(pf.pos); items.push({z:p.z, kind:'puff', x:p.x, y:p.y, r:pf.r*sc*p.f, col:pf.col}); }
+    items.sort((a,b)=>b.z-a.z);
+
+    for(const it of items){
+      if(it.kind==='seg'){
+        const dx=it.pb.x-it.pa.x, dy=it.pb.y-it.pa.y, L=Math.hypot(dx,dy)||1;
+        const nx=-dy/L, ny=dx/L, w0=it.t0*it.pa.f*0.5, w1=it.t1*it.pb.f*0.5;
+        ctx.beginPath();
+        ctx.moveTo(it.pa.x+nx*w0, it.pa.y+ny*w0); ctx.lineTo(it.pb.x+nx*w1, it.pb.y+ny*w1);
+        ctx.lineTo(it.pb.x-nx*w1, it.pb.y-ny*w1); ctx.lineTo(it.pa.x-nx*w0, it.pa.y-ny*w0);
+        ctx.closePath(); ctx.fillStyle='#6b4a2b'; ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(it.x,it.y,Math.max(1,it.r),0,6.2832); ctx.fillStyle=it.col; ctx.fill();
+        ctx.beginPath(); ctx.arc(it.x-it.r*0.3,it.y-it.r*0.3,Math.max(0.6,it.r*0.42),0,6.2832);
+        ctx.fillStyle='rgba(255,255,255,.32)'; ctx.fill();
+      }
+    }
+    /* ป้ายรากที่ลำต้น */
+    if(S.G>0.4){ const pr=proj([0,0.55,0]);
+      ctx.font='700 14px Poppins,Kanit,sans-serif'; ctx.textAlign='center';
+      ctx.fillStyle='rgba(31,37,51,.30)'; ctx.fillText('ส่งการบ้าน?', pr.x+90, pr.y+2); }
+  }
+  setInterval(frame,33); frame();   /* setInterval ไม่ใช่ rAF — วาดได้แม้แท็บไม่ active */
+})();
+</script>
+
+<!-- ═══════════ 3D Random Forest grove ═══════════ -->
+<script>
+(function(){
+  const cv=document.getElementById('d3fCanvas'); const SQ=window.SQ; if(!cv||!SQ) return;
+  const ctx=cv.getContext('2d'); const W=720,H=430, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const N=15;
+  const forest=SQ.buildForest(SQ.baseRows(), SQ.SEED, N, SQ.MD, SQ.MTRY, SQ.MINL, null);
+  const hsh=n=>{ const v=Math.sin(n*127.1+31.7)*43758.5453; return v-Math.floor(v); };
+  const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+
+  /* จัดต้นไม้เป็นดง 5×3 บนพื้น + แปรความสูง/เอียงแบบกำหนดได้ */
+  const trees=[]; const cols=5, rowsN=3;
+  for(let i=0;i<N;i++){ const c=i%cols, r=Math.floor(i/cols);
+    const x=(c-(cols-1)/2)*1.95 + (r-1)*0.35, z=(r-(rowsN-1)/2)*2.0;
+    const h=2.0+hsh(i)*1.0, lean=(hsh(i+9)-0.5)*0.45;
+    const top=[x+lean, h, z];
+    const puffs=[]; for(let k=0;k<10;k++){ const a=hsh(i*9+k)*6.2832, b=(hsh(i*5+k+2)-0.5)*3.0, rad=0.30+hsh(i*7+k)*0.34;
+      puffs.push({off:[Math.cos(a)*Math.cos(b)*rad, Math.sin(b)*rad*0.9+0.2, Math.sin(a)*Math.cos(b)*rad], r:6+hsh(i+k+1)*5}); }
+    trees.push({tree:forest[i], base:[x,0,z], top, puffs, vote:null}); }
+
+  const S={yaw:-0.35, pitch:0.30, spin:true, voting:false, votedN:0, tick:0};
+  const SCALE=48, FOV=10, GY=H*0.86;
+  function proj(p){ const cy=Math.cos(S.yaw),sy=Math.sin(S.yaw);
+    const rx=p[0]*cy - p[2]*sy, rz=p[0]*sy + p[2]*cy;
+    const cp=Math.cos(S.pitch),sp=Math.sin(S.pitch);
+    const uy=p[1]*cp - rz*sp, dz=p[1]*sp + rz*cp, f=FOV/(FOV+dz);
+    return {x:W/2+rx*SCALE*f, y:GY-uy*SCALE*f, z:dz, f}; }
+
+  /* ตัวควบคุม */
+  const q={att:1,hw:1,sleep:1,hours:7};
+  function seg(id,key){ const el=document.getElementById(id); if(!el) return;
+    el.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+      el.querySelectorAll('button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      q[key]=+b.dataset.v; }); }
+  seg('d3fAtt','att'); seg('d3fHw','hw'); seg('d3fSleep','sleep');
+  const hrs=document.getElementById('d3fHours'), hrsV=document.getElementById('d3fHoursV');
+  hrs.addEventListener('input',()=>{ q.hours=+hrs.value; hrsV.textContent=hrs.value; });
+  function setSeg(id,v){ document.querySelectorAll('#'+id+' button').forEach(b=>b.classList.toggle('on',+b.dataset.v===v)); }
+  function applyPreset(p){ const P={strong:{att:1,hw:1,sleep:1,hours:7}, edge:{att:1,hw:0,sleep:1,hours:4}, weak:{att:0,hw:0,sleep:0,hours:2}}[p];
+    Object.assign(q,P); setSeg('d3fAtt',q.att); setSeg('d3fHw',q.hw); setSeg('d3fSleep',q.sleep);
+    hrs.value=q.hours; hrsV.textContent=q.hours; }
+  document.querySelectorAll('#d3fDemo [data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
+
+  const barP=document.getElementById('d3fBarPass'), barF=document.getElementById('d3fBarFail'),
+        cntP=document.getElementById('d3fCntPass'), cntF=document.getElementById('d3fCntFail'),
+        resEl=document.getElementById('d3fResult');
+  function updateTally(){ let p=0,f=0; for(let i=0;i<S.votedN;i++){ trees[i].vote===1?p++:f++; }
+    barP.style.width=(p/N*100)+'%'; barF.style.width=(f/N*100)+'%';
+    cntP.textContent=p; cntF.textContent=f;
+    if(S.votedN>=N){ const win=p>=f;
+      resEl.innerHTML='เสียงข้างมาก → <span style="color:'+(win?'#12a150':'#e5484d')+'">'+(win?'ผ่าน':'ตก')+'</span> ('+(win?p:f)+' ต่อ '+(win?f:p)+')';
+    } else resEl.innerHTML='กำลังโหวต… ('+S.votedN+'/'+N+')'; }
+  document.getElementById('d3fVote').addEventListener('click',()=>{
+    for(const t of trees) t.vote=SQ.predTree(t.tree.root, q);
+    S.voting=true; S.votedN=0; S.voteStart=Date.now(); updateTally(); });
+
+  /* ลากหมุน + auto-spin */
+  let drag=null;
+  cv.addEventListener('pointerdown',e=>{ drag={x:e.clientX,y:e.clientY,yaw:S.yaw,pitch:S.pitch}; try{cv.setPointerCapture(e.pointerId);}catch(_){}} );
+  cv.addEventListener('pointermove',e=>{ if(!drag) return; S.yaw=drag.yaw+(e.clientX-drag.x)*0.008;
+    S.pitch=Math.max(0.05,Math.min(0.8, drag.pitch+(e.clientY-drag.y)*0.006)); });
+  const endDrag=()=>drag=null; cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+
+  function foliageCol(t,i){ if(t.vote===null || i>=S.votedN) return null;
+    return t.vote? '#12a150' : '#e5484d'; }
+
+  function frame(){
+    if(S.spin && !drag) S.yaw+=0.006;
+    if(S.voting){ const nv=Math.min(N, Math.floor((Date.now()-S.voteStart)/240)); if(nv!==S.votedN){ S.votedN=nv; updateTally(); } if(S.votedN>=N) S.voting=false; }
+    ctx.fillStyle='#f7f8fb'; ctx.fillRect(0,0,W,H);
+
+    /* พื้นดิน: กริดจาง */
+    ctx.strokeStyle='rgba(90,110,175,.16)'; ctx.lineWidth=1;
+    for(let gx=-5;gx<=5;gx++){ const a=proj([gx*1.05,0,-3.2]), b=proj([gx*1.05,0,3.2]);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+    for(let gz=-3;gz<=3;gz++){ const a=proj([-5.3,0,gz*1.05]), b=proj([5.3,0,gz*1.05]);
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
+
+    /* เรียงต้นไม้ไกล→ใกล้ */
+    const order=trees.map((t,i)=>({t,i,z:proj(t.base).z})).sort((a,b)=>b.z-a.z);
+    for(const {t,i} of order){
+      const flash=(S.votedN===i+1 && Math.floor(Date.now()/170)%2===0) ? 1 : 0;
+      const pb=proj(t.base), pt=proj(t.top);
+      /* เงา */
+      ctx.beginPath(); ctx.ellipse(pb.x,pb.y+3, 22*pb.f, 6*pb.f, 0,0,6.2832);
+      ctx.fillStyle='rgba(60,80,120,.10)'; ctx.fill();
+      /* ลำต้น */
+      const dx=pt.x-pb.x, dy=pt.y-pb.y, L=Math.hypot(dx,dy)||1, nx=-dy/L, ny=dx/L;
+      const w0=7*pb.f*0.5, w1=3.5*pt.f*0.5;
+      ctx.beginPath();
+      ctx.moveTo(pb.x+nx*w0,pb.y+ny*w0); ctx.lineTo(pt.x+nx*w1,pt.y+ny*w1);
+      ctx.lineTo(pt.x-nx*w1,pt.y-ny*w1); ctx.lineTo(pb.x-nx*w0,pb.y-ny*w0);
+      ctx.closePath(); ctx.fillStyle='#6b4a2b'; ctx.fill();
+      /* พุ่มใบ */
+      const vc=foliageCol(t,i); const base = vc || '#5f9469';
+      const pf=t.puffs.map(u=>({p:proj(add(t.top,u.off)), r:u.r})).sort((a,b)=>b.p.z-a.p.z);
+      for(const u of pf){ const r=Math.max(2,u.r*u.p.f*(flash?1.12:1));
+        ctx.beginPath(); ctx.arc(u.p.x,u.p.y,r,0,6.2832); ctx.fillStyle=base; ctx.fill();
+        ctx.beginPath(); ctx.arc(u.p.x-r*0.3,u.p.y-r*0.3,r*0.4,0,6.2832); ctx.fillStyle='rgba(255,255,255,.28)'; ctx.fill(); }
+      if(flash){ ctx.beginPath(); ctx.arc(pt.x,pt.y-4, 26*pt.f, 0, 6.2832);
+        ctx.strokeStyle=(t.vote?'rgba(18,161,80,.7)':'rgba(229,72,77,.7)'); ctx.lineWidth=2.5; ctx.stroke(); }
+    }
+  }
+  setInterval(frame,33); frame();   /* setInterval ไม่ใช่ rAF */
+})();
+</script>
+
+<script>
+/* ====== Gini intro: ความปนเปื้อนของกล่อง + เกมพิสูจน์ "โอกาสเดาผิด = Gini" ====== */
+(function(){
+  const bag=document.getElementById('giBag'); if(!bag) return;
+  const redSl=document.getElementById('giRed'), redV=document.getElementById('giRedV');
+  const formula=document.getElementById('giFormula'), curveCv=document.getElementById('giCurveCv');
+  const playBtn=document.getElementById('giPlay'), tally=document.getElementById('giTally');
+  const RED='#e5484d', BLUE='#2456e6', N=10;
+  const PLAY='<svg class="ico ico-btn" viewBox="0 0 24 24"><path class="f" d="M8 5v14l11-7z"/></svg>เล่นเกมทายสี';
+  const STOP='<svg class="ico ico-btn" viewBox="0 0 24 24"><path d="M7 5v14M17 5v14"/></svg>หยุด';
+  let k=4, timer=null, total=0, wrong=0;
+  const gini=p=> 1-(p*p+(1-p)*(1-p));
+
+  let balls=[], ballState=[];
+  function buildBag(){ bag.innerHTML=''; balls=[]; ballState=[];
+    for(let i=0;i<N;i++){ const d=document.createElement('div'); d.className='gi-ball'; const st=i<k?'r':'b';
+      d.style.backgroundColor= st==='r'?RED:BLUE; bag.appendChild(d); balls.push(d); ballState.push(st); } }
+  function updateBalls(){ if(balls.length!==N){ buildBag(); return; }
+    for(let i=0;i<N;i++){ const st=i<k?'r':'b';
+      if(st!==ballState[i]){ ballState[i]=st;
+        balls[i].style.backgroundColor= st==='r'?RED:BLUE;      /* สีค่อย ๆ เฟดด้วย CSS transition */
+        balls[i].style.transform='scale(1.35)';                  /* เด้ง pop ตอนพลิกสี */
+        (function(el){ setTimeout(function(){ el.style.transform=''; }, 250); })(balls[i]); } } }
+  function renderFormula(){ const p=k/N,q=1-p,g=gini(p);
+    const tag = g<0.05?'(บริสุทธิ์ — สีเดียว)': g>0.45?'(ปนกันสุด — ครึ่ง ๆ)':'(ปนกันบ้าง)';
+    formula.innerHTML='p<sub>แดง</sub> = '+k+'/10 = '+p.toFixed(1)+' &nbsp; p<sub>น้ำเงิน</sub> = '+(N-k)+'/10 = '+q.toFixed(1)+'<br>'+
+      'G = 1 − (p<sub>แดง</sub>² + p<sub>น้ำเงิน</sub>²) = 1 − ('+(p*p).toFixed(2)+' + '+(q*q).toFixed(2)+') = '+
+      '<span class="gi-gval" style="color:#7c3aed">'+g.toFixed(3)+'</span> <span style="font-size:.84rem;color:var(--muted)">'+tag+'</span>';
+    const gv=formula.querySelector('.gi-gval'); if(gv){ gv.style.display='inline-block';
+      gv.style.transition='transform .3s cubic-bezier(.34,1.56,.64,1)'; gv.style.transform='scale(1.28)';
+      setTimeout(function(){ if(gv) gv.style.transform=''; }, 40); } }
+
+  const cctx=curveCv.getContext('2d'); const CW=400,CH=300,dpr=Math.min(2,window.devicePixelRatio||1);
+  curveCv.width=CW*dpr; curveCv.height=CH*dpr; cctx.setTransform(dpr,0,0,dpr,0,0);
+  const padL=46,padB=38,padT=16,padR=16;
+  const PX=p=>padL+p*(CW-padL-padR), PY=g=>CH-padB-(g/0.5)*(CH-padB-padT);
+  function drawCurve(mp){
+    cctx.clearRect(0,0,CW,CH); cctx.fillStyle='#f7f8fb'; cctx.fillRect(0,0,CW,CH);
+    cctx.strokeStyle='rgba(120,130,150,.5)'; cctx.lineWidth=1;
+    cctx.beginPath(); cctx.moveTo(padL,padT); cctx.lineTo(padL,CH-padB); cctx.lineTo(CW-padR,CH-padB); cctx.stroke();
+    cctx.strokeStyle='rgba(120,130,150,.22)'; cctx.setLineDash([4,4]);
+    cctx.beginPath(); cctx.moveTo(padL,PY(0.5)); cctx.lineTo(CW-padR,PY(0.5)); cctx.stroke(); cctx.setLineDash([]);
+    cctx.strokeStyle='#7c3aed'; cctx.lineWidth=2.5; cctx.beginPath();
+    for(let i=0;i<=100;i++){ const p=i/100,x=PX(p),y=PY(gini(p)); i?cctx.lineTo(x,y):cctx.moveTo(x,y); } cctx.stroke();
+    cctx.fillStyle='#8a93a8'; cctx.font='600 11px Poppins,Kanit,sans-serif';
+    cctx.textAlign='center'; cctx.fillText('สัดส่วนสีแดง (p) →',(padL+CW-padR)/2,CH-9);
+    cctx.textAlign='right'; cctx.fillText('0.5',padL-7,PY(0.5)+4); cctx.fillText('0',padL-7,CH-padB+4);
+    cctx.save(); cctx.translate(14,(padT+CH-padB)/2); cctx.rotate(-Math.PI/2); cctx.textAlign='center'; cctx.fillText('Gini (ความปนเปื้อน)',0,0); cctx.restore();
+    const p=(mp==null?k/N:mp), mx=PX(p), my=PY(gini(p));
+    cctx.strokeStyle='rgba(124,58,237,.4)'; cctx.setLineDash([3,3]);
+    cctx.beginPath(); cctx.moveTo(mx,my); cctx.lineTo(mx,CH-padB); cctx.stroke(); cctx.setLineDash([]);
+    cctx.beginPath(); cctx.arc(mx,my,6.5,0,7); cctx.fillStyle='#7c3aed'; cctx.fill(); cctx.lineWidth=2; cctx.strokeStyle='#fff'; cctx.stroke();
+  }
+
+  function renderTally(last){ const p=k/N,g=gini(p), rate= total? wrong/total : 0;
+    let h='';
+    if(last) h+='<div style="margin-bottom:7px">รอบล่าสุด: หยิบได้ <span class="gi-dot" style="background:'+(last.a?RED:BLUE)+'"></span> เดาว่า <span class="gi-dot" style="background:'+(last.g?RED:BLUE)+'"></span> → '+(last.a===last.g?'<b style="color:#12a150">ถูก ✓</b>':'<b style="color:#e5484d">ผิด ✗</b>')+'</div>';
+    h+='เล่นไป <b>'+total+'</b> ครั้ง · เดาผิด <b>'+wrong+'</b> ครั้ง<br>';
+    h+='อัตราเดาผิดจริง = <span class="gi-gval" style="color:#e5484d">'+(total?(rate*100).toFixed(0)+'%':'—')+'</span> &nbsp;→ ลู่เข้าหา&nbsp; Gini = <span class="gi-gval" style="color:#7c3aed">'+(g*100).toFixed(0)+'%</span>';
+    h+='<div style="position:relative;height:13px;border-radius:7px;overflow:hidden;border:1px solid var(--border);margin-top:9px;background:var(--card)">'+
+       '<div style="height:100%;width:'+(rate*100)+'%;background:#e5484d;transition:width .12s"></div>'+
+       '<div style="position:absolute;top:-2px;bottom:-2px;left:'+(g*100)+'%;width:2px;background:#7c3aed"></div></div>';
+    tally.innerHTML=h; }
+
+  function resetGame(){ if(timer){ clearInterval(timer); timer=null; playBtn.innerHTML=PLAY; } total=0; wrong=0; renderTally(null); }
+  let dispP=k/N, mTimer=null;
+  function animateMarker(){ if(mTimer) clearInterval(mTimer);
+    drawCurve(dispP);
+    mTimer=setInterval(function(){ const t=k/N; dispP+=(t-dispP)*0.28;
+      if(Math.abs(t-dispP)<0.003){ dispP=t; clearInterval(mTimer); mTimer=null; } drawCurve(dispP); }, 30); }
+  function update(){ updateBalls(); renderFormula(); animateMarker(); resetGame(); }
+
+  redSl.addEventListener('input',e=>{ k=+e.target.value; redV.textContent=k; update(); });
+  playBtn.addEventListener('click',()=>{
+    if(timer){ clearInterval(timer); timer=null; playBtn.innerHTML=PLAY; return; }
+    playBtn.innerHTML=STOP;
+    timer=setInterval(()=>{ const p=k/N;
+      const a=Math.random()<p?1:0, g=Math.random()<p?1:0;   /* หยิบจริง vs เดา (ทั้งคู่สุ่มตามสัดส่วน) */
+      total++; if(a!==g) wrong++; renderTally({a,g});
+      if(total>=150){ clearInterval(timer); timer=null; playBtn.innerHTML=PLAY; }
+    }, 120); });
+  document.getElementById('giGReset').addEventListener('click',resetGame);
+  update();
+})();
+</script>
+</body>
+</html>
